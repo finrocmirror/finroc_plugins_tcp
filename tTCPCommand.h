@@ -1,0 +1,97 @@
+/**
+ * You received this file as part of an advanced experimental
+ * robotics framework prototype ('finroc')
+ *
+ * Copyright (C) 2007-2010 Max Reichardt,
+ *   Robotics Research Lab, University of Kaiserslautern
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+#include "finroc_core_utils/tJCBase.h"
+
+#ifndef PLUGINS__TCP__TTCPCOMMAND_H
+#define PLUGINS__TCP__TTCPCOMMAND_H
+
+#include "core/buffers/tCoreInput.h"
+#include "core/buffers/tCoreOutput.h"
+#include "core/portdatabase/tSerializableReusable.h"
+
+namespace finroc
+{
+namespace tcp
+{
+/*!
+ * \author Max Reichardt
+ *
+ * A single asnychronous TCP command such as: SUBSCRIBE or UNSUBSCRIBE
+ */
+class tTCPCommand : public core::tSerializableReusable
+{
+public:
+
+  /*! OpCode - see TCP class */
+  int8 op_code;
+
+  /*! Handle of remote port */
+  int remote_handle;
+
+  /*! Strategy to use/request */
+  int strategy;
+
+  /*! Mode for minimum network update interval */
+  //public byte updateIntervalMode;
+
+  /*! Minimum network update interval */
+  int16 update_interval;
+
+  /*! Handle of local port */
+  int local_index;
+
+  /*! Data type uid */
+  int16 datatypeuid;
+
+  /*! Subscribe with reverse push strategy? */
+  bool reverse_push;
+
+  tTCPCommand() :
+      op_code(0),
+      remote_handle(0),
+      strategy(0),
+      update_interval(0),
+      local_index(0),
+      datatypeuid(0),
+      reverse_push(false)
+  {}
+
+  virtual void Deserialize(core::tCoreInput& is)
+  {
+    throw util::tRuntimeException("Unsupported - not needed - server decodes directly (more efficient)");
+  }
+
+  virtual void Serialize(core::tCoreOutput& os) const;
+
+//  @Override
+//  public void genericRecycle() {
+//    if (isResponsible()) {
+//      super.recycle();
+//    }
+//  }
+
+};
+
+} // namespace finroc
+} // namespace tcp
+
+#endif // PLUGINS__TCP__TTCPCOMMAND_H

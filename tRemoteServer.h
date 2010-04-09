@@ -1,0 +1,543 @@
+/**
+ * You received this file as part of an advanced experimental
+ * robotics framework prototype ('finroc')
+ *
+ * Copyright (C) 2007-2010 Max Reichardt,
+ *   Robotics Research Lab, University of Kaiserslautern
+ *
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ */
+#include "finroc_core_utils/tJCBase.h"
+
+#ifndef PLUGINS__TCP__TREMOTESERVER_H
+#define PLUGINS__TCP__TREMOTESERVER_H
+
+#include "finroc_core_utils/net/tIPSocketAddress.h"
+#include "core/datatype/tFrameworkElementInfo.h"
+#include "core/tFrameworkElementTreeFilter.h"
+#include "core/port/net/tRemoteCoreRegister.h"
+#include "tcp/tTCPPeer.h"
+#include "core/tFrameworkElement.h"
+#include "core/port/tPortCreationInfo.h"
+#include "core/buffers/tCoreInput.h"
+#include "core/buffers/tCoreOutput.h"
+#include "core/port/net/tRemoteTypes.h"
+#include "core/tRuntimeListener.h"
+#include "tcp/tTCPPort.h"
+#include "finroc_core_utils/net/tNetSocket.h"
+#include "tcp/tTCPConnection.h"
+#include "core/thread/tCoreLoopThreadBase.h"
+
+namespace finroc
+{
+namespace tcp
+{
+/*!
+ * \author Max Reichardt
+ *
+ * Class that stores information about and can be used to access
+ * TCP Server running in another runtime environment.
+ */
+class tRemoteServer : public core::tFrameworkElement, public core::tRuntimeListener
+{
+public:
+  class tProxyFrameworkElement; // inner class forward declaration
+public:
+  class tProxyPort; // inner class forward declaration
+public:
+  class tConnection; // inner class forward declaration
+
+  /*!
+   * This thread reconnects if connection was interrupted and updates subscriptions.
+   */
+  class tConnectorThread : public core::tCoreLoopThreadBase
+  {
+    friend class tRemoteServer;
+  private:
+
+    // Outer class RemoteServer
+    tRemoteServer* const outer_class_ptr;
+
+    /*! Timestamp of last subscription update */
+    int64 last_subscription_update;
+
+    /*! Bulk and Express Connections to server - copy for connector thread */
+    ::std::tr1::shared_ptr<tRemoteServer::tConnection> ct_bulk, ct_express;
+
+  public:
+
+    //    /** Static ChildIterator */
+    //    private RemoteCoreRegister<ProxyPort>.Iterator ci = remotePortRegister.getIterator();
+
+    tConnectorThread(tRemoteServer* const outer_class_ptr_);
+
+    virtual void MainLoopCallback();
+
+  };
+
+private:
+
+  /*! Network address */
+  util::tIPSocketAddress address;
+
+  /*! TCP Client Module => in parent */
+  //private final TCPClient client;
+
+  /*! Bulk and Express Connections to server */
+  ::std::tr1::shared_ptr<tConnection> bulk, express;
+
+  /*! Cached reference to runtime environment */
+  //private static final RuntimeEnvironment runtime = RuntimeEnvironment.getInstance();
+
+  /*! This thread reconnects disconnected Remote Nodes and updates subscriptions */
+  ::std::tr1::shared_ptr<tConnectorThread> connector_thread;
+
+  /*! Temporary buffer with port information */
+  core::tFrameworkElementInfo tmp_info;
+
+  /*! Filter that specifies which framework element we're interested in */
+  core::tFrameworkElementTreeFilter filter;
+
+  /*! Lookup for remote framework elements (currently not ports) - similar to remote CoreRegister */
+  core::tRemoteCoreRegister<tProxyPort*> remote_port_register;
+
+  /*! Lookup for remote framework elements (currently not ports) - similar to remote CoreRegister */
+  core::tRemoteCoreRegister<tProxyFrameworkElement*> remote_element_register;
+
+  /*! Iterator for port register (only used by reader thread) */
+  core::tRemoteCoreRegister< ::finroc::tcp::tRemoteServer::tProxyPort*>::tIterator port_iterator;
+
+  /*! Iterator for framework element register (only used by bulk reader thread) */
+  core::tRemoteCoreRegister< ::finroc::tcp::tRemoteServer::tProxyFrameworkElement*>::tIterator elem_iterator;
+
+  /*! Temporary buffer for match checks (only used by bulk reader or connector thread) */
+  util::tStringBuilder tmp_match_buffer;
+
+  /*! Timestamp of when server was created - used to identify whether we are still communicating with same instance after connection loss */
+  int64 server_creation_time;
+
+  /*! Peer that this server belongs to */
+  tTCPPeer* peer;
+
+  /*! If this is a port-only-client: Framework element that contains all global links */
+  ::finroc::core::tFrameworkElement* global_links;
+
+  /*!
+   * Connect to remote server
+   */
+  void Connect();
+
+  /*!
+   * (Belongs to ProxyPort)
+   *
+   * Create Port Creation info from PortInfo class.
+   * Except from Shared flag port will be identical to original port.
+   *
+   * \param port_info Port Information
+   * \return Port Creation info
+   */
+  static core::tPortCreationInfo CreatePCI(const core::tFrameworkElementInfo& port_info);
+
+  /*!
+   * Disconnect from remote server
+   */
+  void Disconnect();
+
+  /*!
+   * Process incoming framework element change
+   *
+   * \param cFramework element change information
+   */
+  void ProcessPortUpdate(core::tFrameworkElementInfo& info);
+
+  /*!
+   * Fetches ports and possibly runtime element from remote runtime environment
+   *
+   * \param cis CoreInput to use
+   * \param cos CoreOutput to write request to
+   * \param type_lookup Remote Type Database
+   * \param cAre we communicating with a new server?
+   */
+  void RetrieveRemotePorts(core::tCoreInput* cis, core::tCoreOutput* cos, core::tRemoteTypes* type_lookup, bool new_server);
+
+protected:
+
+  //  @Override
+  //  public synchronized boolean processPacket(TransactionPacket buffer) {
+  //    if (initialPortRetrieve && (!buffer.initialPacket)) {
+  //      return true;
+  //    }
+  //
+  //    ChunkedReadView rv = buffer.getReadView(true);
+  //    while(rv.hasRemaining()) {
+  //      tmpInfo.deserialize(rv);
+  //      if (tmpInfo.opCode == Transaction.ADD) {
+  //        addOrChangePort(tmpInfo);
+  //      } else {
+  //        removePort(tmpInfo);
+  //      }
+  //    }
+  //
+  //    return false;
+  //  }
+
+  //  /**
+  //   * Remove port referred to by port info (warns if non-existent)
+  //   *
+  //   * \param info Port info
+  //   */
+  //  private void removePort(@Const @Ref FrameworkElementInfo info) {
+  //    ProxyPort pp = lookupPort(info);
+  //    if (pp != null) {
+  //      pp.updateFromPortInfo(info);
+  //      portUpdated(pp, false);
+  //      pp.managedDelete();
+  //    } else {
+  //      System.out.println("warning: RemoteServer.removePort - port " + info.getLinks().get(0) + " does not exist");
+  //    }
+  //  }
+  //
+  //  /**
+  //   * Add or change port referred to by port info
+  //   *
+  //   * \param info Port info
+  //   */
+  //  private void addOrChangePort(@Const @Ref FrameworkElementInfo info) {
+  //    ProxyPort pp = lookupPort(info);
+  //    if (pp == null) {
+  //      pp = new ProxyPort(SharedPorts.getPortPublishInfo());
+  //    } else {
+  //      pp.updateFromPortInfo(info);
+  //    }
+  //  }
+
+  //  /**
+  //   * Look up port referred to by port info
+  //   *
+  //   * \param info port info
+  //   * \return Proxy port - or null if non-existent
+  //   */
+  //  private ProxyPort lookupPort(@Const @Ref FrameworkElementInfo info) {
+  //
+  //    // somewhat inefficient currently... we could add lookup table - or use links for lookup - however, this causes more memory allocation etc.
+  //    tmpIterator.reset(this);
+  //    for (FrameworkElement fe = tmpIterator.next(); fe != null; fe = tmpIterator.next()) {
+  //      if (fe.isPort()) {
+  //        AbstractPort ap = (AbstractPort)fe;
+  //        if (ap.asNetPort() instanceof ProxyPort) {
+  //          ProxyPort pp = (ProxyPort)ap.asNetPort();
+  //          if (pp.getRemoteHandle() == info.getHandle()) {
+  //            return pp;
+  //          }
+  //        }
+  //      }
+  //    }
+  //    return null;
+  //  }
+  //
+  //  /**
+  //   * Called whenever a port is updated or removed - to update monitoring lists in connection threads
+  //   *
+  //   * \param pp Port that was updated
+  //   * \param added Was Port added/modified or rather removed?
+  //   */
+  //  private synchronized void portUpdated(ProxyPort pp, boolean added) {
+  //    AbstractPort ap = pp.getPort();
+  //    Connection c = ap.getFlag(PortFlags.IS_EXPRESS_PORT) ? express : bulk;
+  //    if (added && (((!ap.isOutputPort()) && ap.pushStrategy()) || (ap.isOutputPort() && ap.acceptsReverseData() && ap.reversePushStrategy()))) {
+  //      if (!pp.monitored) {
+  //        c.monitoredPorts.add(pp, false);
+  //        c.notifyWriter();
+  //        pp.monitored = true;
+  //      }
+  //    } else {
+  //      if (pp.monitored) {
+  //        c.monitoredPorts.remove(pp);
+  //        c.notifyWriter();
+  //        pp.monitored = false;
+  //      }
+  //    }
+  //  }
+
+  //  /**
+  //   * \return Is currently connected to remote server?
+  //   */
+  //  public synchronized boolean isTCPConnected() {
+  //    return bulk != null;
+  //  }
+
+  virtual void PrepareDelete();
+
+public:
+
+  /*!
+   * \param isa Network address
+   * \param name Unique server name
+   * \param parent Parent framework element
+   * \param filter Filter that specifies which framework element we're interested in
+   * \param peer Peer that this server belongs to
+   */
+  tRemoteServer(util::tIPSocketAddress isa, const util::tString& name, core::tFrameworkElement* parent, const core::tFrameworkElementTreeFilter& filter_, tTCPPeer* peer_);
+
+  /*!
+   * Returns framework element with specified handle.
+   * Creates one if it doesn't exist.
+   *
+   * \param handle Remote Handle of parent
+   * \param extra_flags Any extra flags of parent to keep
+   * \return Framework element.
+   */
+  ::finroc::core::tFrameworkElement* GetFrameworkElement(int handle, int extra_flags);
+
+  /*!
+   * \return Address of connection partner
+   */
+  inline util::tIPSocketAddress GetPartnerAddress()
+  {
+    return address;
+  }
+
+  /*!
+   * Reconnect after temporary disconnect
+   */
+  inline void Reconnect()
+  {
+    util::tLock lock2(obj_synch);
+    connector_thread->ContinueThread();
+  }
+
+  virtual void RuntimeChange(int8 change_type, core::tFrameworkElement* element);
+
+  /*!
+   * Disconnects and pauses connector thread
+   */
+  inline void TemporaryDisconnect()
+  {
+    util::tLock lock2(obj_synch);
+    connector_thread->PauseThread();
+    Disconnect();
+  }
+
+public:
+
+  /*!
+   * \author Max Reichardt
+   *
+   * Dummy framework element for clients which are interested in remote structure
+   */
+  class tProxyFrameworkElement : public core::tFrameworkElement
+  {
+    friend class tRemoteServer;
+  private:
+
+    // Outer class RemoteServer
+    tRemoteServer* const outer_class_ptr;
+
+    /*! Has port been found again after reconnect? */
+    bool refound;
+
+    /*! Handle in remote runtime environment */
+    int remote_handle;
+
+    /*! Is this a place-holder framework element for info that we will receive later? */
+    bool yet_unknown;
+
+  protected:
+
+    virtual void PrepareDelete()
+    {
+      outer_class_ptr->remote_element_register.Remove(-remote_handle);
+      ::finroc::core::tFrameworkElement::PrepareDelete();
+    }
+
+  public:
+
+    /*! Constructor for yet anonymous element */
+    tProxyFrameworkElement(tRemoteServer* const outer_class_ptr_, int handle, int extra_flags);
+
+    bool Matches(const core::tFrameworkElementInfo& info);
+
+    //    public ProxyFrameworkElement(@Const @Ref FrameworkElementInfo info) {
+    //      super("(yet unknown)", null, CoreFlags.ALLOWS_CHILDREN | CoreFlags.NETWORK_ELEMENT | (info.getFlags() & FrameworkElementInfo.PARENT_FLAGS_TO_STORE));
+    //      this.remoteHandle = info.getHandle();
+    //      remoteElementRegister.put(-remoteHandle, this);
+    //      updateFromPortInfo(info);
+    //      yetUnknown = false;
+    //    }
+
+    /*!
+     * Update information about framework element
+     *
+     * \param info Information
+     */
+    void UpdateFromPortInfo(const core::tFrameworkElementInfo& info);
+
+  };
+
+public:
+
+  /*!
+   * Local port that acts as proxy for ports on remote machines
+   */
+  class tProxyPort : public tTCPPort
+  {
+    friend class tRemoteServer;
+  private:
+
+    // Outer class RemoteServer
+    tRemoteServer* const outer_class_ptr;
+
+    /*! Has port been found again after reconnect? */
+    bool refound;
+
+    /*! >= 0 when port has subscribed to server; value of current subscription */
+    int16 subscription_strategy;
+
+    /*! true, if current subscription includes reverse push strategy */
+    bool subscription_rev_push;
+
+    /*! Update time of current subscription */
+    int16 subscription_update_time;
+
+  public:
+
+    // for synchronization on an object of this class
+    mutable util::tMutex obj_synch;
+
+  private:
+
+    /*!
+     * Update port properties/information from received port information
+     *
+     * \param port_info Port info
+     */
+    void UpdateFromPortInfo(const core::tFrameworkElementInfo& port_info);
+
+  protected:
+
+    /* (non-Javadoc)
+     * @see core.plugin.tcp2.TCPPort#checkSubscription()
+     */
+    virtual void CheckSubscription();
+
+    virtual void ConnectionRemoved()
+    {
+      CheckSubscription();
+    }
+
+    virtual void NewConnection()
+    {
+      CheckSubscription();
+    }
+
+    virtual void PrepareDelete();
+
+    virtual void PropagateStrategyOverTheNet();
+
+  public:
+
+    /*!
+     * \param port_info Port information
+     */
+    tProxyPort(tRemoteServer* const outer_class_ptr_, const core::tFrameworkElementInfo& port_info);
+
+    /*!
+     * Is port the one that is described by this information?
+     *
+     * \param info Port information
+     * \return Answer
+     */
+    bool Matches(const core::tFrameworkElementInfo& info);
+
+    void Reset();
+
+  };
+
+public:
+
+  /*!
+   * Client TCP Connection.
+   *
+   * This class is used on client side and
+   * represents a single I/O TCP Connection with
+   * own socket.
+   */
+  class tConnection : public tTCPConnection
+  {
+    friend class tRemoteServer;
+  private:
+
+    // Outer class RemoteServer
+    tRemoteServer* const outer_class_ptr;
+
+  protected:
+
+    virtual tTCPPort* LookupPortForCallHandling(int port_index);
+
+  public:
+
+    /*! Command buffer for subscriptions etc. */
+    //private final CoreByteBuffer commandBuffer = new CoreByteBuffer(2000, ByteOrder.BIG_ENDIAN);
+
+    /*!
+     * Client side constructor
+     *
+     * \param type Connection type
+     */
+    tConnection(tRemoteServer* const outer_class_ptr_, int8 type);
+
+    void Connect(::std::tr1::shared_ptr<util::tNetSocket> socket_, ::std::tr1::shared_ptr<tRemoteServer::tConnection> connection);
+
+    virtual void HandleDisconnect()
+    {
+      util::tLock lock3(obj_synch);
+      outer_class_ptr->Disconnect();
+    }
+
+    virtual void HandlePingTimeExceed()
+    {
+      util::tSystem::out.Println("TCPClient warning: critical ping time exceeded");
+    }
+
+    virtual void ProcessRequest(int8 op_code);
+
+    virtual bool SendData(int64 start_time);
+
+    /*!
+     * Subscribe to port changes on remote server
+     *
+     * \param index Port index in remote runtime
+     * \param strategy Strategy to use/request
+     * \param update_interval Minimum interval in ms between notifications (values <= 0 mean: use server defaults)
+     * \param local_index Local Port Index
+     * \param data_type DataType got from server
+     */
+    void Subscribe(int index, int16 strategy, bool reverse_push, int16 update_interval, int local_index);
+
+    /*!
+     * Unsubscribe from port changes on remote server
+     *
+     * \param index Port index in remote runtime
+     */
+    void Unsubscribe(int index);
+
+  };
+
+};
+
+} // namespace finroc
+} // namespace tcp
+
+#endif // PLUGINS__TCP__TREMOTESERVER_H
