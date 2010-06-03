@@ -51,6 +51,8 @@ namespace tcp
  *
  * (memory management: Should be created with new - deletes itself:
  *  Port set, as well as reader and writer threads hold shared_ptr to this connection object)
+ *
+ * Thread-safety: Reader thread is the only one that deletes ports while operating. So it can use them without lock.
  */
 class tTCPServerConnection : public tTCPConnection, public core::tRuntimeListener, public core::tFrameworkElementTreeFilter::tCallback
 {
@@ -94,6 +96,9 @@ private:
 
   /*! Temporary string builder - only used by reader thread */
   util::tStringBuilder tmp;
+
+  /*! Number of times disconnect was called, since last connect */
+  util::tAtomicInt disconnect_calls;
 
 public:
 
@@ -185,11 +190,11 @@ public:
 
     tPortSet(tTCPServerConnection* const outer_class_ptr_, tTCPServer* server, ::std::tr1::shared_ptr<tTCPServerConnection> connection_lock_);
 
-    //    @Override
-    //    public void handleCallReturn(AbstractCall pc) {
-    //      pc.setRemotePortHandle(pc.popCaller());
-    //      TCPServerConnection.this.sendCall(pc);
-    //    }
+    //      @Override
+    //      public void handleCallReturn(AbstractCall pc) {
+    //          pc.setRemotePortHandle(pc.popCaller());
+    //          TCPServerConnection.this.sendCall(pc);
+    //      }
 
   };
 
@@ -213,49 +218,49 @@ public:
 
     virtual void PostChildInit();
 
-    //    /**
-    //     * Set Push strategy
-    //     *
-    //     * \param b on or off?
-    //     */
-    //    public void setPush(boolean b) {
-    //      if (getPort().isOutputPort()) {
-    //        getPort().setReversePushStrategy(b);
-    //      } else {
-    //        getPort().setPushStrategy(b);
+    //      /**
+    //       * Set Push strategy
+    //       *
+    //       * \param b on or off?
+    //       */
+    //      public void setPush(boolean b) {
+    //          if (getPort().isOutputPort()) {
+    //              getPort().setReversePushStrategy(b);
+    //          } else {
+    //              getPort().setPushStrategy(b);
+    //          }
     //      }
-    //    }
 
-    //    /**
-    //     * \param queueLength maximum Queue Length
-    //     */
-    //    public void setQueueLength(int queueLength) {
-    //      if (getPort().getFlag(PortFlags.OUTPUT_PORT | PortFlags.HAS_QUEUE)) {
-    //        getPort().setMaxQueueLength(queueLength);
+    //      /**
+    //       * \param queueLength maximum Queue Length
+    //       */
+    //      public void setQueueLength(int queueLength) {
+    //          if (getPort().getFlag(PortFlags.OUTPUT_PORT | PortFlags.HAS_QUEUE)) {
+    //              getPort().setMaxQueueLength(queueLength);
+    //          }
     //      }
-    //    }
 
-    //    /**
-    //     * \return Current Minimum network update interval for this port (takes local and remote settings into account)
-    //     */
-    //    public short getMinNetUpdateInterval() {
-    //      short t = 0;
-    //      if ((t = updateIntervalPartner) >= 0) {
-    //        return t;
-    //      } else if ((t = localPort.getMinNetUpdateInterval()) >= 0) {
-    //        return t;
-    //      } else if ((t = updateTimes.getTime(getPort().getDataType())) >= 0) {
-    //        return t;
-    //      } else if ((t = getPort().getDataType().getUpdateTime()) >= 0) {
-    //        return t;
+    //      /**
+    //       * \return Current Minimum network update interval for this port (takes local and remote settings into account)
+    //       */
+    //      public short getMinNetUpdateInterval() {
+    //          short t = 0;
+    //          if ((t = updateIntervalPartner) >= 0) {
+    //              return t;
+    //          } else if ((t = localPort.getMinNetUpdateInterval()) >= 0) {
+    //              return t;
+    //          } else if ((t = updateTimes.getTime(getPort().getDataType())) >= 0) {
+    //              return t;
+    //          } else if ((t = getPort().getDataType().getUpdateTime()) >= 0) {
+    //              return t;
+    //          }
+    //          return updateTimes.getGlobalDefault();
     //      }
-    //      return updateTimes.getGlobalDefault();
-    //    }
     //
-    //    @Override
-    //    protected void portChanged() {
-    //      notifyWriter();
-    //    }
+    //      @Override
+    //      protected void portChanged() {
+    //          notifyWriter();
+    //      }
 
     virtual void PropagateStrategyOverTheNet()
     {
@@ -285,12 +290,8 @@ public:
 
     static ::std::tr1::shared_ptr<tTCPServerConnection::tPingTimeMonitor> instance;
 
-  public:
-
-    // for static synchronization in this class' methods
-    static util::tMutex static_obj_synch;
-
-  private:
+    /*! Locked before thread list (in C++) */
+    static util::tMutexLockOrder static_class_mutex;
 
     tPingTimeMonitor();
 

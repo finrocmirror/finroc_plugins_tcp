@@ -76,13 +76,13 @@ public:
   //  private static final Properties defaultSettings;
 
   //  static {
-  //    // init settings
-  //    defaultSettings = new Properties();
-  //    try {
-  //      defaultSettings.load(TCP.instance.getConfFile());
-  //    } catch (Exception e) {
-  //      e.printStackTrace();
-  //    }
+  //      // init settings
+  //      defaultSettings = new Properties();
+  //      try {
+  //          defaultSettings.load(TCP.instance.getConfFile());
+  //      } catch (Exception e) {
+  //          e.printStackTrace();
+  //      }
   //  }
 
   // Port settings

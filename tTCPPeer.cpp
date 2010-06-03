@@ -23,6 +23,7 @@
 #include "core/tCoreFlags.h"
 #include "core/tFrameworkElement.h"
 #include "tcp/tRemoteServer.h"
+#include "finroc_core_utils/container/tSimpleList.h"
 
 namespace finroc
 {
@@ -69,12 +70,19 @@ tTCPPeer::tTCPPeer(const util::tString& network_name_, const util::tString& uniq
 
 }
 
+void tTCPPeer::Connect()
+{
+  assert((IsReady()));
+  ConnectImpl(network_name, false);
+  PostConnect(network_name);
+}
+
 void tTCPPeer::ConnectImpl(const util::tString& address, bool same_address)
 {
-  util::tLock lock1(obj_synch);
+  util::tLock lock1(this);
 
   assert((IsReady()));
-  tracker->AddListener(*this);
+  tracker->AddListener(this);
 
   if (same_address)
   {
@@ -82,9 +90,16 @@ void tTCPPeer::ConnectImpl(const util::tString& address, bool same_address)
     ::finroc::core::tFrameworkElement* fe = NULL;
     while ((fe = ci.Next()) != NULL)
     {
-      if (fe->IsReady() && (typeid(*fe) == typeid(tRemoteServer)))
+      if (typeid(*fe) == typeid(tRemoteServer))
       {
-        (static_cast<tRemoteServer*>(fe))->Reconnect();
+        tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
+        {
+          util::tLock lock5(rs);
+          if (rs->IsReady() && (!rs->DeletedSoon()))
+          {
+            rs->Reconnect();
+          }
+        }
       }
     }
 
@@ -132,10 +147,10 @@ void tTCPPeer::ConnectImpl(const util::tString& address, bool same_address)
 
 void tTCPPeer::DisconnectImpl()
 {
-  util::tLock lock1(obj_synch);
+  util::tLock lock1(this);
   if (tracker != NULL)
   {
-    tracker->RemoveListener(*this);
+    tracker->RemoveListener(this);
   }
   //tracker.delete();
 
@@ -145,30 +160,97 @@ void tTCPPeer::DisconnectImpl()
   {
     if (fe->IsReady() && (typeid(*fe) == typeid(tRemoteServer)))
     {
-      (static_cast<tRemoteServer*>(fe))->TemporaryDisconnect();
+      tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
+      {
+        util::tLock lock4(rs);
+        if (rs->IsReady() && (!rs->DeletedSoon()))
+        {
+          rs->TemporaryDisconnect();
+        }
+      }
     }
   }
 }
 
-void tTCPPeer::NodeDiscovered(const util::tIPSocketAddress* isa, const util::tString* name_)
+float tTCPPeer::GetConnectionQuality()
 {
-  util::tLock lock1(obj_synch);
+  float worst = 1.0f;
+  core::tChildIterator ci(this);
+  for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
+  {
+    if (fe == server)
+    {
+      continue;
+    }
+    tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
+    if (rs->IsReady() && (!rs->DeletedSoon()))
+    {
+      worst = util::tMath::Min(worst, rs->GetConnectionQuality());
+    }
+  }
+  return worst;
+}
+
+util::tString tTCPPeer::GetStatus(bool detailed)
+{
+  util::tString s = ::finroc::core::tExternalConnection::GetConnectionAddress();
+  if (!detailed)
+  {
+    return s;
+  }
+  else
+  {
+    util::tSimpleList<util::tString> add_stuff;
+    core::tChildIterator ci(this);
+    for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
+    {
+      if (fe == server || (!fe->IsReady()))
+      {
+        continue;
+      }
+      tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
+      if (rs->DeletedSoon())
+      {
+        continue;
+      }
+      util::tString tmp = rs->GetPartnerAddress().ToString();
+      if (tmp.Equals(s))
+      {
+        add_stuff.Insert(0u, rs->GetPingString());
+      }
+      else
+      {
+        add_stuff.Add(rs->GetPartnerAddress().ToString() + " " + rs->GetPingString());
+      }
+    }
+    for (size_t i = 0u; i < add_stuff.Size(); i++)
+    {
+      s += (i == 0) ? " (" : "; ";
+      s += add_stuff.Get(i);
+    }
+    return s + ")";
+  }
+}
+
+void tTCPPeer::NodeDiscovered(const util::tIPSocketAddress& isa, const util::tString& name_)
+{
+  util::tLock lock1(this);
   if (GetFlag(core::tCoreFlags::cDELETED))
   {
     return;
   }
 
   // add port & connect
-  tRemoteServer* rs = new tRemoteServer(*isa, *name_, this, filter, this);
+  tRemoteServer* rs = new tRemoteServer(isa, name_, this, filter, this);
   rs->Init();
 }
 
-void tTCPPeer::NodeRemoved(const util::tIPSocketAddress* isa, const util::tString* name_)
+::finroc::util::tObject* tTCPPeer::NodeRemoved(const util::tIPSocketAddress& isa, const util::tString& name_)
 {
-  util::tLock lock1(obj_synch);
+  util::tLock lock1(this);
   if (GetFlag(core::tCoreFlags::cDELETED))
   {
-    return;
+    return NULL;
   }
 
   // remove port & disconnect
@@ -180,13 +262,19 @@ void tTCPPeer::NodeRemoved(const util::tIPSocketAddress* isa, const util::tStrin
       continue;
     }
     tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
-    if (rs->GetPartnerAddress().Equals(*isa))
+    if (rs->GetPartnerAddress().Equals(isa) && (!rs->DeletedSoon()) && (!rs->IsDeleted()))
     {
-      rs->ManagedDelete();
-      return;
+      rs->EarlyDeletingPreparations();
+      return rs;
     }
   }
-  util::tSystem::out.Println(util::tStringBuilder("TCPClient warning: Node ") + (*name_) + " not found");
+  util::tSystem::out.Println(util::tStringBuilder("TCPClient warning: Node ") + name_ + " not found");
+  return NULL;
+}
+
+void tTCPPeer::NodeRemovedPostLockProcess(util::tObject* obj)
+{
+  (static_cast<tRemoteServer*>(obj))->ManagedDelete();
 }
 
 void tTCPPeer::NotifyAllWriters()
@@ -213,10 +301,22 @@ void tTCPPeer::PostChildInit()
 
 void tTCPPeer::PrepareDelete()
 {
-  util::tLock lock1(obj_synch);
+  util::tLock lock1(this);
   if (IsServer() && tracker != NULL)
   {
     tracker->UnregisterServer(network_name, name);
+  }
+  try
+  {
+    Disconnect();
+  }
+  catch (const util::tException& e)
+  {
+    e.PrintStackTrace();
+  }
+  if (tracker != NULL)
+  {
+    delete tracker;
   }
 }
 

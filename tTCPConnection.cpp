@@ -21,6 +21,7 @@
  */
 #include "tcp/tTCPConnection.h"
 #include "core/tRuntimeSettings.h"
+#include "finroc_core_utils/tTime.h"
 #include "core/port/rpc/tMethodCall.h"
 #include "core/port/tThreadLocalCache.h"
 #include "core/port/rpc/tMethodCallException.h"
@@ -49,6 +50,7 @@ tTCPConnection::tTCPConnection(int8 type_, tTCPPeer* peer_, bool send_peer_info_
     cos(),
     cis(),
     writer(),
+    reader(),
     time_base(0),
     update_times(),
     type(type_),
@@ -56,7 +58,9 @@ tTCPConnection::tTCPConnection(int8 type_, tTCPPeer* peer_, bool send_peer_info_
     peer(peer_),
     send_peer_info_to_partner(send_peer_info_to_partner_),
     last_peer_info_sent_revision(-1),
-    obj_synch()
+    last_rx_timestamp(0),
+    last_rx_position(0),
+    obj_mutex(core::tLockOrderLevels::cREMOTE + 1)
 {
   core::tRuntimeSettings::GetInstance()->AddUpdateTimeChangeListener(this);
   if (peer_ != NULL)
@@ -91,6 +95,7 @@ int64 tTCPConnection::CheckPingForDisconnect()
 
 void tTCPConnection::Disconnect()
 {
+  util::tLock lock1(this);
   disconnect_signal = true;
   core::tRuntimeSettings::GetInstance()->RemoveUpdateTimeChangeListener(this);
   if (peer != NULL)
@@ -105,6 +110,34 @@ void tTCPConnection::Disconnect()
   }
   catch (const util::tException& e)
   {
+  }
+
+  // join threads for thread safety
+  ::std::tr1::shared_ptr<tWriter> locked_writer = writer.lock();
+  if (locked_writer != NULL && util::tThread::CurrentThread() != locked_writer)
+  {
+    try
+    {
+      locked_writer->Join();
+      writer.reset();
+    }
+    catch (const util::tInterruptedException& e)
+    {
+      printf("warning: TCPConnection::disconnect() - Interrupted waiting for writer thread.\n");
+    }
+  }
+  ::std::tr1::shared_ptr<tReader> locked_reader = reader.lock();
+  if (locked_reader != NULL && util::tThread::CurrentThread() != locked_reader)
+  {
+    try
+    {
+      locked_reader->Join();
+      reader.reset();
+    }
+    catch (const util::tInterruptedException& e)
+    {
+      printf("warning: TCPConnection::disconnect() - Interrupted waiting for reader thread.\n");
+    }
   }
 }
 
@@ -128,6 +161,26 @@ int tTCPConnection::GetMaxPingTime()
   return result;
 }
 
+int tTCPConnection::GetRx()
+{
+  int64 last_time = last_rx_timestamp;
+  int64 last_pos = last_rx_position;
+  last_rx_timestamp = util::tTime::GetCoarse();
+  last_rx_position = cis->GetAbsoluteReadPosition();
+  if (last_time == 0)
+  {
+    return 0;
+  }
+  if (last_rx_timestamp == last_time)
+  {
+    return 0;
+  }
+
+  double data = last_rx_position - last_pos;
+  double interval = (last_rx_timestamp - last_time) / 1000;
+  return static_cast<int>((data / interval));
+}
+
 void tTCPConnection::HandleMethodCall()
 {
   // read port index and retrieve proxy port
@@ -137,39 +190,64 @@ void tTCPConnection::HandleMethodCall()
   cis->ReadSkipOffset();
   tTCPPort* port = LookupPortForCallHandling(handle);
 
-  // create/decode call
-  bool skip_call = (port == NULL || method_type == NULL || (!method_type->IsMethodType()));
-  core::tMethodCall* mc = core::tThreadLocalCache::GetFast()->GetUnusedMethodCall();
-  cis->SetBufferSource(port == NULL ? NULL : port->GetPort());
-  try
+  if ((port == NULL || method_type == NULL || (!method_type->IsMethodType())))
   {
-    mc->DeserializeCall(cis.get(), method_type, skip_call);
-  }
-  catch (const util::tException& e)
-  {
-    cis->SetBufferSource(NULL);
-    mc->Recycle();
-    return;
-  }
-  cis->SetBufferSource(NULL);
+    // create/decode call
+    core::tMethodCall* mc = core::tThreadLocalCache::GetFast()->GetUnusedMethodCall();
+    try
+    {
+      mc->DeserializeCall(cis.get(), method_type, true);
+    }
+    catch (const util::tException& e)
+    {
+      mc->Recycle();
+      return;
+    }
 
-  // process call
-  if (tTCPSettings::cDISPLAY_INCOMING_TCP_SERVER_COMMANDS->Get())
-  {
-    util::tSystem::out.Println(util::tStringBuilder("Incoming Server Command: Method call ") + (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
-  }
-  if (skip_call)
-  {
     mc->SetExceptionStatus(core::tMethodCallException::eNO_CONNECTION);
     mc->SetRemotePortHandle(remote_handle);
     mc->SetLocalPortHandle(handle);
     SendCall(mc);
     cis->ToSkipTarget();
   }
-  else
+
+  // make sure, "our" port is not deleted while we use it
   {
-    core::tNetPort::tInterfaceNetPortImpl* inp = static_cast<core::tNetPort::tInterfaceNetPortImpl*>(port->GetPort());
-    inp->ProcessCallFromNet(mc);
+    util::tLock lock2(port->GetPort());
+
+    bool skip_call = (!port->GetPort()->IsReady());
+    core::tMethodCall* mc = core::tThreadLocalCache::GetFast()->GetUnusedMethodCall();
+    cis->SetBufferSource(skip_call ? NULL : port->GetPort());
+    try
+    {
+      mc->DeserializeCall(cis.get(), method_type, skip_call);
+    }
+    catch (const util::tException& e)
+    {
+      cis->SetBufferSource(NULL);
+      mc->Recycle();
+      return;
+    }
+    cis->SetBufferSource(NULL);
+
+    // process call
+    if (tTCPSettings::cDISPLAY_INCOMING_TCP_SERVER_COMMANDS->Get())
+    {
+      util::tSystem::out.Println(util::tStringBuilder("Incoming Server Command: Method call ") + (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
+    }
+    if (skip_call)
+    {
+      mc->SetExceptionStatus(core::tMethodCallException::eNO_CONNECTION);
+      mc->SetRemotePortHandle(remote_handle);
+      mc->SetLocalPortHandle(handle);
+      SendCall(mc);
+      cis->ToSkipTarget();
+    }
+    else
+    {
+      core::tNetPort::tInterfaceNetPortImpl* inp = static_cast<core::tNetPort::tInterfaceNetPortImpl*>(port->GetPort());
+      inp->ProcessCallFromNet(mc);
+    }
   }
 }
 
@@ -190,48 +268,52 @@ void tTCPConnection::HandleMethodCallReturn()
     return;
   }
 
-  // create/decode call
-  core::tMethodCall* mc = core::tThreadLocalCache::GetFast()->GetUnusedMethodCall();
-  //boolean skipCall = (methodType == null || (!methodType.isMethodType()));
-  cis->SetBufferSource(port->GetPort());
-  try
+  // make sure, "our" port is not deleted while we use it
   {
-    mc->DeserializeCall(cis.get(), method_type, false);
-  }
-  catch (const util::tException& e)
-  {
-    cis->ToSkipTarget();
+    util::tLock lock2(port->GetPort());
+
+    if (!port->GetPort()->IsReady())
+    {
+      cis->ToSkipTarget();
+      return;
+    }
+
+    // create/decode call
+    core::tMethodCall* mc = core::tThreadLocalCache::GetFast()->GetUnusedMethodCall();
+    //boolean skipCall = (methodType == null || (!methodType.isMethodType()));
+    cis->SetBufferSource(port->GetPort());
+    try
+    {
+      mc->DeserializeCall(cis.get(), method_type, false);
+    }
+    catch (const util::tException& e)
+    {
+      cis->ToSkipTarget();
+      cis->SetBufferSource(NULL);
+      mc->Recycle();
+      return;
+    }
     cis->SetBufferSource(NULL);
-    mc->Recycle();
-    return;
-  }
-  cis->SetBufferSource(NULL);
 
-  // process call
-  if (tTCPSettings::cDISPLAY_INCOMING_TCP_SERVER_COMMANDS->Get())
-  {
-    util::tSystem::out.Println(util::tStringBuilder("Incoming Server Command: Method call return ") + (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
-  }
+    // process call
+    if (tTCPSettings::cDISPLAY_INCOMING_TCP_SERVER_COMMANDS->Get())
+    {
+      util::tSystem::out.Println(util::tStringBuilder("Incoming Server Command: Method call return ") + (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
+    }
 
-  // process call
-  port->HandleCallReturnFromNet(mc);
+    // process call
+    port->HandleCallReturnFromNet(mc);
+  }
 }
 
 void tTCPConnection::HandlePullCall()
 {
   // read port index and retrieve proxy port
-  //    int remoteHandle = cis.readInt();
+  //      int remoteHandle = cis.readInt();
   int handle = cis->ReadInt();
   int remote_handle = cis->ReadInt();
   cis->ReadSkipOffset();
   tTCPPort* port = LookupPortForCallHandling(handle);
-
-  //    if (port == null) {
-  //      if (TCPSettings.DISPLAY_INCOMING_TCP_SERVER_COMMANDS.get()) {
-  //        System.out.println("Skipping Incoming Server Command: Pull call for portIndex " + handle);
-  //      }
-  //      cis.toSkipTarget();
-  //    }
 
   // create/decode call
   core::tPullCall* pc = core::tThreadLocalCache::GetFast()->GetUnusedPullCall();
@@ -261,26 +343,9 @@ void tTCPConnection::HandlePullCall()
   else
   {
     // Execute pull in extra thread, since it can block
-    //      pc.setRemotePortHandle(remoteHandle);
+    //          pc.setRemotePortHandle(remoteHandle);
     pc->PrepareForExecution(port);
     core::tRPCThreadPool::GetInstance()->ExecuteTask(pc);
-    //      if (port.handlePullFromNet(pc)) {
-    //        pc.setRemotePortHandle(pc.popCaller());
-    //        sendCall(pc);
-    //      }
-    //        pc.pushCaller(returnHandler); // return will arrive at our framework element
-    //        if (port.getPort().getDataType().isCCType()) {
-    //          CCPortBase port2 = (CCPortBase)port.getPort();
-    //          port2.pullValueRaw(pc, ThreadLocalCache.getFast());
-    //        } else if (port.getPort().getDataType().isStdType()) {
-    //          PortBase port2 = (PortBase)port.getPort();
-    //          port2.pullValueRaw(pc);
-    //        } else {
-    //          System.out.println("TCPServerConnection-TCP:PULL: Target port has invalid data type");
-    //          pc.setStatus(AbstractCall.CONNECTION_EXCEPTION);
-    //          pc.setRemotePortHandle(pc.popCaller());
-    //          sendCall(pc);
-    //        }
   }
 }
 
@@ -292,39 +357,53 @@ void tTCPConnection::HandleReturningPullCall()
   cis->ReadSkipOffset();
   tTCPPort* port = LookupPortForCallHandling(handle);
 
-  if (port == NULL)
+  if (port == NULL || (!port->GetPort()->IsReady()))
   {
     // port does not exist anymore - discard call
     cis->ToSkipTarget();
     return;
   }
 
-  // deserialize pull call
-  core::tPullCall* pc = core::tThreadLocalCache::GetFast()->GetUnusedPullCall();
-  try
+  // make sure, "our" port is not deleted while we use it
   {
-    cis->SetBufferSource(port->GetPort());
-    pc->Deserialize(*cis);
-    cis->SetBufferSource(NULL);
+    util::tLock lock2(port->GetPort());
 
-    // process call
-    if (tTCPSettings::cDISPLAY_INCOMING_TCP_SERVER_COMMANDS->Get())
+    // check ready again...
+    if (!port->GetPort()->IsReady())
     {
-      util::tSystem::out.Println(util::tStringBuilder("Incoming Server Command: Pull return call ") + (port != NULL ? port->GetPort()->GetQualifiedName() : handle) + " status: " + pc->GetStatusString());
+      // port is deleted - discard call
+      cis->ToSkipTarget();
+      return;
     }
 
-    // Returning call
-    pc->DeserializeParamaters();
-  }
-  catch (const util::tException& e)
-  {
-    e.PrintStackTrace();
-    pc->Recycle();
-    pc = NULL;
-  }
-  if (pc != NULL)
-  {
-    port->HandleCallReturnFromNet(pc);
+    // deserialize pull call
+    core::tPullCall* pc = core::tThreadLocalCache::GetFast()->GetUnusedPullCall();
+    try
+    {
+      cis->SetBufferSource(port->GetPort());
+      pc->Deserialize(*cis);
+      cis->SetBufferSource(NULL);
+
+      // debug output
+      if (tTCPSettings::cDISPLAY_INCOMING_TCP_SERVER_COMMANDS->Get())
+      {
+        util::tSystem::out.Println(util::tStringBuilder("Incoming Server Command: Pull return call ") + (port != NULL ? port->GetPort()->GetQualifiedName() : handle) + " status: " + pc->GetStatusString());
+      }
+
+      // Returning call
+      pc->DeserializeParamaters();
+    }
+    catch (const util::tException& e)
+    {
+      e.PrintStackTrace();
+      pc->Recycle();
+      pc = NULL;
+    }
+
+    if (pc != NULL)
+    {
+      port->HandleCallReturnFromNet(pc);
+    }
   }
 }
 
@@ -334,6 +413,25 @@ void tTCPConnection::NotifyWriter()
   if (locked_writer != NULL)
   {
     locked_writer->NotifyWriter();
+  }
+}
+
+bool tTCPConnection::PingTimeExceeed()
+{
+  ::std::tr1::shared_ptr<tWriter> locked_writer = writer.lock();
+  if (locked_writer == NULL)
+  {
+    return false;
+  }
+  if (last_acknowledged_packet != locked_writer->cur_packet_index)
+  {
+    int64 critical_packet_time = sent_packet_time[(last_acknowledged_packet + 1) & tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS];
+    int64 time_left = critical_packet_time + tTCPSettings::critical_ping_threshold->Get() - util::tSystem::CurrentTimeMillis();
+    return time_left < 0;
+  }
+  else
+  {
+    return false;
   }
 }
 
@@ -356,7 +454,7 @@ bool tTCPConnection::SendDataPrototype(int64 start_time, int8 op_code)
   for (size_t i = 0u, n = monitored_ports.Size(); i < n; i++)
   {
     tTCPPort* pp = it->Get(i);
-    if (pp != NULL)
+    if (pp != NULL && pp->GetPort()->IsReady())
     {
       if (pp->GetLastUpdate() + pp->GetUpdateIntervalForNet() > start_time)
       {
@@ -502,7 +600,7 @@ void tTCPConnection::tReader::Run()
         pl = outer_class_ptr->peer->GetPeerList();
         notify_writers = false;
         {
-          util::tLock lock5(pl->obj_synch);
+          util::tLock lock5(pl);
           index = pl->GetRevision();
           util::tIPAddress ia = util::tIPAddress::Deserialize(cis.get());
           outer_class_ptr->peer->GetPeerList()->DeserializeAddresses(cis.get(), ia, outer_class_ptr->socket->GetRemoteIPSocketAddress().GetAddress());
@@ -550,7 +648,7 @@ void tTCPConnection::tReader::Run()
 void tTCPConnection::tReader::StopThread()
 {
   {
-    util::tLock lock2(outer_class_ptr->obj_synch);
+    util::tLock lock2(outer_class_ptr);
     outer_class_ptr->disconnect_signal = true;
     outer_class_ptr->socket->ShutdownReceive();
   }
@@ -606,7 +704,7 @@ void tTCPConnection::tWriter::NotifyWriter()
       if (CanSend())
       {
         {
-          util::tLock lock5(this->obj_synch);
+          util::tLock lock5(this);
           if (writer_synch.CompareAndSet(raw, 0u, counter))
           {
             monitor.Notify(lock5);
@@ -663,7 +761,7 @@ void tTCPConnection::tWriter::Run()
 
         // okay... seems nothing has changed... set synch variable to sleeping
         {
-          util::tLock lock5(this->obj_synch);
+          util::tLock lock5(this);
           try
           {
             if (writer_synch.CompareAndSet(raw, 1u, change_count))
@@ -698,6 +796,13 @@ void tTCPConnection::tWriter::Run()
       // send data
       this->tc->ReleaseAllLocks();
       bool request_acknowledgement = outer_class_ptr->SendData(start_time);
+      if (!request_acknowledgement && outer_class_ptr->last_acknowledged_packet == cur_packet_index)
+      {
+        request_acknowledgement = util::tTime::GetCoarse() > outer_class_ptr->sent_packet_time[outer_class_ptr->last_acknowledged_packet & tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS] + 1000;
+        /*if (requestAcknowledgement) {
+            System.out.println("requesting ack - because we haven't done that for a long time " + Time.getCoarse());
+        }*/
+      }
 
       if (request_acknowledgement)
       {
@@ -726,6 +831,7 @@ void tTCPConnection::tWriter::Run()
   catch (const util::tException& e)
   {
     e.PrintStackTrace();
+
     try
     {
       outer_class_ptr->HandleDisconnect();
@@ -815,7 +921,7 @@ void tTCPConnection::tWriter::SendCall(core::tSerializableReusable* call)
 
 void tTCPConnection::tWriter::StopThread()
 {
-  util::tLock lock1(obj_synch);
+  util::tLock lock1(this);
   outer_class_ptr->disconnect_signal = true;
   if (writer_synch.GetVal1() != 0)    // if thread is waiting... wake up
   {

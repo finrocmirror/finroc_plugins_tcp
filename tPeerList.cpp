@@ -20,15 +20,18 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "tcp/tPeerList.h"
+#include "core/tRuntimeEnvironment.h"
 
 namespace finroc
 {
 namespace tcp
 {
 tPeerList::tPeerList(int server_port_) :
+    core::tAbstractPeerTracker(core::tLockOrderLevels::cRUNTIME_REGISTER + 1),
     peers(),
     revision(0),
-    server_port(server_port_)
+    server_port(server_port_),
+    obj_mutex(core::tLockOrderLevels::cINNER_MOST - 200)
 {
   if (server_port_ > 0)
   {
@@ -38,22 +41,40 @@ tPeerList::tPeerList(int server_port_) :
 
 void tPeerList::AddPeer(util::tIPSocketAddress isa, bool notify_on_change)
 {
-  util::tLock lock1(obj_synch);
-  if (!peers.Contains(isa))
   {
-    util::tSystem::out.Println(util::tStringBuilder("received new peer: ") + isa.ToString());
-    peers.Add(isa);
-    if (notify_on_change)
+    util::tLock lock2(this);
+    if (peers.Contains(isa))
     {
-      NotifyDiscovered(&(isa), isa.ToString());
+      return;
     }
-    revision++;
+  }
+
+  {
+    util::tLock lock2(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());
+    bool add = false;
+    {
+      util::tLock lock3(this);
+      add = !peers.Contains(isa);
+      if (add)
+      {
+        util::tSystem::out.Println(util::tStringBuilder("received new peer: ") + isa.ToString());
+        peers.Add(isa);
+      }
+    }
+
+    if (add)
+    {
+      if (notify_on_change)
+      {
+        NotifyDiscovered(&(isa), isa.ToString());
+      }
+      revision++;
+    }
   }
 }
 
 void tPeerList::DeserializeAddresses(util::tInputStreamBuffer* ci, util::tIPAddress own_address, util::tIPAddress partner_address)
 {
-  util::tLock lock1(obj_synch);
   int size = ci->ReadInt();
   for (int i = 0; i < size; i++)
   {
@@ -77,18 +98,42 @@ void tPeerList::DeserializeAddresses(util::tInputStreamBuffer* ci, util::tIPAddr
 
 void tPeerList::RemovePeer(util::tIPSocketAddress isa)
 {
-  util::tLock lock1(obj_synch);
-  if (peers.Contains(isa))
+  // make sure: peer can only be removed, while there aren't any other connection events being processed
+  util::tSimpleList<core::tAbstractPeerTracker::tListener*> listeners_copy;
+  this->listeners.GetListenersCopy(listeners_copy);
+  util::tSimpleList<core::tAbstractPeerTracker::tListener*> post_process;
+  util::tSimpleList< ::finroc::util::tObject*> post_process_obj;
   {
-    peers.RemoveElem(isa);
-    NotifyRemoved(&(isa), isa.ToString());
-    revision--;
+    util::tLock lock2(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());
+    {
+      util::tLock lock3(this);
+      if (peers.Contains(isa))
+      {
+        peers.RemoveElem(isa);
+        for (size_t i = 0u, n = listeners_copy.Size(); i < n; i++)
+        {
+          ::finroc::util::tObject* o = listeners_copy.Get(i)->NodeRemoved(isa, isa.ToString());
+          if (o != NULL)
+          {
+            post_process.Add(listeners_copy.Get(i));
+
+            post_process_obj.Add(o);
+          }
+        }
+        revision++;
+      }
+    }
+  }
+
+  for (size_t i = 0u, n = post_process.Size(); i < n; i++)
+  {
+    post_process.Get(i)->NodeRemovedPostLockProcess(post_process_obj.Get(i));
   }
 }
 
 void tPeerList::SerializeAddresses(util::tOutputStreamBuffer* co)
 {
-  util::tLock lock1(obj_synch);
+  util::tLock lock1(this);
   int size = peers.Size();
   co->WriteInt(size);
   for (int i = 0; i < size; i++)

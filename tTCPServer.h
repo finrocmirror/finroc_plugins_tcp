@@ -66,7 +66,7 @@ protected:
 
   virtual void PrepareDelete()
   {
-    util::tLock lock2(obj_synch);
+    util::tLock lock2(this);
     util::tTCPConnectionHandler::RemoveServer(this, port);
   }
 

@@ -23,6 +23,7 @@
 
 #include "tcp/tTCPServer.h"
 #include "core/tCoreFlags.h"
+#include "core/tLockOrderLevels.h"
 #include "tcp/tTCPSettings.h"
 #include "tcp/tTCPServerConnection.h"
 
@@ -31,7 +32,7 @@ namespace finroc
 namespace tcp
 {
 tTCPServer::tTCPServer(int port_, bool try_next_ports_if_occupied_, tTCPPeer* peer_) :
-    core::tFrameworkElement("TCP Server", peer_, core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT),
+    core::tFrameworkElement("TCP Server", peer_, core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT, core::tLockOrderLevels::cLEAF_GROUP),
     port(port_),
     try_next_ports_if_occupied(try_next_ports_if_occupied_),
     serving(false),
@@ -42,6 +43,19 @@ tTCPServer::tTCPServer(int port_, bool try_next_ports_if_occupied_, tTCPPeer* pe
 
 void tTCPServer::AcceptConnection(::std::tr1::shared_ptr<util::tNetSocket> s, int8 first_byte)
 {
+  util::tLock lock1(this);
+  if (IsDeleted())
+  {
+    try
+    {
+      s->Close();
+    }
+    catch (const util::tIOException& e)
+    {
+      e.PrintStackTrace();
+    }
+    return;
+  }
   try
   {
     __attribute__((unused))

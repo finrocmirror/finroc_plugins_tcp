@@ -123,11 +123,9 @@ public:
 
   /*! Start connecting
    * @throws Exception */
-  inline void Connect()
-  {
-    assert((IsReady()));
-    ConnectImpl(network_name, false);
-  }
+  void Connect();
+
+  virtual float GetConnectionQuality();
 
   /*!
    * \return Peer's list of other peers
@@ -137,17 +135,14 @@ public:
     return tracker;
   }
 
+  virtual util::tString GetStatus(bool detailed);
+
   /*!
    * \return Does peer act as a client?
    */
   inline bool IsClient()
   {
     return mode == tTCPPeer::eCLIENT || mode == tTCPPeer::eFULL;
-  }
-
-  virtual ~tTCPPeer()
-  {
-    delete tracker;
   }
 
   /*!
@@ -158,9 +153,11 @@ public:
     return mode == tTCPPeer::eSERVER || mode == tTCPPeer::eFULL;
   }
 
-  virtual void NodeDiscovered(const util::tIPSocketAddress* isa, const util::tString* name_);
+  virtual void NodeDiscovered(const util::tIPSocketAddress& isa, const util::tString& name_);
 
-  virtual void NodeRemoved(const util::tIPSocketAddress* isa, const util::tString* name_);
+  virtual ::finroc::util::tObject* NodeRemoved(const util::tIPSocketAddress& isa, const util::tString& name_);
+
+  virtual void NodeRemovedPostLockProcess(util::tObject* obj);
 
   /*!
    *  Notifies writers of all active connections connected to this peer

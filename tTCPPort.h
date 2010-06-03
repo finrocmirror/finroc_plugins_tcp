@@ -68,7 +68,7 @@ private:
 
   /*!
    * \return Publish data of this port over the network in forward direction when it changes?
-     */
+   */
   inline bool PublishPortDataOverTheNetReverse()
   {
     return GetPort()->IsOutputPort() && GetPort()->GetFlag(core::tPortFlags::cPUSH_STRATEGY_REVERSE);
@@ -114,18 +114,18 @@ public:
 
   //  @Override
   //  protected void sendCallReturn(AbstractCall mc) {
-  //    TCPConnection c = connection;
-  //    if (c != null) {
+  //      TCPConnection c = connection;
+  //      if (c != null) {
   //
-  //      // okay, we received a pull return that needs to be forwarded over the net
-  //      mc.setRemotePortHandle(mc.popCaller());
-  //      c.sendCall(mc);
-  //    } else {
+  //          // okay, we received a pull return that needs to be forwarded over the net
+  //          mc.setRemotePortHandle(mc.popCaller());
+  //          c.sendCall(mc);
+  //      } else {
   //
-  //      // no connection - throw exception
-  //      mc.setStatus(AbstractCall.CONNECTION_EXCEPTION);
-  //      mc.returnToCaller();
-  //    }
+  //          // no connection - throw exception
+  //          mc.setStatus(AbstractCall.CONNECTION_EXCEPTION);
+  //          mc.returnToCaller();
+  //      }
   //  }
 
   /*!

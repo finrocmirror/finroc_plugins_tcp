@@ -33,6 +33,7 @@
 #include "core/port/net/tRemoteTypes.h"
 #include "tcp/tTCPPort.h"
 #include "tcp/tTCPPeer.h"
+#include "core/tLockOrderLevels.h"
 #include "tcp/tTCP.h"
 #include "core/portdatabase/tSerializableReusable.h"
 #include "core/port/net/tUpdateTimeChangeListener.h"
@@ -196,6 +197,9 @@ protected:
   /*! Writer Thread */
   ::std::tr1::weak_ptr<tWriter> writer;
 
+  /*! Reader Thread */
+  ::std::tr1::weak_ptr<tReader> reader;
+
   /*! Timestamp relative to which time is encoded in this stream */
   int64 time_base;
 
@@ -217,10 +221,16 @@ protected:
   /*! Last version of peer information that was sent to connection partner */
   int last_peer_info_sent_revision;
 
+  /*! Rx related: last time RX was retrieved */
+  int64 last_rx_timestamp;
+
+  /*! Rx related: last time RX was retrieved: how much have we received in total? */
+  int64 last_rx_position;
+
 public:
 
-  // for synchronization on an object of this class
-  mutable util::tMutex obj_synch;
+  /*! Needs to be locked after framework elements, but before runtime registry */
+  util::tMutexLockOrder obj_mutex;
 
 protected:
 
@@ -305,6 +315,11 @@ public:
   int GetMaxPingTime();
 
   /*!
+   * \return Data rate of bytes read from network (in bytes/s)
+   */
+  int GetRx();
+
+  /*!
    * Called when listener or writer is disconnected
    */
   virtual void HandleDisconnect() = 0;
@@ -318,6 +333,11 @@ public:
    * Notify (possibly wake-up) writer thread. Should be called whenever new tasks for the writer arrive.
    */
   void NotifyWriter();
+
+  /*!
+   * \return Is critical ping time currently exceeded (possibly temporary disconnect)
+   */
+  bool PingTimeExceeed();
 
   /*!
    * Called when listener receives request

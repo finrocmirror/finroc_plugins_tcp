@@ -49,6 +49,13 @@ namespace tcp
  *
  * Class that stores information about and can be used to access
  * TCP Server running in another runtime environment.
+ *
+ * Thread safety considerations:
+ *  Many Threads are operating on our objects. Before deleting connection or when disconnecting they
+ *  should all be stopped to avoid any race conditions.
+ *  Furthermore, ports may be deleted via remote Runtime changes. This can happen while other threads
+ *  are using these ports. Therefore, critical port operations should be executed in synchronized context
+ *  - as well as any deleting.
  */
 class tRemoteServer : public core::tFrameworkElement, public core::tRuntimeListener
 {
@@ -78,8 +85,8 @@ public:
 
   public:
 
-    //    /** Static ChildIterator */
-    //    private RemoteCoreRegister<ProxyPort>.Iterator ci = remotePortRegister.getIterator();
+    //      /** Static ChildIterator */
+    //      private RemoteCoreRegister<ProxyPort>.Iterator ci = remotePortRegister.getIterator();
 
     tConnectorThread(tRemoteServer* const outer_class_ptr_);
 
@@ -134,6 +141,12 @@ private:
   /*! If this is a port-only-client: Framework element that contains all global links */
   ::finroc::core::tFrameworkElement* global_links;
 
+  /*! Number of times disconnect was called, since last connect */
+  util::tAtomicInt disconnect_calls;
+
+  /*! Set to true when server will soon be deleted */
+  bool deleted_soon;
+
   /*!
    * Connect to remote server
    */
@@ -156,6 +169,12 @@ private:
   void Disconnect();
 
   /*!
+   * \param data_rate Data Rate
+   * \return Formatted Data Rate
+   */
+  static util::tString FormatRate(int data_rate);
+
+  /*!
    * Process incoming framework element change
    *
    * \param cFramework element change information
@@ -174,110 +193,6 @@ private:
 
 protected:
 
-  //  @Override
-  //  public synchronized boolean processPacket(TransactionPacket buffer) {
-  //    if (initialPortRetrieve && (!buffer.initialPacket)) {
-  //      return true;
-  //    }
-  //
-  //    ChunkedReadView rv = buffer.getReadView(true);
-  //    while(rv.hasRemaining()) {
-  //      tmpInfo.deserialize(rv);
-  //      if (tmpInfo.opCode == Transaction.ADD) {
-  //        addOrChangePort(tmpInfo);
-  //      } else {
-  //        removePort(tmpInfo);
-  //      }
-  //    }
-  //
-  //    return false;
-  //  }
-
-  //  /**
-  //   * Remove port referred to by port info (warns if non-existent)
-  //   *
-  //   * \param info Port info
-  //   */
-  //  private void removePort(@Const @Ref FrameworkElementInfo info) {
-  //    ProxyPort pp = lookupPort(info);
-  //    if (pp != null) {
-  //      pp.updateFromPortInfo(info);
-  //      portUpdated(pp, false);
-  //      pp.managedDelete();
-  //    } else {
-  //      System.out.println("warning: RemoteServer.removePort - port " + info.getLinks().get(0) + " does not exist");
-  //    }
-  //  }
-  //
-  //  /**
-  //   * Add or change port referred to by port info
-  //   *
-  //   * \param info Port info
-  //   */
-  //  private void addOrChangePort(@Const @Ref FrameworkElementInfo info) {
-  //    ProxyPort pp = lookupPort(info);
-  //    if (pp == null) {
-  //      pp = new ProxyPort(SharedPorts.getPortPublishInfo());
-  //    } else {
-  //      pp.updateFromPortInfo(info);
-  //    }
-  //  }
-
-  //  /**
-  //   * Look up port referred to by port info
-  //   *
-  //   * \param info port info
-  //   * \return Proxy port - or null if non-existent
-  //   */
-  //  private ProxyPort lookupPort(@Const @Ref FrameworkElementInfo info) {
-  //
-  //    // somewhat inefficient currently... we could add lookup table - or use links for lookup - however, this causes more memory allocation etc.
-  //    tmpIterator.reset(this);
-  //    for (FrameworkElement fe = tmpIterator.next(); fe != null; fe = tmpIterator.next()) {
-  //      if (fe.isPort()) {
-  //        AbstractPort ap = (AbstractPort)fe;
-  //        if (ap.asNetPort() instanceof ProxyPort) {
-  //          ProxyPort pp = (ProxyPort)ap.asNetPort();
-  //          if (pp.getRemoteHandle() == info.getHandle()) {
-  //            return pp;
-  //          }
-  //        }
-  //      }
-  //    }
-  //    return null;
-  //  }
-  //
-  //  /**
-  //   * Called whenever a port is updated or removed - to update monitoring lists in connection threads
-  //   *
-  //   * \param pp Port that was updated
-  //   * \param added Was Port added/modified or rather removed?
-  //   */
-  //  private synchronized void portUpdated(ProxyPort pp, boolean added) {
-  //    AbstractPort ap = pp.getPort();
-  //    Connection c = ap.getFlag(PortFlags.IS_EXPRESS_PORT) ? express : bulk;
-  //    if (added && (((!ap.isOutputPort()) && ap.pushStrategy()) || (ap.isOutputPort() && ap.acceptsReverseData() && ap.reversePushStrategy()))) {
-  //      if (!pp.monitored) {
-  //        c.monitoredPorts.add(pp, false);
-  //        c.notifyWriter();
-  //        pp.monitored = true;
-  //      }
-  //    } else {
-  //      if (pp.monitored) {
-  //        c.monitoredPorts.remove(pp);
-  //        c.notifyWriter();
-  //        pp.monitored = false;
-  //      }
-  //    }
-  //  }
-
-  //  /**
-  //   * \return Is currently connected to remote server?
-  //   */
-  //  public synchronized boolean isTCPConnected() {
-  //    return bulk != null;
-  //  }
-
   virtual void PrepareDelete();
 
 public:
@@ -292,14 +207,38 @@ public:
   tRemoteServer(util::tIPSocketAddress isa, const util::tString& name, core::tFrameworkElement* parent, const core::tFrameworkElementTreeFilter& filter_, tTCPPeer* peer_);
 
   /*!
+   * \return true when server will soon be deleted
+   */
+  inline bool DeletedSoon()
+  {
+    return deleted_soon;
+  }
+
+  /*!
+   * Early preparations for deleting this
+   */
+  inline void EarlyDeletingPreparations()
+  {
+    connector_thread->StopThread();
+    deleted_soon = true;
+  }
+
+  /*!
+   * \return Connection quality (see ExternalConnection)
+   */
+  float GetConnectionQuality();
+
+  /*!
    * Returns framework element with specified handle.
    * Creates one if it doesn't exist.
    *
    * \param handle Remote Handle of parent
    * \param extra_flags Any extra flags of parent to keep
+   * \param port_parent Parent of a port?
+   * \param parent_handle Handle of parent (only necessary, when not unknown parent of a port)
    * \return Framework element.
    */
-  ::finroc::core::tFrameworkElement* GetFrameworkElement(int handle, int extra_flags);
+  ::finroc::core::tFrameworkElement* GetFrameworkElement(int handle, int extra_flags, bool port_parent, int parent_handle);
 
   /*!
    * \return Address of connection partner
@@ -310,11 +249,16 @@ public:
   }
 
   /*!
+   * \return String containing ping times
+   */
+  util::tString GetPingString();
+
+  /*!
    * Reconnect after temporary disconnect
    */
   inline void Reconnect()
   {
-    util::tLock lock2(obj_synch);
+    util::tLock lock2(this);
     connector_thread->ContinueThread();
   }
 
@@ -323,12 +267,7 @@ public:
   /*!
    * Disconnects and pauses connector thread
    */
-  inline void TemporaryDisconnect()
-  {
-    util::tLock lock2(obj_synch);
-    connector_thread->PauseThread();
-    Disconnect();
-  }
+  void TemporaryDisconnect();
 
 public:
 
@@ -365,17 +304,17 @@ public:
   public:
 
     /*! Constructor for yet anonymous element */
-    tProxyFrameworkElement(tRemoteServer* const outer_class_ptr_, int handle, int extra_flags);
+    tProxyFrameworkElement(tRemoteServer* const outer_class_ptr_, int handle, int extra_flags, int lock_order);
 
     bool Matches(const core::tFrameworkElementInfo& info);
 
-    //    public ProxyFrameworkElement(@Const @Ref FrameworkElementInfo info) {
-    //      super("(yet unknown)", null, CoreFlags.ALLOWS_CHILDREN | CoreFlags.NETWORK_ELEMENT | (info.getFlags() & FrameworkElementInfo.PARENT_FLAGS_TO_STORE));
-    //      this.remoteHandle = info.getHandle();
-    //      remoteElementRegister.put(-remoteHandle, this);
-    //      updateFromPortInfo(info);
-    //      yetUnknown = false;
-    //    }
+    //      public ProxyFrameworkElement(@Const @Ref FrameworkElementInfo info) {
+    //          super("(yet unknown)", null, CoreFlags.ALLOWS_CHILDREN | CoreFlags.NETWORK_ELEMENT | (info.getFlags() & FrameworkElementInfo.PARENT_FLAGS_TO_STORE));
+    //          this.remoteHandle = info.getHandle();
+    //          remoteElementRegister.put(-remoteHandle, this);
+    //          updateFromPortInfo(info);
+    //          yetUnknown = false;
+    //      }
 
     /*!
      * Update information about framework element
@@ -414,7 +353,7 @@ public:
   public:
 
     // for synchronization on an object of this class
-    mutable util::tMutex obj_synch;
+    mutable util::tMutex obj_mutex;
 
   private:
 
@@ -502,7 +441,6 @@ public:
 
     virtual void HandleDisconnect()
     {
-      util::tLock lock3(obj_synch);
       outer_class_ptr->Disconnect();
     }
 

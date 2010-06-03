@@ -27,6 +27,7 @@
 #include "core/portdatabase/tDataTypeRegister.h"
 #include "finroc_core_utils/thread/sThreadUtil.h"
 #include "core/port/tPortFlags.h"
+#include "core/tLockOrderLevels.h"
 #include "tcp/tTCPSettings.h"
 #include "core/datatype/tFrameworkElementInfo.h"
 #include "core/tCoreFlags.h"
@@ -41,58 +42,67 @@ util::tAtomicInt tTCPServerConnection::connection_id;
 
 tTCPServerConnection::tTCPServerConnection(::std::tr1::shared_ptr<util::tNetSocket> s, int8 stream_id, tTCPServer* server, tTCPPeer* peer) :
     tTCPConnection(stream_id, stream_id == tTCP::cTCP_P2P_ID_BULK ? peer : NULL, stream_id == tTCP::cTCP_P2P_ID_BULK),
-    port_set(new tPortSet(this, server, ::std::tr1::shared_ptr<tTCPServerConnection>(this))),
+    port_set(NULL),
     send_runtime_info(false),
     runtime_info_buffer(false),
     runtime_info_writer(&(runtime_info_buffer)),
     runtime_info_reader(&(runtime_info_buffer.GetDestructiveSource())),
     element_filter(),
-    tmp()
+    tmp(),
+    disconnect_calls(0)
 {
   this->socket = s;
 
-  // initialize core streams (counter part to RemoteServer.Connection constructor)
-  ::std::tr1::shared_ptr<util::tLargeIntermediateStreamBuffer> lm_buf(new util::tLargeIntermediateStreamBuffer(s->GetSink()));
-  this->cos = ::std::tr1::shared_ptr<core::tCoreOutput>(new core::tCoreOutput(lm_buf));
-  //cos = new CoreOutputStream(new BufferedOutputStreamMod(s.getOutputStream()));
-  this->cos->WriteLong(core::tRuntimeEnvironment::GetInstance()->GetCreationTime());  // write base timestamp
-  core::tRemoteTypes::SerializeLocalDataTypes(core::tDataTypeRegister::GetInstance(), this->cos.get());
-  this->cos->Flush();
-  port_set->Init();
-
-  this->cis = ::std::tr1::shared_ptr<core::tCoreInput>(new core::tCoreInput(s->GetSource()));
-  this->cis->SetTypeTranslation(&(this->update_times));
-  this->update_times.Deserialize(this->cis.get());
-
-  util::tString type_string = GetConnectionTypeString();
-
-  // send runtime information?
-  if (this->cis->ReadBoolean())
   {
-    element_filter.Deserialize(*this->cis);
-    send_runtime_info = true;
-    {
-      util::tLock lock3(core::tRuntimeEnvironment::GetInstance()->obj_synch);
-      core::tRuntimeEnvironment::GetInstance()->AddListener(this);
-      element_filter.TraverseElementTree(core::tRuntimeEnvironment::GetInstance(), this, tmp);
-    }
-    this->cos->WriteByte(0);  // terminator
+    util::tLock lock2(this);
+
+    // initialize core streams (counter part to RemoteServer.Connection constructor)
+    ::std::tr1::shared_ptr<util::tLargeIntermediateStreamBuffer> lm_buf(new util::tLargeIntermediateStreamBuffer(s->GetSink()));
+    this->cos = ::std::tr1::shared_ptr<core::tCoreOutput>(new core::tCoreOutput(lm_buf));
+    //cos = new CoreOutputStream(new BufferedOutputStreamMod(s.getOutputStream()));
+    this->cos->WriteLong(core::tRuntimeEnvironment::GetInstance()->GetCreationTime());  // write base timestamp
+    core::tRemoteTypes::SerializeLocalDataTypes(core::tDataTypeRegister::GetInstance(), this->cos.get());
     this->cos->Flush();
+
+    // init port set here, since it might be serialized to stream
+    port_set = new tPortSet(this, server, ::std::tr1::shared_ptr<tTCPServerConnection>(this));
+    port_set->Init();
+
+    this->cis = ::std::tr1::shared_ptr<core::tCoreInput>(new core::tCoreInput(s->GetSource()));
+    this->cis->SetTypeTranslation(&(this->update_times));
+    this->update_times.Deserialize(this->cis.get());
+
+    util::tString type_string = GetConnectionTypeString();
+
+    // send runtime information?
+    if (this->cis->ReadBoolean())
+    {
+      element_filter.Deserialize(*this->cis);
+      send_runtime_info = true;
+      {
+        util::tLock lock4(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());  // lock runtime so that we do not miss a change
+        core::tRuntimeEnvironment::GetInstance()->AddListener(this);
+        element_filter.TraverseElementTree(core::tRuntimeEnvironment::GetInstance(), this, tmp);
+      }
+      this->cos->WriteByte(0);  // terminator
+      this->cos->Flush();
+    }
+
+    // start incoming data listener thread
+    ::std::tr1::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, util::tStringBuilder("TCP Server ") + type_string + "-Listener for " + s->GetRemoteSocketAddress().ToString()));
+    this->reader = listener;
+    listener->LockObject(port_set->connection_lock);
+    listener->Start();
+
+    // start writer thread
+    ::std::tr1::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(this, util::tStringBuilder("TCP Server ") + type_string + "-Writer for " + s->GetRemoteSocketAddress().ToString()));
+    this->writer = writer;
+    writer->LockObject(port_set->connection_lock);
+    writer->Start();
+
+    connections.Add(this, false);
+    tPingTimeMonitor::GetInstance();  // start ping time monitor
   }
-
-  // start incoming data listener thread
-  ::std::tr1::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, util::tStringBuilder("TCP Server ") + type_string + "-Listener for " + s->GetRemoteSocketAddress().ToString()));
-  listener->LockObject(port_set->connection_lock);
-  listener->Start();
-
-  // start writer thread
-  ::std::tr1::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(this, util::tStringBuilder("TCP Server ") + type_string + "-Writer for " + s->GetRemoteSocketAddress().ToString()));
-  this->writer = writer;
-  writer->LockObject(port_set->connection_lock);
-  writer->Start();
-
-  connections.Add(this, false);
-  tPingTimeMonitor::GetInstance();  // start ping time monitor
 }
 
 tTCPServerConnection::tServerPort* tTCPServerConnection::GetPort(int handle, bool possibly_create)
@@ -117,13 +127,23 @@ tTCPServerConnection::tServerPort* tTCPServerConnection::GetPort(int handle, boo
 
 void tTCPServerConnection::HandleDisconnect()
 {
-  util::tLock lock1(obj_synch);
-  Disconnect();
+  // make sure that disconnect is only called once... prevents deadlocks cleaning up all the threads
+  int calls = disconnect_calls.IncrementAndGet();
+  if (calls > 1)
   {
-    util::tLock lock2(port_set->obj_synch);
-    if (!port_set->IsDeleted())
+    return;
+  }
+
+  {
+    util::tLock lock2(port_set);
+    bool port_set_deleted = port_set->IsDeleted();
     {
-      port_set->ManagedDelete();
+      util::tLock lock3(this);
+      Disconnect();
+      if (!port_set_deleted)
+      {
+        port_set->ManagedDelete();
+      }
     }
   }
 }
@@ -147,6 +167,7 @@ core::tPortCreationInfo tTCPServerConnection::InitPci(core::tAbstractPort* count
   }
   pci.flags = flags;
   pci.data_type = counter_part->GetDataType();
+  pci.lock_order = core::tLockOrderLevels::cREMOTE_PORT;
   return pci;
 }
 
@@ -157,52 +178,6 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
 
   switch (op_code)
   {
-    //    case TCP.PULLCALL: // Pull data request - server side
-    //
-    //
-    //
-    //      handle = cis.readInt();
-    //      cis.readSkipOffset();
-    //      p = getPort(handle, true);
-    //
-    //      handlePullCall(p, handle, portSet);
-    //      break;
-
-    //    case TCP.METHODCALL:
-    //
-    //      handle = cis.readInt();
-    //      cis.readSkipOffset();
-    //      p = getPort(handle, true);
-    //
-    //      // okay... this is handled asynchronously now
-    //      // create/decode call
-    //      // okay... this is handled asynchronously now
-    //      // create/decode call
-    //      cis.setBufferSource(p.getPort());
-    //      // lookup method type
-    //      DataType methodType = cis.readType();
-    //      if (methodType == null || (!methodType.isMethodType())) {
-    //        cis.toSkipTarget();
-    //      } else {
-    //        mc = ThreadLocalCache.getFast().getUnusedMethodCall();
-    //        mc.deserializeCall(cis, methodType);
-    //
-    //        // process call
-    //        if (TCPSettings.DISPLAY_INCOMING_TCP_SERVER_COMMANDS.get()) {
-    //          System.out.println("Incoming Server Command: Method call " + (p != null ? p.getPort().getQualifiedName() : handle));
-    //        }
-    //        if (p == null) {
-    //          mc.setExceptionStatus(MethodCallException.Type.NO_CONNECTION);
-    //          sendCall(mc);
-    //        } else {
-    //          NetPort.InterfaceNetPortImpl inp = (NetPort.InterfaceNetPortImpl)p.getPort();
-    //          inp.processCallFromNet(mc);
-    //        }
-    //      }
-    //      cis.setBufferSource(null);
-    //
-    //      break;
-
   case tTCP::cSET:  // Set data command
 
     handle = this->cis->ReadInt();
@@ -216,10 +191,20 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
     }
     if (p != NULL)
     {
-      int8 changed_flag = this->cis->ReadByte();
-      this->cis->SetBufferSource(p->GetPort());
-      p->ReceiveDataFromStream(this->cis.get(), util::tSystem::CurrentTimeMillis(), changed_flag);
-      this->cis->SetBufferSource(NULL);
+      {
+        util::tLock lock4(p->GetPort());
+        if (!p->GetPort()->IsReady())
+        {
+          this->cis->ToSkipTarget();
+        }
+        else
+        {
+          int8 changed_flag = this->cis->ReadByte();
+          this->cis->SetBufferSource(p->GetPort());
+          p->ReceiveDataFromStream(this->cis.get(), util::tSystem::CurrentTimeMillis(), changed_flag);
+          this->cis->SetBufferSource(NULL);
+        }
+      }
     }
     else
     {
@@ -235,7 +220,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
     {
       util::tSystem::out.Println(util::tStringBuilder("Incoming Server Command: Unsubscribe ") + (p != NULL ? p->local_port->GetQualifiedName() : handle));
     }
-    if (p != NULL)    // complete disconnect
+    if (p != NULL && p->GetPort()->IsReady())    // complete disconnect
     {
       p->ManagedDelete();
     }
@@ -258,11 +243,17 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
     }
     if (p != NULL)
     {
-      p->GetPort()->SetMinNetUpdateInterval(update_interval);
-      p->update_interval_partner = update_interval;
-      p->SetRemoteHandle(remote_handle);
-      p->GetPort()->SetReversePushStrategy(reverse_push);
-      p->PropagateStrategyFromTheNet(strategy);
+      {
+        util::tLock lock4(p->GetPort()->GetRegistryLock());
+        if (p->GetPort()->IsReady())
+        {
+          p->GetPort()->SetMinNetUpdateInterval(update_interval);
+          p->update_interval_partner = update_interval;
+          p->SetRemoteHandle(remote_handle);
+          p->GetPort()->SetReversePushStrategy(reverse_push);
+          p->PropagateStrategyFromTheNet(strategy);
+        }
+      }
     }
     break;
   }
@@ -301,13 +292,16 @@ void tTCPServerConnection::TreeFilterCallback(core::tFrameworkElement* fe)
 {
   if (fe != core::tRuntimeEnvironment::GetInstance())
   {
-    this->cos->WriteByte(tTCP::cPORT_UPDATE);
-    core::tFrameworkElementInfo::SerializeFrameworkElement(fe, ::finroc::core::tRuntimeListener::cADD, this->cos.get(), element_filter, tmp);
+    if (!fe->IsDeleted())
+    {
+      this->cos->WriteByte(tTCP::cPORT_UPDATE);
+      core::tFrameworkElementInfo::SerializeFrameworkElement(fe, ::finroc::core::tRuntimeListener::cADD, this->cos.get(), element_filter, tmp);
+    }
   }
 }
 
 tTCPServerConnection::tPortSet::tPortSet(tTCPServerConnection* const outer_class_ptr_, tTCPServer* server, ::std::tr1::shared_ptr<tTCPServerConnection> connection_lock_) :
-    core::tFrameworkElement(util::tStringBuilder("connection") + tTCPServerConnection::connection_id.GetAndIncrement(), server, core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT),
+    core::tFrameworkElement(util::tStringBuilder("connection") + tTCPServerConnection::connection_id.GetAndIncrement(), server, core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT, core::tLockOrderLevels::cPORT - 1),
     outer_class_ptr(outer_class_ptr_),
     port_iterator(this),
     connection_lock(connection_lock_)
@@ -325,6 +319,7 @@ void tTCPServerConnection::tPortSet::NotifyPortsOfDisconnect()
 
 void tTCPServerConnection::tPortSet::PrepareDelete()
 {
+  outer_class_ptr->HandleDisconnect();
   if (outer_class_ptr->send_runtime_info)
   {
     core::tRuntimeEnvironment::GetInstance()->RemoveListener(outer_class_ptr);
@@ -364,8 +359,8 @@ void tTCPServerConnection::tServerPort::PostChildInit()
   }
 }
 
-util::tMutex tTCPServerConnection::tPingTimeMonitor::static_obj_synch;
 ::std::tr1::shared_ptr<tTCPServerConnection::tPingTimeMonitor> tTCPServerConnection::tPingTimeMonitor::instance;
+util::tMutexLockOrder tTCPServerConnection::tPingTimeMonitor::static_class_mutex(core::tLockOrderLevels::cINNER_MOST - 20);
 
 tTCPServerConnection::tPingTimeMonitor::tPingTimeMonitor() :
     core::tCoreLoopThreadBase(tTCPSettings::cCONNECTOR_THREAD_LOOP_INTERVAL, false, false)
@@ -375,7 +370,7 @@ tTCPServerConnection::tPingTimeMonitor::tPingTimeMonitor() :
 
 tTCPServerConnection::tPingTimeMonitor* tTCPServerConnection::tPingTimeMonitor::GetInstance()
 {
-  util::tLock lock1(static_obj_synch);
+  util::tLock lock1(static_class_mutex);
   if (instance == NULL)
   {
     instance = util::sThreadUtil::GetThreadSharedPtr(new tTCPServerConnection::tPingTimeMonitor());
@@ -395,7 +390,7 @@ void tTCPServerConnection::tPingTimeMonitor::MainLoopCallback()
     tTCPServerConnection* tsc = it->Get(i);
     if (tsc != NULL)
     {
-      may_wait = util::tMath::Min(may_wait, tsc->CheckPingForDisconnect());
+      may_wait = util::tMath::Min(may_wait, tsc->CheckPingForDisconnect());  // safe, since connection is deleted deferred and call time is minimal
     }
   }
 

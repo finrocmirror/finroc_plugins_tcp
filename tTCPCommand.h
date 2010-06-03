@@ -35,7 +35,7 @@ namespace tcp
 /*!
  * \author Max Reichardt
  *
- * A single asnychronous TCP command such as: SUBSCRIBE or UNSUBSCRIBE
+ * A single asynchronous TCP command such as: SUBSCRIBE or UNSUBSCRIBE
  */
 class tTCPCommand : public core::tSerializableReusable
 {
@@ -84,9 +84,9 @@ public:
 
 //  @Override
 //  public void genericRecycle() {
-//    if (isResponsible()) {
-//      super.recycle();
-//    }
+//      if (isResponsible()) {
+//          super.recycle();
+//      }
 //  }
 
 };
