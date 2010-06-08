@@ -223,7 +223,7 @@ float tRemoteServer::GetConnectionQuality()
   {
     if (port_parent)
     {
-      pxe = new tProxyFrameworkElement(this, handle, extra_flags, core::tLockOrderLevels::cPORT - 10);
+      pxe = new tProxyFrameworkElement(this, handle, extra_flags, core::tLockOrderLevels::cREMOTE_PORT - 10);
     }
     else
     {

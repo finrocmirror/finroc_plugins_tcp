@@ -26,16 +26,16 @@ namespace finroc
 {
 namespace tcp
 {
-tPeerList::tPeerList(int server_port_) :
-    core::tAbstractPeerTracker(core::tLockOrderLevels::cRUNTIME_REGISTER + 1),
+tPeerList::tPeerList(int server_port_, int lock_order) :
+    core::tAbstractPeerTracker(lock_order),
     peers(),
     revision(0),
-    server_port(server_port_),
-    obj_mutex(core::tLockOrderLevels::cINNER_MOST - 200)
+    server_port(server_port_)
 {
   if (server_port_ > 0)
   {
-    AddPeer(util::tIPSocketAddress("localhost", server_port_), false);
+    peers.Add(util::tIPSocketAddress("localhost", server_port_));
+    revision++;
   }
 }
 

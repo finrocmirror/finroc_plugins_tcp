@@ -81,61 +81,65 @@ void tTCPPeer::ConnectImpl(const util::tString& address, bool same_address)
 {
   util::tLock lock1(this);
 
-  assert((IsReady()));
-  tracker->AddListener(this);
-
-  if (same_address)
   {
-    ci.Reset();
-    ::finroc::core::tFrameworkElement* fe = NULL;
-    while ((fe = ci.Next()) != NULL)
+    util::tLock lock2(tracker);
+
+    assert((IsReady()));
+    tracker->AddListener(this);
+
+    if (same_address)
     {
-      if (typeid(*fe) == typeid(tRemoteServer))
+      ci.Reset();
+      ::finroc::core::tFrameworkElement* fe = NULL;
+      while ((fe = ci.Next()) != NULL)
       {
-        tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
+        if (typeid(*fe) == typeid(tRemoteServer))
         {
-          util::tLock lock5(rs);
-          if (rs->IsReady() && (!rs->DeletedSoon()))
+          tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
           {
-            rs->Reconnect();
+            util::tLock lock6(rs);
+            if (rs->IsReady() && (!rs->DeletedSoon()))
+            {
+              rs->Reconnect();
+            }
           }
         }
       }
+
     }
-
-  }
-  else
-  {
-    // is this an ip address?
-    int idx = address.IndexOf(":");
-    bool ip = false;
-    if (idx > 0)
+    else
     {
-      util::tString host = address.Substring(0, idx);
-      util::tString port = address.Substring(idx + 1);
-
-      ip = true;
-      for (size_t i = 0u; i < port.Length(); i++)
+      // is this an ip address?
+      int idx = address.IndexOf(":");
+      bool ip = false;
+      if (idx > 0)
       {
-        if (!util::tCharacter::IsDigit(port.CharAt(i)))
+        util::tString host = address.Substring(0, idx);
+        util::tString port = address.Substring(idx + 1);
+
+        ip = true;
+        for (size_t i = 0u; i < port.Length(); i++)
         {
-          ip = false;
+          if (!util::tCharacter::IsDigit(port.CharAt(i)))
+          {
+            ip = false;
+          }
         }
-      }
 
-      // we don't want to connect to ourselves
-      if ((host.Equals("localhost") || host.StartsWith("127.0")) && server != NULL && util::tInteger::ParseInt(port) == server->GetPort())
-      {
-        return;
-      }
+        // we don't want to connect to ourselves
+        if ((host.Equals("localhost") || host.StartsWith("127.0")) && server != NULL && util::tInteger::ParseInt(port) == server->GetPort())
+        {
+          return;
+        }
 
-      if (ip)
-      {
-        util::tIPSocketAddress isa(host, util::tInteger::ParseInt(port));
-        tracker->AddPeer(isa, false);
-        tRemoteServer* rs = new tRemoteServer(isa, address, this, filter, this);
-        rs->Init();
-        return;
+        if (ip)
+        {
+          util::tIPSocketAddress isa(host, util::tInteger::ParseInt(port));
+          tracker->AddPeer(isa, false);
+          tRemoteServer* rs = new tRemoteServer(isa, address, this, filter, this);
+          rs->Init();
+          return;
+        }
       }
     }
   }
@@ -150,7 +154,11 @@ void tTCPPeer::DisconnectImpl()
   util::tLock lock1(this);
   if (tracker != NULL)
   {
-    tracker->RemoveListener(this);
+    {
+      util::tLock lock3(tracker);
+      tracker->RemoveListener(this);
+    }
+    // now we can be sure that no new nodes will be added
   }
   //tracker.delete();
 
@@ -234,42 +242,46 @@ util::tString tTCPPeer::GetStatus(bool detailed)
 
 void tTCPPeer::NodeDiscovered(const util::tIPSocketAddress& isa, const util::tString& name_)
 {
-  util::tLock lock1(this);
-  if (GetFlag(core::tCoreFlags::cDELETED))
   {
-    return;
-  }
+    util::tLock lock2(tracker);
+    if (GetFlag(core::tCoreFlags::cDELETED))
+    {
+      return;
+    }
 
-  // add port & connect
-  tRemoteServer* rs = new tRemoteServer(isa, name_, this, filter, this);
-  rs->Init();
+    // add port & connect
+    tRemoteServer* rs = new tRemoteServer(isa, name_, this, filter, this);
+    rs->Init();
+  }
 }
 
 ::finroc::util::tObject* tTCPPeer::NodeRemoved(const util::tIPSocketAddress& isa, const util::tString& name_)
 {
-  util::tLock lock1(this);
-  if (GetFlag(core::tCoreFlags::cDELETED))
   {
+    util::tLock lock2(tracker);
+    if (GetFlag(core::tCoreFlags::cDELETED))
+    {
+      return NULL;
+    }
+
+    // remove port & disconnect
+    ci.Reset();
+    for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
+    {
+      if (fe == server)
+      {
+        continue;
+      }
+      tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
+      if (rs->GetPartnerAddress().Equals(isa) && (!rs->DeletedSoon()) && (!rs->IsDeleted()))
+      {
+        rs->EarlyDeletingPreparations();
+        return rs;
+      }
+    }
+    util::tSystem::out.Println(util::tStringBuilder("TCPClient warning: Node ") + name_ + " not found");
     return NULL;
   }
-
-  // remove port & disconnect
-  ci.Reset();
-  for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
-  {
-    if (fe == server)
-    {
-      continue;
-    }
-    tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
-    if (rs->GetPartnerAddress().Equals(isa) && (!rs->DeletedSoon()) && (!rs->IsDeleted()))
-    {
-      rs->EarlyDeletingPreparations();
-      return rs;
-    }
-  }
-  util::tSystem::out.Println(util::tStringBuilder("TCPClient warning: Node ") + name_ + " not found");
-  return NULL;
 }
 
 void tTCPPeer::NodeRemovedPostLockProcess(util::tObject* obj)
@@ -292,7 +304,7 @@ void tTCPPeer::NotifyAllWriters()
 
 void tTCPPeer::PostChildInit()
 {
-  tracker = new tPeerList(IsServer() ? server->GetPort() : -1);
+  tracker = new tPeerList(IsServer() ? server->GetPort() : -1, GetLockOrder() + 1);
   if (IsServer())
   {
     tracker->RegisterServer(network_name, name, server->GetPort());

@@ -26,7 +26,6 @@
 
 #include "finroc_core_utils/container/tSimpleList.h"
 #include "finroc_core_utils/net/tIPSocketAddress.h"
-#include "core/tLockOrderLevels.h"
 #include "finroc_core_utils/stream/tInputStreamBuffer.h"
 #include "finroc_core_utils/net/tIPAddress.h"
 #include "finroc_core_utils/stream/tOutputStreamBuffer.h"
@@ -60,11 +59,8 @@ private:
 
 public:
 
-  /*! Lock order */
-  mutable util::tMutexLockOrder obj_mutex;
-
   /*! @param serverPort Server port of own peer */
-  tPeerList(int server_port_);
+  tPeerList(int server_port_, int lock_order);
 
   //  /**
   //   * \param port Port that we are listening on (used so that we don't connect to ourselves)
