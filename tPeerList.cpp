@@ -86,7 +86,7 @@ void tPeerList::DeserializeAddresses(util::tInputStreamBuffer* ci, util::tIPAddr
     else
     {
       // replace partner's localhost entries with partnerAddress
-      if (ia.GetAddress().Equals(util::tIPAddress::GetLocalHost()))
+      if (ia.GetAddress().IsLocalHost())
       {
         ia = util::tIPSocketAddress(partner_address, ia.GetPort());
       }
