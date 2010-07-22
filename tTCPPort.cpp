@@ -35,7 +35,8 @@ tTCPPort::tTCPPort(core::tPortCreationInfo pci, tTCPConnection* connection_) :
     core::tNetPort(pci, connection_),
     connection(connection_),
     monitored(false),
-    update_interval_partner(-1)
+    update_interval_partner(-1),
+    connections()
 {
   assert((connection_ != NULL));
 }

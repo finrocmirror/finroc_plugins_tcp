@@ -659,6 +659,7 @@ void tRemoteServer::tProxyPort::UpdateFromPortInfo(const core::tFrameworkElement
     GetPort()->SetMinNetUpdateInterval(port_info.GetMinNetUpdateInterval());
     this->update_interval_partner = port_info.GetMinNetUpdateInterval();  // TODO redundant?
     PropagateStrategyFromTheNet(port_info.GetStrategy());
+    port_info.GetConnections(this->connections);
     if (tTCPSettings::cDISPLAY_INCOMING_PORT_UPDATES->Get())
     {
       util::tSystem::out.Println(util::tStringBuilder("Updating port info: ") + port_info.ToString());
