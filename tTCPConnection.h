@@ -36,6 +36,7 @@
 #include "core/tLockOrderLevels.h"
 #include "tcp/tTCP.h"
 #include "core/portdatabase/tSerializableReusable.h"
+#include "finroc_core_utils/log/tLogUser.h"
 #include "core/port/net/tUpdateTimeChangeListener.h"
 #include "core/thread/tCoreLoopThreadBase.h"
 #include "finroc_core_utils/tAtomicDoubleInt.h"
@@ -52,7 +53,7 @@ namespace tcp
  *
  * (writer and listener members need to be initialized by subclass)
  */
-class tTCPConnection : public util::tUncopyableObject, public core::tUpdateTimeChangeListener
+class tTCPConnection : public util::tLogUser, public core::tUpdateTimeChangeListener
 {
 public:
 
@@ -231,6 +232,9 @@ public:
 
   /*! Needs to be locked after framework elements, but before runtime registry */
   util::tMutexLockOrder obj_mutex;
+
+  /*! Log domain for this class */
+  CREATE_NAMED_LOGGING_DOMAIN(log_domain, "tcp");
 
 protected:
 

@@ -28,8 +28,8 @@
 #include "finroc_core_utils/thread/sThreadUtil.h"
 #include "core/port/tPortFlags.h"
 #include "core/tLockOrderLevels.h"
-#include "tcp/tTCPSettings.h"
 #include "core/datatype/tFrameworkElementInfo.h"
+#include "tcp/tTCPSettings.h"
 #include "core/tCoreFlags.h"
 #include "finroc_core_utils/tTime.h"
 
@@ -185,10 +185,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
 
     //long timestamp = readTimestamp();
     p = GetPort(handle, true);
-    if (tTCPSettings::cDISPLAY_INCOMING_TCP_SERVER_COMMANDS->Get())
-    {
-      util::tSystem::out.Println(util::tStringBuilder("Incoming Server Command: Set ") + (p != NULL ? p->local_port->GetQualifiedName() : handle));
-    }
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, << util::tStringBuilder("Incoming Server Command: Set ") << (p != NULL ? p->local_port->GetQualifiedName() : handle));
     if (p != NULL)
     {
       {
@@ -216,10 +213,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
 
     handle = this->cis->ReadInt();
     p = GetPort(handle, false);
-    if (tTCPSettings::cDISPLAY_INCOMING_TCP_SERVER_COMMANDS->Get())
-    {
-      util::tSystem::out.Println(util::tStringBuilder("Incoming Server Command: Unsubscribe ") + (p != NULL ? p->local_port->GetQualifiedName() : handle));
-    }
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, << util::tStringBuilder("Incoming Server Command: Unsubscribe ") << (p != NULL ? p->local_port->GetQualifiedName() : handle));
     if (p != NULL && p->GetPort()->IsReady())    // complete disconnect
     {
       p->ManagedDelete();
@@ -227,7 +221,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
     break;
 
   default:
-    throw util::tRuntimeException("Unknown OpCode");
+    throw util::tRuntimeException("Unknown OpCode", __CODE_LOCATION__);
 
   case tTCP::cSUBSCRIBE:  // Subscribe to data
 
@@ -237,10 +231,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
     int16 update_interval = this->cis->ReadShort();
     int remote_handle = this->cis->ReadInt();
     p = GetPort(handle, true);
-    if (tTCPSettings::cDISPLAY_INCOMING_TCP_SERVER_COMMANDS->Get())
-    {
-      util::tSystem::out.Println(util::tStringBuilder("Incoming Server Command: Subscribe ") + (p != NULL ? p->local_port->GetQualifiedName() : handle) + " " + strategy + " " + reverse_push + " " + update_interval + " " + remote_handle);
-    }
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, << util::tStringBuilder("Incoming Server Command: Subscribe ") << (p != NULL ? p->local_port->GetQualifiedName() : handle) << " " << strategy << " " << reverse_push << " " << update_interval << " " << remote_handle);
     if (p != NULL)
     {
       {

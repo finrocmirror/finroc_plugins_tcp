@@ -279,7 +279,7 @@ void tTCPPeer::NodeDiscovered(const util::tIPSocketAddress& isa, const util::tSt
         return rs;
       }
     }
-    util::tSystem::out.Println(util::tStringBuilder("TCPClient warning: Node ") + name_ + " not found");
+    FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, << util::tStringBuilder("TCPClient warning: Node ") << name_ << " not found");
     return NULL;
   }
 }
@@ -324,7 +324,7 @@ void tTCPPeer::PrepareDelete()
   }
   catch (const util::tException& e)
   {
-    e.PrintStackTrace();
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_WARNING, log_domain, << e);
   }
   if (tracker != NULL)
   {

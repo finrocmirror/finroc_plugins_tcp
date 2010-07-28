@@ -42,8 +42,6 @@ core::tIntSetting* tTCPSettings::max_not_acknowledged_packets_bulk = tTCPSetting
 core::tIntSetting* tTCPSettings::min_update_interval_express = tTCPSettings::inst.Add("Minimum Express Update Interval", 25, true, &(core::tUnit::ms), core::tBounds(1, 2000, core::tConstant::cNO_MIN_TIME_LIMIT.get()));
 core::tIntSetting* tTCPSettings::min_update_interval_bulk = tTCPSettings::inst.Add("Minimum Bulk Update Interval", 50, true, &(core::tUnit::ms), core::tBounds(1, 2000, core::tConstant::cNO_MIN_TIME_LIMIT.get()));
 core::tIntSetting* tTCPSettings::critical_ping_threshold = tTCPSettings::inst.Add("Critical Ping Threshold", 1500, true, &(core::tUnit::ms), core::tBounds(50, 20000, core::tConstant::cNO_MAX_TIME_LIMIT.get()));
-core::tBoolSetting* tTCPSettings::cDISPLAY_INCOMING_TCP_SERVER_COMMANDS = tTCPSettings::inst.Add("DISPLAY_INCOMING_TCP_SERVER_COMMANDS", true, true);
-core::tBoolSetting* tTCPSettings::cDISPLAY_INCOMING_PORT_UPDATES = tTCPSettings::inst.Add("DISPLAY_INCOMING_TCP_SERVER_COMMANDS", false, true);
 
 tTCPSettings::tTCPSettings() :
     core::tSettings("TCP Settings", "tcp", true)

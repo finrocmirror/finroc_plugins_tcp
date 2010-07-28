@@ -96,13 +96,9 @@ public:
 
   static core::tIntSetting* critical_ping_threshold;
 
-  /*! Debug Settings */
-  static core::tBoolSetting* cDISPLAY_INCOMING_TCP_SERVER_COMMANDS;
-
-  static core::tBoolSetting* cDISPLAY_INCOMING_PORT_UPDATES;
-
 private:
 
+  /*! Debug Settings */
   tTCPSettings();
 
 public:

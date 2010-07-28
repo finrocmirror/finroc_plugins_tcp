@@ -147,6 +147,13 @@ private:
   /*! Set to true when server will soon be deleted */
   bool deleted_soon;
 
+public:
+
+  /*! Log domain for this class */
+  CREATE_NAMED_LOGGING_DOMAIN(log_domain, "tcp");
+
+private:
+
   /*!
    * Connect to remote server
    */
@@ -446,7 +453,7 @@ public:
 
     virtual void HandlePingTimeExceed()
     {
-      util::tSystem::out.Println("TCPClient warning: critical ping time exceeded");
+      FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, << "TCPClient warning: critical ping time exceeded");
     }
 
     virtual void ProcessRequest(int8 op_code);

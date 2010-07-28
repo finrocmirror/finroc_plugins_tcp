@@ -60,6 +60,11 @@ private:
   /*! Peer that this server belongs to */
   tTCPPeer* peer;
 
+public:
+
+  /*! Log domain for this class */
+  CREATE_NAMED_LOGGING_DOMAIN(log_domain, "tcp");
+
 protected:
 
   virtual void PostChildInit();

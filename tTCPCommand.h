@@ -77,7 +77,7 @@ public:
 
   virtual void Deserialize(core::tCoreInput& is)
   {
-    throw util::tRuntimeException("Unsupported - not needed - server decodes directly (more efficient)");
+    throw util::tRuntimeException("Unsupported - not needed - server decodes directly (more efficient)", __CODE_LOCATION__);
   }
 
   virtual void Serialize(core::tCoreOutput& os) const;

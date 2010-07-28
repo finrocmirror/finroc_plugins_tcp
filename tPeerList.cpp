@@ -57,7 +57,7 @@ void tPeerList::AddPeer(util::tIPSocketAddress isa, bool notify_on_change)
       add = !peers.Contains(isa);
       if (add)
       {
-        util::tSystem::out.Println(util::tStringBuilder("received new peer: ") + isa.ToString());
+        FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG, log_domain, << util::tStringBuilder("received new peer: ") << isa.ToString());
         peers.Add(isa);
       }
     }
