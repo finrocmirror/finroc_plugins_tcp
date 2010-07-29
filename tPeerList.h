@@ -60,7 +60,7 @@ private:
 public:
 
   /*! Log domain for this class */
-  CREATE_NAMED_LOGGING_DOMAIN(log_domain, "tcp");
+  RRLIB_LOG_CREATE_NAMED_DOMAIN(log_domain, "tcp");
 
   /*! @param serverPort Server port of own peer */
   tPeerList(int server_port_, int lock_order);

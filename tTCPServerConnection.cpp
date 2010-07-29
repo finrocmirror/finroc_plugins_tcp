@@ -185,7 +185,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
 
     //long timestamp = readTimestamp();
     p = GetPort(handle, true);
-    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, << util::tStringBuilder("Incoming Server Command: Set ") << (p != NULL ? p->local_port->GetQualifiedName() : handle));
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Incoming Server Command: Set "), (p != NULL ? p->local_port->GetQualifiedName() : handle));
     if (p != NULL)
     {
       {
@@ -213,7 +213,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
 
     handle = this->cis->ReadInt();
     p = GetPort(handle, false);
-    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, << util::tStringBuilder("Incoming Server Command: Unsubscribe ") << (p != NULL ? p->local_port->GetQualifiedName() : handle));
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Incoming Server Command: Unsubscribe "), (p != NULL ? p->local_port->GetQualifiedName() : handle));
     if (p != NULL && p->GetPort()->IsReady())    // complete disconnect
     {
       p->ManagedDelete();
@@ -221,7 +221,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
     break;
 
   default:
-    throw util::tRuntimeException("Unknown OpCode", __CODE_LOCATION__);
+    throw util::tRuntimeException("Unknown OpCode", CODE_LOCATION_MACRO);
 
   case tTCP::cSUBSCRIBE:  // Subscribe to data
 
@@ -231,7 +231,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
     int16 update_interval = this->cis->ReadShort();
     int remote_handle = this->cis->ReadInt();
     p = GetPort(handle, true);
-    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, << util::tStringBuilder("Incoming Server Command: Subscribe ") << (p != NULL ? p->local_port->GetQualifiedName() : handle) << " " << strategy << " " << reverse_push << " " << update_interval << " " << remote_handle);
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Incoming Server Command: Subscribe "), (p != NULL ? p->local_port->GetQualifiedName() : handle), " ", strategy, " ", reverse_push, " ", update_interval, " ", remote_handle);
     if (p != NULL)
     {
       {

@@ -150,7 +150,7 @@ private:
 public:
 
   /*! Log domain for this class */
-  CREATE_NAMED_LOGGING_DOMAIN(log_domain, "tcp");
+  RRLIB_LOG_CREATE_NAMED_DOMAIN(log_domain, "tcp");
 
 private:
 
@@ -453,7 +453,7 @@ public:
 
     virtual void HandlePingTimeExceed()
     {
-      FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, << "TCPClient warning: critical ping time exceeded");
+      FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, "TCPClient warning: critical ping time exceeded");
     }
 
     virtual void ProcessRequest(int8 op_code);

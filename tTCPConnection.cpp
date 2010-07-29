@@ -123,7 +123,7 @@ void tTCPConnection::Disconnect()
     }
     catch (const util::tInterruptedException& e)
     {
-      FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, << "warning: TCPConnection::disconnect() - Interrupted waiting for writer thread.");
+      FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, "warning: TCPConnection::disconnect() - Interrupted waiting for writer thread.");
     }
   }
   ::std::tr1::shared_ptr<tReader> locked_reader = reader.lock();
@@ -136,7 +136,7 @@ void tTCPConnection::Disconnect()
     }
     catch (const util::tInterruptedException& e)
     {
-      FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, << "warning: TCPConnection::disconnect() - Interrupted waiting for reader thread.");
+      FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, "warning: TCPConnection::disconnect() - Interrupted waiting for reader thread.");
     }
   }
 }
@@ -231,7 +231,7 @@ void tTCPConnection::HandleMethodCall()
     cis->SetBufferSource(NULL);
 
     // process call
-    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, << util::tStringBuilder("Incoming Server Command: Method call ") << (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Incoming Server Command: Method call "), (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
     if (skip_call)
     {
       mc->SetExceptionStatus(core::tMethodCallException::eNO_CONNECTION);
@@ -293,7 +293,7 @@ void tTCPConnection::HandleMethodCallReturn()
     cis->SetBufferSource(NULL);
 
     // process call
-    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, << util::tStringBuilder("Incoming Server Command: Method call return ") << (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Incoming Server Command: Method call return "), (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
 
     // process call
     port->HandleCallReturnFromNet(mc);
@@ -322,7 +322,7 @@ void tTCPConnection::HandlePullCall()
   }
 
   // process call
-  FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, << util::tStringBuilder("Incoming Server Command to port '") << (port != NULL ? port->GetPort()->GetQualifiedName() : handle) << "': " << pc->ToString());
+  FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Incoming Server Command to port '"), (port != NULL ? port->GetPort()->GetQualifiedName() : handle), "': ", pc->ToString());
 
   if (port == NULL || (!port->GetPort()->IsReady()))
   {
@@ -376,14 +376,14 @@ void tTCPConnection::HandleReturningPullCall()
       cis->SetBufferSource(NULL);
 
       // debug output
-      FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, << util::tStringBuilder("Incoming Server Command: Pull return call ") << (port != NULL ? port->GetPort()->GetQualifiedName() : handle) << " status: " << pc->GetStatusString());
+      FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Incoming Server Command: Pull return call "), (port != NULL ? port->GetPort()->GetQualifiedName() : handle), " status: ", pc->GetStatusString());
 
       // Returning call
       pc->DeserializeParamaters();
     }
     catch (const util::tException& e)
     {
-      FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_WARNING, log_domain, << e);
+      FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_WARNING, log_domain, e);
       pc->Recycle();
       pc = NULL;
     }
@@ -504,7 +504,7 @@ void tTCPConnection::tReader::CheckCommandEnd()
     int i = outer_class_ptr->cis->ReadInt();
     if (i != tTCPSettings::cDEBUG_TCP_NUMBER)
     {
-      throw util::tRuntimeException("TCP Stream seems corrupt", __CODE_LOCATION__);
+      throw util::tRuntimeException("TCP Stream seems corrupt", CODE_LOCATION_MACRO);
     }
   }
 }
@@ -611,7 +611,7 @@ void tTCPConnection::tReader::Run()
   {
     if (typeid(e) != typeid(finroc::util::tEOFException) && typeid(e) != typeid(finroc::util::tIOException))
     {
-      FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_WARNING, log_domain) << e;
+      FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_WARNING, log_domain, e);
     }
 
   }
@@ -621,7 +621,7 @@ void tTCPConnection::tReader::Run()
   }
   catch (const util::tException& e)
   {
-    FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, << e);
+    FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, e);
   }
 
   try
@@ -731,7 +731,7 @@ void tTCPConnection::tWriter::Run()
           }
           catch (const util::tException& e)
           {
-            FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, << e);
+            FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, e);
           }
           //cleanShutdown();
           return;
@@ -818,7 +818,7 @@ void tTCPConnection::tWriter::Run()
   }
   catch (const util::tException& e)
   {
-    FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain) << e;
+    FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, e);
 
     try
     {
@@ -826,7 +826,7 @@ void tTCPConnection::tWriter::Run()
     }
     catch (const util::tException& e2)
     {
-      FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, << e2);
+      FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, e2);
     }
   }
 

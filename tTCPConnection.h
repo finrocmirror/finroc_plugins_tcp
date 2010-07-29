@@ -234,7 +234,7 @@ public:
   util::tMutexLockOrder obj_mutex;
 
   /*! Log domain for this class */
-  CREATE_NAMED_LOGGING_DOMAIN(log_domain, "tcp");
+  RRLIB_LOG_CREATE_NAMED_DOMAIN(log_domain, "tcp");
 
 protected:
 
