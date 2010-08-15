@@ -31,6 +31,7 @@ namespace tcp
 {
 core::tFrameworkElementTreeFilter tTCPPeer::cGUI_FILTER(core::tCoreFlags::cSTATUS_FLAGS | core::tCoreFlags::cNETWORK_ELEMENT, core::tCoreFlags::cREADY | core::tCoreFlags::cPUBLISHED);
 core::tFrameworkElementTreeFilter tTCPPeer::cDEFAULT_FILTER(core::tCoreFlags::cSTATUS_FLAGS | core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cSHARED | core::tCoreFlags::cIS_PORT, core::tCoreFlags::cREADY | core::tCoreFlags::cPUBLISHED | core::tCoreFlags::cSHARED | core::tCoreFlags::cIS_PORT);
+core::tFrameworkElementTreeFilter tTCPPeer::cALL_AND_EDGE_FILTER(core::tCoreFlags::cSTATUS_FLAGS, core::tCoreFlags::cREADY | core::tCoreFlags::cPUBLISHED);
 
 tTCPPeer::tTCPPeer(const util::tString& network_name_, core::tFrameworkElementTreeFilter filter_) :
     core::tExternalConnection("TCP", network_name_),

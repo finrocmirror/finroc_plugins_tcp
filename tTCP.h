@@ -28,7 +28,6 @@
 #include "tcp/tTCPCommand.h"
 #include "core/plugin/tExternalConnection.h"
 #include "core/plugin/tPluginManager.h"
-#include "core/plugin/tPlugins.h"
 #include "core/plugin/tPlugin.h"
 #include "core/plugin/tCreateExternalConnectionAction.h"
 
@@ -61,9 +60,44 @@ class tTCP : public util::tUncopyableObject, public core::tPlugin, public core::
 
     virtual core::tExternalConnection* CreateExternalConnection();
 
+    virtual int GetFlags()
+    {
+      return 0;
+    }
+
     virtual const util::tString ToString() const
     {
       return "TCP - port only";
+    }
+
+  };
+
+  /*!
+   * Full TCP connection creator
+   */
+  class tTCPCompleteInfo : public util::tObject, public core::tCreateExternalConnectionAction
+  {
+  private:
+
+    // Outer class TCP
+    tTCP* const outer_class_ptr;
+
+  public:
+
+    tTCPCompleteInfo(tTCP* const outer_class_ptr_) :
+        outer_class_ptr(outer_class_ptr_)
+    {}
+
+    virtual core::tExternalConnection* CreateExternalConnection();
+
+    virtual int GetFlags()
+    {
+      return ::finroc::core::tCreateExternalConnectionAction::cREMOTE_EDGE_INFO;
+    }
+
+    virtual const util::tString ToString() const
+    {
+      return "TCP - everything - including edges";
     }
 
   };
@@ -75,6 +109,9 @@ private:
 
   /*! Alternative TCP connection creator */
   tTCPLightweigtFlat creator2;
+
+  /*! Complete TCP connection creator */
+  tTCPCompleteInfo creator3;
 
 public:
 
@@ -107,16 +144,17 @@ public:
 
   virtual ~tTCP();
 
+  virtual int GetFlags()
+  {
+    return 0;
+  }
+
   /*!
    * \return Unused TCP Command
    */
   static tTCPCommand* GetUnusedTCPCommand();
 
-  virtual void Init(core::tPluginManager& mgr)
-  {
-    core::tPlugins::GetInstance()->RegisterExternalConnection(::std::tr1::shared_ptr< ::finroc::core::tCreateExternalConnectionAction>(this));
-    core::tPlugins::GetInstance()->RegisterExternalConnection(::std::tr1::shared_ptr< ::finroc::core::tCreateExternalConnectionAction>(&(creator2)));
-  }
+  virtual void Init(core::tPluginManager& mgr);
 
 };
 

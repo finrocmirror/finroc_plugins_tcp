@@ -254,6 +254,10 @@ void tTCPServerConnection::RuntimeChange(int8 change_type, core::tFrameworkEleme
 {
   if (element != core::tRuntimeEnvironment::GetInstance() && element_filter.Accept(element, tmp) && change_type != ::finroc::core::tRuntimeListener::cPRE_INIT)
   {
+    if (change_type == cEDGE_CHANGE && (!element_filter.IsAcceptAllFilter()))
+    {
+      return;
+    }
     runtime_info_writer.WriteByte(tTCP::cPORT_UPDATE);
     core::tFrameworkElementInfo::SerializeFrameworkElement(element, change_type, &(runtime_info_writer), element_filter, tmp);
     if (tTCPSettings::cDEBUG_TCP)

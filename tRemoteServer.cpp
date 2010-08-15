@@ -368,7 +368,7 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
     }
 
   }
-  else if (info.op_code == ::finroc::core::tRuntimeListener::cCHANGE)
+  else if (info.op_code == ::finroc::core::tRuntimeListener::cCHANGE || info.op_code == ::finroc::core::tRuntimeListener::cEDGE_CHANGE)
   {
     // we're dealing with an existing framework element
     assert((fe != NULL || port != NULL));
@@ -487,7 +487,7 @@ void tRemoteServer::TemporaryDisconnect()
 }
 
 tRemoteServer::tProxyFrameworkElement::tProxyFrameworkElement(tRemoteServer* const outer_class_ptr_, int handle, int extra_flags, int lock_order) :
-    core::tFrameworkElement("(yet unknown)", NULL, core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | (extra_flags & core::tFrameworkElementInfo::cPARENT_FLAGS_TO_STORE), lock_order),
+    core::tFrameworkElement("(yet unknown)", NULL, core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tFrameworkElementInfo::FilterParentFlags(extra_flags), lock_order),
     outer_class_ptr(outer_class_ptr_),
     refound(true),
     remote_handle(handle),
@@ -659,7 +659,7 @@ void tRemoteServer::tProxyPort::UpdateFromPortInfo(const core::tFrameworkElement
     GetPort()->SetMinNetUpdateInterval(port_info.GetMinNetUpdateInterval());
     this->update_interval_partner = port_info.GetMinNetUpdateInterval();  // TODO redundant?
     PropagateStrategyFromTheNet(port_info.GetStrategy());
-    port_info.GetConnections(this->connections);
+
     FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, tRemoteServer::log_domain, util::tStringBuilder("Updating port info: "), port_info.ToString());
     if (port_info.op_code == core::tRuntimeListener::cADD)
     {

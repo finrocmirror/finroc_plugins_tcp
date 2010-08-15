@@ -24,7 +24,6 @@
 #ifndef PLUGINS__TCP__TTCPPORT_H
 #define PLUGINS__TCP__TTCPPORT_H
 
-#include "finroc_core_utils/container/tSimpleList.h"
 #include "core/port/tPortCreationInfo.h"
 #include "core/port/tPortFlags.h"
 #include "core/port/rpc/tAbstractCall.h"
@@ -56,9 +55,6 @@ protected:
 
   /*! Update interval as requested by connection partner - -1 or smaller means no request */
   int16 update_interval_partner;
-
-  /*! Handles (remote) of port's outgoing connections */
-  util::tSimpleList<int> connections;
 
 private:
 
