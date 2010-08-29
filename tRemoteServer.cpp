@@ -32,6 +32,7 @@
 #include "core/port/tAbstractPort.h"
 #include "finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
 #include "core/portdatabase/tDataTypeRegister.h"
+#include "core/admin/tAdminServer.h"
 #include "finroc_core_utils/tTime.h"
 #include "tcp/tTCPCommand.h"
 #include "tcp/tTCPSettings.h"
@@ -57,7 +58,8 @@ tRemoteServer::tRemoteServer(util::tIPSocketAddress isa, const util::tString& na
     peer(peer_),
     global_links(filter_.IsPortOnlyFilter() ? new ::finroc::core::tFrameworkElement("global", this, core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cGLOBALLY_UNIQUE_LINK | core::tCoreFlags::cALTERNATE_LINK_ROOT, -1) : NULL),
     disconnect_calls(0),
-    deleted_soon(false)
+    deleted_soon(false),
+    admin_interface(filter_.IsAcceptAllFilter() ? new core::tAdminClient(util::tStringBuilder("AdminClient ") + GetDescription(), peer_) : NULL)
 {
   core::tRuntimeEnvironment::GetInstance()->AddListener(this);
   connector_thread->Start();
@@ -277,6 +279,12 @@ void tRemoteServer::PrepareDelete()
   {
     FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, "warning: RemoteServer::prepareDelete() - Interrupted waiting for connector thread.");
   }
+
+  if (admin_interface != NULL && admin_interface->IsReady())
+  {
+    admin_interface->ManagedDelete();
+  }
+
   FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG, log_domain, "RemoteServer: Disconnecting");
   Disconnect();
 
@@ -295,6 +303,8 @@ void tRemoteServer::PrepareDelete()
 
 void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
 {
+  FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Received updated FrameworkElementInfo: "), tmp_info.ToString());
+
   // these variables will store element to update
   tProxyFrameworkElement* fe = NULL;
   tProxyPort* port = NULL;
@@ -319,7 +329,7 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
         return;
       }
 
-      if (port != NULL && port->remote_handle != info.GetHandle())
+      if (port != NULL && port->GetRemoteHandle() != info.GetHandle())
       {
         port->ManagedDelete();
         port = NULL;
@@ -438,7 +448,6 @@ void tRemoteServer::RetrieveRemotePorts(core::tCoreInput* cis, core::tCoreOutput
   while (cis->ReadByte() != 0)
   {
     tmp_info.Deserialize(cis, *type_lookup);
-    //System.out.println("Received info: " + tmpInfo.toString());
     ProcessPortUpdate(tmp_info);
   }
   Init();
@@ -731,6 +740,16 @@ void tRemoteServer::tConnection::Connect(::std::tr1::shared_ptr<util::tNetSocket
     }*/
     FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG, log_domain, (new_server ? "Connecting" : "Reconnecting"), " to server ", socket_->GetRemoteSocketAddress().ToString(), "...");
     outer_class_ptr->RetrieveRemotePorts(this->cis.get(), this->cos.get(), &(this->update_times), new_server);
+
+    // connect to admin interface?
+    if (outer_class_ptr->admin_interface != NULL)
+    {
+      core::tFrameworkElement* fe = outer_class_ptr->GetChildElement(core::tAdminServer::cQUALIFIED_PORT_NAME, false);
+      if (fe != NULL && fe->IsPort() && fe->IsReady())
+      {
+        (static_cast<core::tAbstractPort*>(fe))->ConnectToTarget(outer_class_ptr->admin_interface);
+      }
+    }
   }
 
   // start incoming data listener thread

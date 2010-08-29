@@ -187,7 +187,7 @@ float tTCPPeer::GetConnectionQuality()
   core::tChildIterator ci(this);
   for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
   {
-    if (fe == server)
+    if (fe == server || fe->IsPort())
     {
       continue;
     }
@@ -213,7 +213,7 @@ util::tString tTCPPeer::GetStatus(bool detailed)
     core::tChildIterator ci(this);
     for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
     {
-      if (fe == server || (!fe->IsReady()))
+      if (fe == server || (!fe->IsReady()) || fe->IsPort())
       {
         continue;
       }
@@ -269,7 +269,7 @@ void tTCPPeer::NodeDiscovered(const util::tIPSocketAddress& isa, const util::tSt
     ci.Reset();
     for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
     {
-      if (fe == server)
+      if (fe == server || fe->IsPort())
       {
         continue;
       }

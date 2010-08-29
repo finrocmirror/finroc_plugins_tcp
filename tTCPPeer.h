@@ -143,6 +143,14 @@ public:
   virtual util::tString GetStatus(bool detailed);
 
   /*!
+   * \return Is this a connection/client used for administration?
+   */
+  inline bool IsAdminConnection()
+  {
+    return filter.IsAcceptAllFilter();
+  }
+
+  /*!
    * \return Does peer act as a client?
    */
   inline bool IsClient()

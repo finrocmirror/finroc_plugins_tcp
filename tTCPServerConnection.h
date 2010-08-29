@@ -38,6 +38,7 @@
 #include "tcp/tTCPConnection.h"
 #include "core/tRuntimeListener.h"
 #include "core/tChildIterator.h"
+#include "core/admin/tAdminClient.h"
 #include "core/thread/tCoreLoopThreadBase.h"
 
 namespace finroc
@@ -272,6 +273,11 @@ public:
     /*! Edge to connect server port with local port
      * \param port_set */
     tServerPort(tTCPServerConnection* const outer_class_ptr_, core::tAbstractPort* counter_part, tTCPServerConnection::tPortSet* port_set);
+
+    virtual core::tAdminClient* GetAdminInterface()
+    {
+      return NULL;
+    }
 
     // notify any connected input ports about disconnect
     virtual void NotifyDisconnect();
