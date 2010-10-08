@@ -26,10 +26,16 @@
 
 #include "finroc_core_utils/container/tSimpleList.h"
 #include "finroc_core_utils/net/tIPSocketAddress.h"
-#include "finroc_core_utils/stream/tInputStreamBuffer.h"
 #include "finroc_core_utils/net/tIPAddress.h"
-#include "finroc_core_utils/stream/tOutputStreamBuffer.h"
 #include "core/port/net/tAbstractPeerTracker.h"
+
+namespace finroc
+{
+namespace util
+{
+class tInputStreamBuffer;
+} // namespace finroc
+} // namespace util
 
 namespace finroc
 {

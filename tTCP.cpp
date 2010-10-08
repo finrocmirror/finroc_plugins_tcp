@@ -21,8 +21,10 @@
  */
 #include "tcp/tTCP.h"
 #include "finroc_core_utils/tAutoDeleter.h"
-#include "tcp/tTCPPeer.h"
+#include "tcp/tTCPCommand.h"
 #include "core/plugin/tPlugins.h"
+#include "tcp/tTCPPeer.h"
+#include "core/tFrameworkElement.h"
 
 namespace finroc
 {
@@ -36,16 +38,11 @@ util::tString tTCP::cDEFAULT_CONNECTION_NAME = "localhost:4444";
 util::tReusablesPoolCR<tTCPCommand>* tTCP::tcp_commands = util::tAutoDeleter::AddStatic(new util::tReusablesPoolCR<tTCPCommand>());
 
 tTCP::tTCP() :
-    creator2(this),
-    creator3(this)
+    creator1(this, tTCPPeer::cGUI_FILTER, "TCP", 0),
+    creator2(this, tTCPPeer::cDEFAULT_FILTER, "TCP ports only", 0),
+    creator3(this, tTCPPeer::cALL_AND_EDGE_FILTER, "TCP admin", core::tCreateExternalConnectionAction::cREMOTE_EDGE_INFO)
 {
   instance = ::std::tr1::shared_ptr<tTCP>(this);
-}
-
-core::tExternalConnection* tTCP::CreateExternalConnection()
-{
-  //return new TCPClient(new FrameworkElementTreeFilter(CoreFlags.STATUS_FLAGS | CoreFlags.NETWORK_ELEMENT, CoreFlags.READY | CoreFlags.PUBLISHED));
-  return new tTCPPeer(cDEFAULT_CONNECTION_NAME, tTCPPeer::cGUI_FILTER);
 }
 
 tTCP::~tTCP()
@@ -70,19 +67,29 @@ tTCPCommand* tTCP::GetUnusedTCPCommand()
 
 void tTCP::Init(core::tPluginManager& mgr)
 {
-  core::tPlugins::GetInstance()->RegisterExternalConnection(::std::tr1::shared_ptr< ::finroc::core::tCreateExternalConnectionAction>(this));
-  core::tPlugins::GetInstance()->RegisterExternalConnection(::std::tr1::shared_ptr< ::finroc::core::tCreateExternalConnectionAction>(&(creator2)));
-  core::tPlugins::GetInstance()->RegisterExternalConnection(::std::tr1::shared_ptr< ::finroc::core::tCreateExternalConnectionAction>(&(creator3)));
+  core::tPlugins::GetInstance()->RegisterExternalConnection(::std::tr1::shared_ptr<core::tCreateExternalConnectionAction>(&(creator1)));
+  core::tPlugins::GetInstance()->RegisterExternalConnection(::std::tr1::shared_ptr<core::tCreateExternalConnectionAction>(&(creator2)));
+  core::tPlugins::GetInstance()->RegisterExternalConnection(::std::tr1::shared_ptr<core::tCreateExternalConnectionAction>(&(creator3)));
 }
 
-core::tExternalConnection* tTCP::tTCPLightweigtFlat::CreateExternalConnection()
+tTCP::tCreateAction::tCreateAction(tTCP* const outer_class_ptr_, core::tFrameworkElementTreeFilter filter_, const util::tString& name_, int flags_) :
+    outer_class_ptr(outer_class_ptr_),
+    filter(filter_),
+    name(name_),
+    flags(flags_)
 {
-  return new tTCPPeer(tTCP::cDEFAULT_CONNECTION_NAME, tTCPPeer::cDEFAULT_FILTER);
 }
 
-core::tExternalConnection* tTCP::tTCPCompleteInfo::CreateExternalConnection()
+core::tExternalConnection* tTCP::tCreateAction::CreateExternalConnection() const
 {
-  return new tTCPPeer(tTCP::cDEFAULT_CONNECTION_NAME, tTCPPeer::cALL_AND_EDGE_FILTER);
+  return new tTCPPeer(tTCP::cDEFAULT_CONNECTION_NAME, filter);
+}
+
+core::tFrameworkElement* tTCP::tCreateAction::CreateModule(const util::tString& name_, core::tFrameworkElement* parent, core::tStructureParameterList* params) const
+{
+  core::tFrameworkElement* result = CreateExternalConnection();
+  parent->AddChild(result);
+  return result;
 }
 
 } // namespace finroc

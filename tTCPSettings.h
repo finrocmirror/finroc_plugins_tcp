@@ -24,9 +24,16 @@
 #ifndef PLUGINS__TCP__TTCPSETTINGS_H
 #define PLUGINS__TCP__TTCPSETTINGS_H
 
-#include "core/settings/tSetting.h"
 #include "core/tRuntimeSettings.h"
 #include "core/settings/tSettings.h"
+
+namespace finroc
+{
+namespace core
+{
+class tSetting;
+} // namespace finroc
+} // namespace core
 
 namespace finroc
 {

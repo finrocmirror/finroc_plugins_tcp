@@ -29,22 +29,29 @@
 #include "core/buffers/tCoreInput.h"
 #include "core/tFrameworkElementTreeFilter.h"
 #include "finroc_core_utils/net/tNetSocket.h"
-#include "tcp/tTCPServer.h"
-#include "tcp/tTCPPeer.h"
-#include "core/port/tAbstractPort.h"
 #include "core/port/tPortCreationInfo.h"
-#include "tcp/tTCPPort.h"
-#include "core/tFrameworkElement.h"
 #include "tcp/tTCPConnection.h"
 #include "core/tRuntimeListener.h"
 #include "core/tChildIterator.h"
-#include "core/admin/tAdminClient.h"
+#include "core/tFrameworkElement.h"
+#include "tcp/tTCPPort.h"
 #include "core/thread/tCoreLoopThreadBase.h"
+
+namespace finroc
+{
+namespace core
+{
+class tAbstractPort;
+} // namespace finroc
+} // namespace core
 
 namespace finroc
 {
 namespace tcp
 {
+class tTCPServer;
+class tTCPPeer;
+
 /*!
  * \author Max Reichardt
  *
@@ -273,11 +280,6 @@ public:
     /*! Edge to connect server port with local port
      * \param port_set */
     tServerPort(tTCPServerConnection* const outer_class_ptr_, core::tAbstractPort* counter_part, tTCPServerConnection::tPortSet* port_set);
-
-    virtual core::tAdminClient* GetAdminInterface()
-    {
-      return NULL;
-    }
 
     // notify any connected input ports about disconnect
     virtual void NotifyDisconnect();

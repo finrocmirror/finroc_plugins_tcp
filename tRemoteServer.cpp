@@ -28,14 +28,17 @@
 #include "finroc_core_utils/thread/sThreadUtil.h"
 #include "tcp/tTCP.h"
 #include "core/port/tPortFlags.h"
+#include "core/buffers/tCoreOutput.h"
+#include "core/buffers/tCoreInput.h"
 #include "core/port/net/tNetPort.h"
 #include "core/port/tAbstractPort.h"
 #include "finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
+#include "core/port/net/tRemoteTypes.h"
 #include "core/portdatabase/tDataTypeRegister.h"
-#include "core/admin/tAdminServer.h"
 #include "finroc_core_utils/tTime.h"
 #include "tcp/tTCPCommand.h"
 #include "tcp/tTCPSettings.h"
+#include "core/settings/tSetting.h"
 
 namespace finroc
 {
@@ -58,8 +61,7 @@ tRemoteServer::tRemoteServer(util::tIPSocketAddress isa, const util::tString& na
     peer(peer_),
     global_links(filter_.IsPortOnlyFilter() ? new ::finroc::core::tFrameworkElement("global", this, core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cGLOBALLY_UNIQUE_LINK | core::tCoreFlags::cALTERNATE_LINK_ROOT, -1) : NULL),
     disconnect_calls(0),
-    deleted_soon(false),
-    admin_interface(filter_.IsAcceptAllFilter() ? new core::tAdminClient(util::tStringBuilder("AdminClient ") + GetDescription(), peer_) : NULL)
+    deleted_soon(false)
 {
   core::tRuntimeEnvironment::GetInstance()->AddListener(this);
   connector_thread->Start();
@@ -280,11 +282,6 @@ void tRemoteServer::PrepareDelete()
     FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, "warning: RemoteServer::prepareDelete() - Interrupted waiting for connector thread.");
   }
 
-  if (admin_interface != NULL && admin_interface->IsReady())
-  {
-    admin_interface->ManagedDelete();
-  }
-
   FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG, log_domain, "RemoteServer: Disconnecting");
   Disconnect();
 
@@ -303,7 +300,7 @@ void tRemoteServer::PrepareDelete()
 
 void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
 {
-  FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Received updated FrameworkElementInfo: "), tmp_info.ToString());
+  FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Received updated FrameworkElementInfo: ", tmp_info.ToString());
 
   // these variables will store element to update
   tProxyFrameworkElement* fe = NULL;
@@ -537,6 +534,10 @@ void tRemoteServer::tProxyFrameworkElement::UpdateFromPortInfo(const core::tFram
     SetDescription(info.GetLink(0)->name);
     outer_class_ptr->GetFrameworkElement(info.GetLink(0)->parent, info.GetLink(0)->extra_flags, false, info.GetLink(0)->parent)->AddChild(this);
   }
+  if ((info.GetFlags() & core::tCoreFlags::cFINSTRUCTED) > 0)
+  {
+    SetFlag(core::tCoreFlags::cFINSTRUCTED);
+  }
   yet_unknown = false;
 }
 
@@ -669,7 +670,7 @@ void tRemoteServer::tProxyPort::UpdateFromPortInfo(const core::tFrameworkElement
     this->update_interval_partner = port_info.GetMinNetUpdateInterval();  // TODO redundant?
     PropagateStrategyFromTheNet(port_info.GetStrategy());
 
-    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, tRemoteServer::log_domain, util::tStringBuilder("Updating port info: "), port_info.ToString());
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, tRemoteServer::log_domain, "Updating port info: ", port_info.ToString());
     if (port_info.op_code == core::tRuntimeListener::cADD)
     {
       assert((!GetPort()->IsReady()));
@@ -733,23 +734,8 @@ void tRemoteServer::tConnection::Connect(::std::tr1::shared_ptr<util::tNetSocket
   if (bulk)
   {
     bool new_server = (outer_class_ptr->server_creation_time < 0) || (outer_class_ptr->server_creation_time != this->time_base);
-    /*if (!newServer) {
-        System.out.print("Re-");
-    } else {
-        serverCreationTime = timeBase;
-    }*/
     FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG, log_domain, (new_server ? "Connecting" : "Reconnecting"), " to server ", socket_->GetRemoteSocketAddress().ToString(), "...");
     outer_class_ptr->RetrieveRemotePorts(this->cis.get(), this->cos.get(), &(this->update_times), new_server);
-
-    // connect to admin interface?
-    if (outer_class_ptr->admin_interface != NULL)
-    {
-      core::tFrameworkElement* fe = outer_class_ptr->GetChildElement(core::tAdminServer::cQUALIFIED_PORT_NAME, false);
-      if (fe != NULL && fe->IsPort() && fe->IsReady())
-      {
-        (static_cast<core::tAbstractPort*>(fe))->ConnectToTarget(outer_class_ptr->admin_interface);
-      }
-    }
   }
 
   // start incoming data listener thread
@@ -871,7 +857,7 @@ tRemoteServer::tConnectorThread::tConnectorThread(tRemoteServer* const outer_cla
     ct_express()
 {
   SetName(util::tStringBuilder("TCP Connector Thread for ") + outer_class_ptr->GetDescription());
-  FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_1, log_domain, util::tStringBuilder("Creating "), GetName());
+  FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_1, log_domain, "Creating ", GetName());
   //this.setPriority(1); // low priority
 }
 

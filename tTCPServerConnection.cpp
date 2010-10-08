@@ -19,6 +19,8 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+#include "tcp/tTCPServer.h"
+
 #include "tcp/tTCPServerConnection.h"
 #include "tcp/tTCP.h"
 #include "finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
@@ -26,12 +28,16 @@
 #include "core/port/net/tRemoteTypes.h"
 #include "core/portdatabase/tDataTypeRegister.h"
 #include "finroc_core_utils/thread/sThreadUtil.h"
+#include "core/port/tAbstractPort.h"
 #include "core/port/tPortFlags.h"
 #include "core/tLockOrderLevels.h"
+#include "finroc_core_utils/log/tLogUser.h"
 #include "core/datatype/tFrameworkElementInfo.h"
 #include "tcp/tTCPSettings.h"
 #include "core/tCoreFlags.h"
+#include "core/port/net/tNetPort.h"
 #include "finroc_core_utils/tTime.h"
+#include "core/settings/tSetting.h"
 
 namespace finroc
 {
@@ -185,7 +191,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
 
     //long timestamp = readTimestamp();
     p = GetPort(handle, true);
-    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Incoming Server Command: Set "), (p != NULL ? p->local_port->GetQualifiedName() : handle));
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Set ", (p != NULL ? p->local_port->GetQualifiedName() : handle));
     if (p != NULL)
     {
       {
@@ -213,7 +219,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
 
     handle = this->cis->ReadInt();
     p = GetPort(handle, false);
-    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Incoming Server Command: Unsubscribe "), (p != NULL ? p->local_port->GetQualifiedName() : handle));
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Unsubscribe ", (p != NULL ? p->local_port->GetQualifiedName() : handle));
     if (p != NULL && p->GetPort()->IsReady())    // complete disconnect
     {
       p->ManagedDelete();
@@ -231,7 +237,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
     int16 update_interval = this->cis->ReadShort();
     int remote_handle = this->cis->ReadInt();
     p = GetPort(handle, true);
-    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Incoming Server Command: Subscribe "), (p != NULL ? p->local_port->GetQualifiedName() : handle), " ", strategy, " ", reverse_push, " ", update_interval, " ", remote_handle);
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Subscribe ", (p != NULL ? p->local_port->GetQualifiedName() : handle), " ", strategy, " ", reverse_push, " ", update_interval, " ", remote_handle);
     if (p != NULL)
     {
       {

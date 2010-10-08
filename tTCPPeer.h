@@ -24,19 +24,27 @@
 #ifndef PLUGINS__TCP__TTCPPEER_H
 #define PLUGINS__TCP__TTCPPEER_H
 
-#include "tcp/tTCPServer.h"
+#include "tcp/tTCPConnection.h"
 #include "core/tChildIterator.h"
 #include "core/tFrameworkElementTreeFilter.h"
-#include "tcp/tPeerList.h"
-#include "tcp/tTCPConnection.h"
-#include "finroc_core_utils/net/tIPSocketAddress.h"
 #include "core/plugin/tExternalConnection.h"
 #include "core/port/net/tAbstractPeerTracker.h"
 
 namespace finroc
 {
+namespace util
+{
+class tIPSocketAddress;
+} // namespace finroc
+} // namespace util
+
+namespace finroc
+{
 namespace tcp
 {
+class tTCPServer;
+class tPeerList;
+
 /*!
  * \author Max Reichardt
  *

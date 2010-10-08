@@ -21,6 +21,9 @@
  */
 #include "tcp/tPeerList.h"
 #include "core/tRuntimeEnvironment.h"
+#include "finroc_core_utils/log/tLogUser.h"
+#include "finroc_core_utils/stream/tInputStreamBuffer.h"
+#include "finroc_core_utils/stream/tOutputStreamBuffer.h"
 
 namespace finroc
 {
@@ -57,7 +60,7 @@ void tPeerList::AddPeer(util::tIPSocketAddress isa, bool notify_on_change)
       add = !peers.Contains(isa);
       if (add)
       {
-        FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG, log_domain, util::tStringBuilder("received new peer: "), isa.ToString());
+        FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG, log_domain, "received new peer: ", isa.ToString());
         peers.Add(isa);
       }
     }

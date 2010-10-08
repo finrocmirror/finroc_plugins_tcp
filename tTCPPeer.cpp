@@ -21,9 +21,13 @@
  */
 #include "tcp/tTCPPeer.h"
 #include "core/tCoreFlags.h"
+#include "tcp/tTCPServer.h"
 #include "core/tFrameworkElement.h"
+#include "tcp/tPeerList.h"
 #include "tcp/tRemoteServer.h"
+#include "finroc_core_utils/net/tIPSocketAddress.h"
 #include "finroc_core_utils/container/tSimpleList.h"
+#include "finroc_core_utils/log/tLogUser.h"
 
 namespace finroc
 {
@@ -280,7 +284,7 @@ void tTCPPeer::NodeDiscovered(const util::tIPSocketAddress& isa, const util::tSt
         return rs;
       }
     }
-    FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, util::tStringBuilder("TCPClient warning: Node "), name_, " not found");
+    FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, "TCPClient warning: Node ", name_, " not found");
     return NULL;
   }
 }

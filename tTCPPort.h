@@ -25,9 +25,17 @@
 #define PLUGINS__TCP__TTCPPORT_H
 
 #include "core/port/tPortCreationInfo.h"
-#include "core/port/tPortFlags.h"
-#include "core/port/rpc/tAbstractCall.h"
+#include "core/port/tAbstractPort.h"
 #include "core/port/net/tNetPort.h"
+#include "core/port/tPortFlags.h"
+
+namespace finroc
+{
+namespace core
+{
+class tAbstractCall;
+} // namespace finroc
+} // namespace core
 
 namespace finroc
 {

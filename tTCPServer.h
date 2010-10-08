@@ -26,8 +26,8 @@
 
 #include "finroc_core_utils/net/tNetSocket.h"
 #include "tcp/tTCP.h"
-#include "finroc_core_utils/net/tTCPConnectionHandler.h"
 #include "core/tFrameworkElement.h"
+#include "finroc_core_utils/net/tTCPConnectionHandler.h"
 #include "finroc_core_utils/net/tTCPServer.h"
 
 namespace finroc

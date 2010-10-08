@@ -24,9 +24,15 @@
 #ifndef PLUGINS__TCP__TTCPCOMMAND_H
 #define PLUGINS__TCP__TTCPCOMMAND_H
 
-#include "core/buffers/tCoreInput.h"
-#include "core/buffers/tCoreOutput.h"
 #include "core/portdatabase/tSerializableReusable.h"
+
+namespace finroc
+{
+namespace core
+{
+class tCoreInput;
+} // namespace finroc
+} // namespace core
 
 namespace finroc
 {

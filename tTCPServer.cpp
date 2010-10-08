@@ -25,6 +25,7 @@
 #include "core/tCoreFlags.h"
 #include "core/tLockOrderLevels.h"
 #include "tcp/tTCPSettings.h"
+#include "finroc_core_utils/log/tLogUser.h"
 #include "tcp/tTCPServerConnection.h"
 
 namespace finroc
@@ -77,7 +78,8 @@ void tTCPServer::PostChildInit()
     {
       break;
     }
-    FINROC_LOG_STREAM(rrlib::logging::eLL_USER, log_domain, util::tStringBuilder("Port "), port, " occupied - trying ", (port, 1));
+    int next_port = port + 1;
+    FINROC_LOG_STREAM(rrlib::logging::eLL_USER, log_domain, "Port ", port, " occupied - trying ", next_port);
     port++;
   }
 

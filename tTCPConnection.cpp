@@ -19,19 +19,25 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
+#include "core/portdatabase/tDataType.h"
 #include "tcp/tTCPConnection.h"
 #include "core/tRuntimeSettings.h"
+#include "tcp/tTCPPeer.h"
+#include "core/settings/tSetting.h"
 #include "finroc_core_utils/tTime.h"
 #include "core/port/rpc/tMethodCall.h"
 #include "core/port/tThreadLocalCache.h"
 #include "core/port/rpc/tMethodCallException.h"
+#include "core/port/tAbstractPort.h"
 #include "core/port/net/tNetPort.h"
 #include "core/port/rpc/tPullCall.h"
 #include "core/port/rpc/tRPCThreadPool.h"
-#include "core/port/tAbstractPort.h"
 #include "tcp/tTCPCommand.h"
+#include "finroc_core_utils/thread/tLoopThread.h"
 #include "tcp/tPeerList.h"
 #include "finroc_core_utils/net/tIPAddress.h"
+#include "finroc_core_utils/net/tIPSocketAddress.h"
+#include "core/portdatabase/tSerializableReusable.h"
 #include "finroc_core_utils/container/tAbstractReusable.h"
 
 namespace finroc
@@ -231,7 +237,7 @@ void tTCPConnection::HandleMethodCall()
     cis->SetBufferSource(NULL);
 
     // process call
-    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Incoming Server Command: Method call "), (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Method call ", (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
     if (skip_call)
     {
       mc->SetExceptionStatus(core::tMethodCallException::eNO_CONNECTION);
@@ -293,7 +299,7 @@ void tTCPConnection::HandleMethodCallReturn()
     cis->SetBufferSource(NULL);
 
     // process call
-    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Incoming Server Command: Method call return "), (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Method call return ", (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
 
     // process call
     port->HandleCallReturnFromNet(mc);
@@ -322,7 +328,7 @@ void tTCPConnection::HandlePullCall()
   }
 
   // process call
-  FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Incoming Server Command to port '"), (port != NULL ? port->GetPort()->GetQualifiedName() : handle), "': ", pc->ToString());
+  FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command to port '", (port != NULL ? port->GetPort()->GetQualifiedName() : handle), "': ", pc->ToString());
 
   if (port == NULL || (!port->GetPort()->IsReady()))
   {
@@ -376,7 +382,7 @@ void tTCPConnection::HandleReturningPullCall()
       cis->SetBufferSource(NULL);
 
       // debug output
-      FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, util::tStringBuilder("Incoming Server Command: Pull return call "), (port != NULL ? port->GetPort()->GetQualifiedName() : handle), " status: ", pc->GetStatusString());
+      FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Pull return call ", (port != NULL ? port->GetPort()->GetQualifiedName() : handle), " status: ", pc->GetStatusString());
 
       // Returning call
       pc->DeserializeParamaters();

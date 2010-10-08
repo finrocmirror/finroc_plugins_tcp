@@ -24,18 +24,14 @@
 #ifndef PLUGINS__TCP__TTCPCONNECTION_H
 #define PLUGINS__TCP__TTCPCONNECTION_H
 
-#include "core/portdatabase/tDataType.h"
+#include "tcp/tTCPPort.h"
 #include "finroc_core_utils/net/tNetSocket.h"
 #include "core/buffers/tCoreOutput.h"
 #include "core/buffers/tCoreInput.h"
-#include "core/settings/tSetting.h"
 #include "tcp/tTCPSettings.h"
 #include "core/port/net/tRemoteTypes.h"
-#include "tcp/tTCPPort.h"
-#include "tcp/tTCPPeer.h"
 #include "core/tLockOrderLevels.h"
 #include "tcp/tTCP.h"
-#include "core/portdatabase/tSerializableReusable.h"
 #include "finroc_core_utils/log/tLogUser.h"
 #include "core/port/net/tUpdateTimeChangeListener.h"
 #include "core/thread/tCoreLoopThreadBase.h"
@@ -44,8 +40,18 @@
 
 namespace finroc
 {
+namespace core
+{
+class tSetting;
+} // namespace finroc
+} // namespace core
+
+namespace finroc
+{
 namespace tcp
 {
+class tTCPPeer;
+
 /*!
  * \author Max Reichardt
  *

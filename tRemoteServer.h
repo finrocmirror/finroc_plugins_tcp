@@ -28,23 +28,29 @@
 #include "core/datatype/tFrameworkElementInfo.h"
 #include "core/tFrameworkElementTreeFilter.h"
 #include "core/port/net/tRemoteCoreRegister.h"
-#include "tcp/tTCPPeer.h"
-#include "core/tFrameworkElement.h"
-#include "core/admin/tAdminClient.h"
 #include "core/port/tPortCreationInfo.h"
-#include "core/buffers/tCoreInput.h"
-#include "core/buffers/tCoreOutput.h"
-#include "core/port/net/tRemoteTypes.h"
+#include "core/tFrameworkElement.h"
 #include "core/tRuntimeListener.h"
 #include "tcp/tTCPPort.h"
 #include "finroc_core_utils/net/tNetSocket.h"
+#include "finroc_core_utils/log/tLogUser.h"
 #include "tcp/tTCPConnection.h"
 #include "core/thread/tCoreLoopThreadBase.h"
 
 namespace finroc
 {
+namespace core
+{
+class tCoreInput;
+} // namespace finroc
+} // namespace core
+
+namespace finroc
+{
 namespace tcp
 {
+class tTCPPeer;
+
 /*!
  * \author Max Reichardt
  *
@@ -147,9 +153,6 @@ private:
 
   /*! Set to true when server will soon be deleted */
   bool deleted_soon;
-
-  /*! Administration interface client port */
-  core::tAdminClient* admin_interface;
 
 public:
 
@@ -402,11 +405,6 @@ public:
      * \param port_info Port information
      */
     tProxyPort(tRemoteServer* const outer_class_ptr_, const core::tFrameworkElementInfo& port_info);
-
-    virtual core::tAdminClient* GetAdminInterface()
-    {
-      return outer_class_ptr->admin_interface;
-    }
 
     /*!
      * Is port the one that is described by this information?

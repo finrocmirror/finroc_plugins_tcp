@@ -25,79 +25,77 @@
 #define PLUGINS__TCP__TTCP_H
 
 #include "finroc_core_utils/container/tReusablesPoolCR.h"
-#include "tcp/tTCPCommand.h"
-#include "core/plugin/tExternalConnection.h"
-#include "core/plugin/tPluginManager.h"
-#include "core/plugin/tPlugin.h"
 #include "core/plugin/tCreateExternalConnectionAction.h"
+#include "core/plugin/tPlugin.h"
+#include "core/tFrameworkElementTreeFilter.h"
+
+namespace finroc
+{
+namespace core
+{
+class tPluginManager;
+} // namespace finroc
+} // namespace core
 
 namespace finroc
 {
 namespace tcp
 {
+class tTCPPeer;
+class tTCPCommand;
+
 /*!
  * \author Max Reichardt
  *
  * Plugin for P2P TCP connections
  */
-class tTCP : public util::tUncopyableObject, public core::tPlugin, public core::tCreateExternalConnectionAction
+class tTCP : public util::tUncopyableObject, public core::tPlugin
 {
   /*!
-   * Alternative TCP connection creator
+   * Class for TCP create-Actions
    */
-  class tTCPLightweigtFlat : public util::tObject, public core::tCreateExternalConnectionAction
+  class tCreateAction : public util::tObject, public core::tCreateExternalConnectionAction
   {
   private:
 
     // Outer class TCP
     tTCP* const outer_class_ptr;
 
-  public:
+    /*! Filter to used for this connection type */
+    core::tFrameworkElementTreeFilter filter;
 
-    tTCPLightweigtFlat(tTCP* const outer_class_ptr_) :
-        outer_class_ptr(outer_class_ptr_)
-    {}
+    /*! Name of connection type */
+    util::tString name;
 
-    virtual core::tExternalConnection* CreateExternalConnection();
-
-    virtual int GetFlags()
-    {
-      return 0;
-    }
-
-    virtual const util::tString ToString() const
-    {
-      return "TCP - port only";
-    }
-
-  };
-
-  /*!
-   * Full TCP connection creator
-   */
-  class tTCPCompleteInfo : public util::tObject, public core::tCreateExternalConnectionAction
-  {
-  private:
-
-    // Outer class TCP
-    tTCP* const outer_class_ptr;
+    /*! Flags to use */
+    int flags;
 
   public:
 
-    tTCPCompleteInfo(tTCP* const outer_class_ptr_) :
-        outer_class_ptr(outer_class_ptr_)
-    {}
+    tCreateAction(tTCP* const outer_class_ptr_, core::tFrameworkElementTreeFilter filter_, const util::tString& name_, int flags_);
 
-    virtual core::tExternalConnection* CreateExternalConnection();
+    virtual core::tExternalConnection* CreateExternalConnection() const;
 
-    virtual int GetFlags()
+    virtual core::tFrameworkElement* CreateModule(const util::tString& name_, core::tFrameworkElement* parent, core::tStructureParameterList* params) const;
+
+    virtual int GetFlags() const
     {
-      return ::finroc::core::tCreateExternalConnectionAction::cREMOTE_EDGE_INFO;
+      return flags;
     }
 
-    virtual const util::tString ToString() const
+    virtual util::tString GetModuleGroup() const
     {
-      return "TCP - everything - including edges";
+      return "tcp";
+    }
+
+    virtual util::tString GetName() const
+    {
+      return name;
+    }
+
+    virtual const core::tStructureParameterList* GetParameterTypes() const
+    {
+      return NULL;
     }
 
   };
@@ -107,11 +105,14 @@ private:
   /*! Pool with Reusable TCP Commands (SUBSCRIBE & UNSUBSCRIBE) */
   static util::tReusablesPoolCR<tTCPCommand>* tcp_commands;
 
+  /*! Standard TCP connection creator */
+  tCreateAction creator1;
+
   /*! Alternative TCP connection creator */
-  tTCPLightweigtFlat creator2;
+  tCreateAction creator2;
 
   /*! Complete TCP connection creator */
-  tTCPCompleteInfo creator3;
+  tCreateAction creator3;
 
 public:
 
@@ -140,14 +141,7 @@ public:
 
   tTCP();
 
-  virtual core::tExternalConnection* CreateExternalConnection();
-
   virtual ~tTCP();
-
-  virtual int GetFlags()
-  {
-    return 0;
-  }
 
   /*!
    * \return Unused TCP Command
