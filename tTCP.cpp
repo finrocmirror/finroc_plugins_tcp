@@ -19,11 +19,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "tcp/tTCP.h"
-#include "finroc_core_utils/tAutoDeleter.h"
-#include "tcp/tTCPCommand.h"
+#include "plugins/tcp/tTCP.h"
+#include "rrlib/finroc_core_utils/tAutoDeleter.h"
+#include "plugins/tcp/tTCPCommand.h"
 #include "core/plugin/tPlugins.h"
-#include "tcp/tTCPPeer.h"
+#include "plugins/tcp/tTCPPeer.h"
 #include "core/tFrameworkElement.h"
 
 namespace finroc

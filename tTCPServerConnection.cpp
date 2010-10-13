@@ -19,24 +19,24 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "tcp/tTCPServer.h"
+#include "plugins/tcp/tTCPServer.h"
 
-#include "tcp/tTCPServerConnection.h"
-#include "tcp/tTCP.h"
-#include "finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
+#include "plugins/tcp/tTCPServerConnection.h"
+#include "plugins/tcp/tTCP.h"
+#include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
 #include "core/tRuntimeEnvironment.h"
 #include "core/port/net/tRemoteTypes.h"
 #include "core/portdatabase/tDataTypeRegister.h"
-#include "finroc_core_utils/thread/sThreadUtil.h"
+#include "rrlib/finroc_core_utils/thread/sThreadUtil.h"
 #include "core/port/tAbstractPort.h"
 #include "core/port/tPortFlags.h"
 #include "core/tLockOrderLevels.h"
-#include "finroc_core_utils/log/tLogUser.h"
+#include "rrlib/finroc_core_utils/log/tLogUser.h"
 #include "core/datatype/tFrameworkElementInfo.h"
-#include "tcp/tTCPSettings.h"
+#include "plugins/tcp/tTCPSettings.h"
 #include "core/tCoreFlags.h"
 #include "core/port/net/tNetPort.h"
-#include "finroc_core_utils/tTime.h"
+#include "rrlib/finroc_core_utils/tTime.h"
 #include "core/settings/tSetting.h"
 
 namespace finroc

@@ -19,12 +19,12 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "finroc_core_utils/tJCBase.h"
+#include "rrlib/finroc_core_utils/tJCBase.h"
 
 #ifndef PLUGINS__TCP__TTCPPEER_H
 #define PLUGINS__TCP__TTCPPEER_H
 
-#include "tcp/tTCPConnection.h"
+#include "plugins/tcp/tTCPConnection.h"
 #include "core/tChildIterator.h"
 #include "core/tFrameworkElementTreeFilter.h"
 #include "core/plugin/tExternalConnection.h"

@@ -19,25 +19,25 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "finroc_core_utils/tGarbageCollector.h"
+#include "rrlib/finroc_core_utils/tGarbageCollector.h"
 
-#include "tcp/tRemoteServer.h"
+#include "plugins/tcp/tRemoteServer.h"
 #include "core/tCoreFlags.h"
 #include "core/tLockOrderLevels.h"
 #include "core/tRuntimeEnvironment.h"
-#include "finroc_core_utils/thread/sThreadUtil.h"
-#include "tcp/tTCP.h"
+#include "rrlib/finroc_core_utils/thread/sThreadUtil.h"
+#include "plugins/tcp/tTCP.h"
 #include "core/port/tPortFlags.h"
 #include "core/buffers/tCoreOutput.h"
 #include "core/buffers/tCoreInput.h"
 #include "core/port/net/tNetPort.h"
 #include "core/port/tAbstractPort.h"
-#include "finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
+#include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
 #include "core/port/net/tRemoteTypes.h"
 #include "core/portdatabase/tDataTypeRegister.h"
-#include "finroc_core_utils/tTime.h"
-#include "tcp/tTCPCommand.h"
-#include "tcp/tTCPSettings.h"
+#include "rrlib/finroc_core_utils/tTime.h"
+#include "plugins/tcp/tTCPCommand.h"
+#include "plugins/tcp/tTCPSettings.h"
 #include "core/settings/tSetting.h"
 
 namespace finroc

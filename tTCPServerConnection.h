@@ -19,22 +19,22 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "finroc_core_utils/tJCBase.h"
+#include "rrlib/finroc_core_utils/tJCBase.h"
 
 #ifndef PLUGINS__TCP__TTCPSERVERCONNECTION_H
 #define PLUGINS__TCP__TTCPSERVERCONNECTION_H
 
-#include "finroc_core_utils/stream/tChunkedBuffer.h"
+#include "rrlib/finroc_core_utils/stream/tChunkedBuffer.h"
 #include "core/buffers/tCoreOutput.h"
 #include "core/buffers/tCoreInput.h"
 #include "core/tFrameworkElementTreeFilter.h"
-#include "finroc_core_utils/net/tNetSocket.h"
+#include "rrlib/finroc_core_utils/net/tNetSocket.h"
 #include "core/port/tPortCreationInfo.h"
-#include "tcp/tTCPConnection.h"
+#include "plugins/tcp/tTCPConnection.h"
 #include "core/tRuntimeListener.h"
 #include "core/tChildIterator.h"
 #include "core/tFrameworkElement.h"
-#include "tcp/tTCPPort.h"
+#include "plugins/tcp/tTCPPort.h"
 #include "core/thread/tCoreLoopThreadBase.h"
 
 namespace finroc

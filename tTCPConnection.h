@@ -19,24 +19,24 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "finroc_core_utils/tJCBase.h"
+#include "rrlib/finroc_core_utils/tJCBase.h"
 
 #ifndef PLUGINS__TCP__TTCPCONNECTION_H
 #define PLUGINS__TCP__TTCPCONNECTION_H
 
-#include "tcp/tTCPPort.h"
-#include "finroc_core_utils/net/tNetSocket.h"
+#include "plugins/tcp/tTCPPort.h"
+#include "rrlib/finroc_core_utils/net/tNetSocket.h"
 #include "core/buffers/tCoreOutput.h"
 #include "core/buffers/tCoreInput.h"
-#include "tcp/tTCPSettings.h"
+#include "plugins/tcp/tTCPSettings.h"
 #include "core/port/net/tRemoteTypes.h"
 #include "core/tLockOrderLevels.h"
-#include "tcp/tTCP.h"
-#include "finroc_core_utils/log/tLogUser.h"
+#include "plugins/tcp/tTCP.h"
+#include "rrlib/finroc_core_utils/log/tLogUser.h"
 #include "core/port/net/tUpdateTimeChangeListener.h"
 #include "core/thread/tCoreLoopThreadBase.h"
-#include "finroc_core_utils/tAtomicDoubleInt.h"
-#include "finroc_core_utils/container/tWonderQueue.h"
+#include "rrlib/finroc_core_utils/tAtomicDoubleInt.h"
+#include "rrlib/finroc_core_utils/container/tWonderQueue.h"
 
 namespace finroc
 {

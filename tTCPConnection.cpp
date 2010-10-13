@@ -20,11 +20,11 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "core/portdatabase/tDataType.h"
-#include "tcp/tTCPConnection.h"
+#include "plugins/tcp/tTCPConnection.h"
 #include "core/tRuntimeSettings.h"
-#include "tcp/tTCPPeer.h"
+#include "plugins/tcp/tTCPPeer.h"
 #include "core/settings/tSetting.h"
-#include "finroc_core_utils/tTime.h"
+#include "rrlib/finroc_core_utils/tTime.h"
 #include "core/port/rpc/tMethodCall.h"
 #include "core/port/tThreadLocalCache.h"
 #include "core/port/rpc/tMethodCallException.h"
@@ -32,13 +32,13 @@
 #include "core/port/net/tNetPort.h"
 #include "core/port/rpc/tPullCall.h"
 #include "core/port/rpc/tRPCThreadPool.h"
-#include "tcp/tTCPCommand.h"
-#include "finroc_core_utils/thread/tLoopThread.h"
-#include "tcp/tPeerList.h"
-#include "finroc_core_utils/net/tIPAddress.h"
-#include "finroc_core_utils/net/tIPSocketAddress.h"
+#include "plugins/tcp/tTCPCommand.h"
+#include "rrlib/finroc_core_utils/thread/tLoopThread.h"
+#include "plugins/tcp/tPeerList.h"
+#include "rrlib/finroc_core_utils/net/tIPAddress.h"
+#include "rrlib/finroc_core_utils/net/tIPSocketAddress.h"
 #include "core/portdatabase/tSerializableReusable.h"
-#include "finroc_core_utils/container/tAbstractReusable.h"
+#include "rrlib/finroc_core_utils/container/tAbstractReusable.h"
 
 namespace finroc
 {

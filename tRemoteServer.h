@@ -19,22 +19,22 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "finroc_core_utils/tJCBase.h"
+#include "rrlib/finroc_core_utils/tJCBase.h"
 
 #ifndef PLUGINS__TCP__TREMOTESERVER_H
 #define PLUGINS__TCP__TREMOTESERVER_H
 
-#include "finroc_core_utils/net/tIPSocketAddress.h"
+#include "rrlib/finroc_core_utils/net/tIPSocketAddress.h"
 #include "core/datatype/tFrameworkElementInfo.h"
 #include "core/tFrameworkElementTreeFilter.h"
 #include "core/port/net/tRemoteCoreRegister.h"
 #include "core/port/tPortCreationInfo.h"
 #include "core/tFrameworkElement.h"
 #include "core/tRuntimeListener.h"
-#include "tcp/tTCPPort.h"
-#include "finroc_core_utils/net/tNetSocket.h"
-#include "finroc_core_utils/log/tLogUser.h"
-#include "tcp/tTCPConnection.h"
+#include "plugins/tcp/tTCPPort.h"
+#include "rrlib/finroc_core_utils/net/tNetSocket.h"
+#include "rrlib/finroc_core_utils/log/tLogUser.h"
+#include "plugins/tcp/tTCPConnection.h"
 #include "core/thread/tCoreLoopThreadBase.h"
 
 namespace finroc

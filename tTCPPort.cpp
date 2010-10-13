@@ -20,12 +20,12 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "core/portdatabase/tDataType.h"
-#include "tcp/tTCPPort.h"
-#include "tcp/tTCPConnection.h"
+#include "plugins/tcp/tTCPPort.h"
+#include "plugins/tcp/tTCPConnection.h"
 #include "core/port/net/tRemoteTypes.h"
 #include "core/settings/tSetting.h"
 #include "core/tRuntimeSettings.h"
-#include "finroc_core_utils/tGarbageCollector.h"
+#include "rrlib/finroc_core_utils/tGarbageCollector.h"
 #include "core/port/rpc/tAbstractCall.h"
 #include "core/port/rpc/tMethodCallException.h"
 #include "core/port/rpc/tSynchMethodCallLogic.h"

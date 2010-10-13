@@ -19,14 +19,14 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "tcp/tTCPPeer.h"
+#include "plugins/tcp/tTCPPeer.h"
 
-#include "tcp/tTCPServer.h"
+#include "plugins/tcp/tTCPServer.h"
 #include "core/tCoreFlags.h"
 #include "core/tLockOrderLevels.h"
-#include "tcp/tTCPSettings.h"
-#include "finroc_core_utils/log/tLogUser.h"
-#include "tcp/tTCPServerConnection.h"
+#include "plugins/tcp/tTCPSettings.h"
+#include "rrlib/finroc_core_utils/log/tLogUser.h"
+#include "plugins/tcp/tTCPServerConnection.h"
 
 namespace finroc
 {
