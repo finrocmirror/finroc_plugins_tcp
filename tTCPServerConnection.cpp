@@ -260,18 +260,15 @@ void tTCPServerConnection::RuntimeChange(int8 change_type, core::tFrameworkEleme
 {
   if (element != core::tRuntimeEnvironment::GetInstance() && element_filter.Accept(element, tmp) && change_type != ::finroc::core::tRuntimeListener::cPRE_INIT)
   {
-    if (change_type == cEDGE_CHANGE && (!element_filter.IsAcceptAllFilter()))
-    {
-      return;
-    }
-    runtime_info_writer.WriteByte(tTCP::cPORT_UPDATE);
-    core::tFrameworkElementInfo::SerializeFrameworkElement(element, change_type, &(runtime_info_writer), element_filter, tmp);
-    if (tTCPSettings::cDEBUG_TCP)
-    {
-      runtime_info_writer.WriteInt(tTCPSettings::cDEBUG_TCP_NUMBER);
-    }
-    runtime_info_writer.Flush();
-    NotifyWriter();
+    SerializeRuntimeChange(change_type, element);
+  }
+}
+
+void tTCPServerConnection::RuntimeEdgeChange(int8 change_type, core::tAbstractPort* source, core::tAbstractPort* target)
+{
+  if (element_filter.Accept(source, tmp) && element_filter.IsAcceptAllFilter())
+  {
+    SerializeRuntimeChange(core::tFrameworkElementInfo::cEDGE_CHANGE, source);
   }
 }
 
@@ -287,6 +284,18 @@ bool tTCPServerConnection::SendData(int64 start_time)
   }
 
   return request_acknowledgement;
+}
+
+void tTCPServerConnection::SerializeRuntimeChange(int8 change_type, core::tFrameworkElement* element)
+{
+  runtime_info_writer.WriteByte(tTCP::cPORT_UPDATE);
+  core::tFrameworkElementInfo::SerializeFrameworkElement(element, change_type, &(runtime_info_writer), element_filter, tmp);
+  if (tTCPSettings::cDEBUG_TCP)
+  {
+    runtime_info_writer.WriteInt(tTCPSettings::cDEBUG_TCP_NUMBER);
+  }
+  runtime_info_writer.Flush();
+  NotifyWriter();
 }
 
 void tTCPServerConnection::TreeFilterCallback(core::tFrameworkElement* fe)

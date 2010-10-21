@@ -161,7 +161,11 @@ public:
 
   virtual void RuntimeChange(int8 change_type, core::tFrameworkElement* element);
 
+  virtual void RuntimeEdgeChange(int8 change_type, core::tAbstractPort* source, core::tAbstractPort* target);
+
   virtual bool SendData(int64 start_time);
+
+  void SerializeRuntimeChange(int8 change_type, core::tFrameworkElement* element);
 
   void TreeFilterCallback(core::tFrameworkElement* fe);
 

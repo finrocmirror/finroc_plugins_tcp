@@ -375,7 +375,7 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
     }
 
   }
-  else if (info.op_code == ::finroc::core::tRuntimeListener::cCHANGE || info.op_code == ::finroc::core::tRuntimeListener::cEDGE_CHANGE)
+  else if (info.op_code == ::finroc::core::tRuntimeListener::cCHANGE || info.op_code == core::tFrameworkElementInfo::cEDGE_CHANGE)
   {
     // we're dealing with an existing framework element
     assert((fe != NULL || port != NULL));

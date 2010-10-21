@@ -278,6 +278,12 @@ public:
 
   virtual void RuntimeChange(int8 change_type, core::tFrameworkElement* element);
 
+  virtual void RuntimeEdgeChange(int8 change_type, core::tAbstractPort* source, core::tAbstractPort* target)
+  {
+    RuntimeChange(change_type, source);
+    RuntimeChange(change_type, target);
+  }
+
   /*!
    * Disconnects and pauses connector thread
    */
