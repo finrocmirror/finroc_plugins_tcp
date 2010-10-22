@@ -88,7 +88,7 @@ tTCPServerConnection::tTCPServerConnection(::std::tr1::shared_ptr<util::tNetSock
       {
         util::tLock lock4(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());  // lock runtime so that we do not miss a change
         core::tRuntimeEnvironment::GetInstance()->AddListener(this);
-        element_filter.TraverseElementTree(core::tRuntimeEnvironment::GetInstance(), this, tmp);
+        element_filter.TraverseElementTree(core::tRuntimeEnvironment::GetInstance(), this, NULL, tmp);
       }
       this->cos->WriteByte(0);  // terminator
       this->cos->Flush();
@@ -298,7 +298,7 @@ void tTCPServerConnection::SerializeRuntimeChange(int8 change_type, core::tFrame
   NotifyWriter();
 }
 
-void tTCPServerConnection::TreeFilterCallback(core::tFrameworkElement* fe)
+void tTCPServerConnection::TreeFilterCallback(core::tFrameworkElement* fe, bool unused)
 {
   if (fe != core::tRuntimeEnvironment::GetInstance())
   {

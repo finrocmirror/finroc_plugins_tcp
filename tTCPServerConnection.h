@@ -62,7 +62,7 @@ class tTCPPeer;
  *
  * Thread-safety: Reader thread is the only one that deletes ports while operating. So it can use them without lock.
  */
-class tTCPServerConnection : public tTCPConnection, public core::tRuntimeListener, public core::tFrameworkElementTreeFilter::tCallback
+class tTCPServerConnection : public tTCPConnection, public core::tRuntimeListener
 {
 public:
   class tPortSet; // inner class forward declaration
@@ -167,7 +167,7 @@ public:
 
   void SerializeRuntimeChange(int8 change_type, core::tFrameworkElement* element);
 
-  void TreeFilterCallback(core::tFrameworkElement* fe);
+  void TreeFilterCallback(core::tFrameworkElement* fe, bool unused);
 
 public:
 
