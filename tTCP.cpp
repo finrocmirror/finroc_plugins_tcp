@@ -85,7 +85,7 @@ core::tExternalConnection* tTCP::tCreateAction::CreateExternalConnection() const
   return new tTCPPeer(tTCP::cDEFAULT_CONNECTION_NAME, filter);
 }
 
-core::tFrameworkElement* tTCP::tCreateAction::CreateModule(const util::tString& name_, core::tFrameworkElement* parent, core::tStructureParameterList* params) const
+core::tFrameworkElement* tTCP::tCreateAction::CreateModule(const util::tString& name_, core::tFrameworkElement* parent, core::tConstructorParameters* params) const
 {
   core::tFrameworkElement* result = CreateExternalConnection();
   parent->AddChild(result);

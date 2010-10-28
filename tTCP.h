@@ -76,7 +76,7 @@ class tTCP : public util::tUncopyableObject, public core::tPlugin
 
     virtual core::tExternalConnection* CreateExternalConnection() const;
 
-    virtual core::tFrameworkElement* CreateModule(const util::tString& name_, core::tFrameworkElement* parent, core::tStructureParameterList* params) const;
+    virtual core::tFrameworkElement* CreateModule(const util::tString& name_, core::tFrameworkElement* parent, core::tConstructorParameters* params) const;
 
     virtual int GetFlags() const
     {
