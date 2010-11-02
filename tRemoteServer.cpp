@@ -723,8 +723,10 @@ void tRemoteServer::tConnection::Connect(::std::tr1::shared_ptr<util::tNetSocket
   // initialize core streams
   this->cis = ::std::tr1::shared_ptr<core::tCoreInput>(new core::tCoreInput(socket_->GetSource()));
   this->cis->SetTypeTranslation(&(this->update_times));
+  this->cis->SetTimeout(1000);
   this->time_base = this->cis->ReadLong();  // Timestamp that remote runtime was created - and relative to which time is encoded in this stream
   this->update_times.Deserialize(this->cis.get());
+  this->cis->SetTimeout(-1);
 
   ::std::tr1::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, util::tStringBuilder("TCP Client ") + type_string + "-Listener for " + outer_class_ptr->GetDescription()));
   this->reader = listener;
@@ -882,10 +884,26 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
     catch (const util::tConnectException& e)
     {
       ::finroc::util::tThread::Sleep(2000);
+      if (outer_class_ptr->bulk == NULL)
+      {
+        ct_bulk.reset();
+      }
+      if (outer_class_ptr->express == NULL)
+      {
+        ct_express.reset();
+      }
     }
     catch (const util::tException& e)
     {
       FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_WARNING, log_domain, e);
+      if (outer_class_ptr->bulk == NULL)
+      {
+        ct_bulk.reset();
+      }
+      if (outer_class_ptr->express == NULL)
+      {
+        ct_express.reset();
+      }
     }
 
   }
