@@ -339,7 +339,7 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
       {
         printf("refound network port %p %s\n", port, port->GetPort()->GetCDescription());
         {
-          util::tLock lock5(port);
+          util::tLock lock5(port->GetPort());
           port->refound = true;
           port->connection = (info.GetFlags() & core::tPortFlags::cIS_EXPRESS_PORT) > 0 ? express.get() : bulk.get();
           assert(((port->Matches(info))) && "Structure in server changed - that shouldn't happen");
@@ -547,8 +547,7 @@ tRemoteServer::tProxyPort::tProxyPort(tRemoteServer* const outer_class_ptr_, con
     refound(true),
     subscription_strategy(-1),
     subscription_rev_push(false),
-    subscription_update_time(-1),
-    obj_mutex()
+    subscription_update_time(-1)
 {
   this->remote_handle = port_info.GetHandle();
   outer_class_ptr->remote_port_register.Put(this->remote_handle, this);

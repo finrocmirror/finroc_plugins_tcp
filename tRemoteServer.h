@@ -370,13 +370,6 @@ public:
     /*! Update time of current subscription */
     int16 subscription_update_time;
 
-  public:
-
-    // for synchronization on an object of this class
-    mutable util::tMutex obj_mutex;
-
-  private:
-
     /*!
      * Update port properties/information from received port information
      *
