@@ -78,7 +78,7 @@ tTCP::tCreateAction::tCreateAction(core::tFrameworkElementTreeFilter filter_, co
     flags(flags_),
     group()
 {
-  core::tPlugins::GetInstance()->RegisterExternalConnection(::std::tr1::shared_ptr< ::finroc::core::tCreateExternalConnectionAction>(this));
+  core::tPlugins::GetInstance()->RegisterExternalConnection(this);
 
   group = GetBinary((void*)Dummy);
 }
