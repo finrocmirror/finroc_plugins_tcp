@@ -22,8 +22,8 @@
 #include "plugins/tcp/tTCP.h"
 #include "rrlib/finroc_core_utils/tAutoDeleter.h"
 #include "plugins/tcp/tTCPCommand.h"
-#include "core/plugin/tPlugins.h"
 #include "plugins/tcp/tTCPPeer.h"
+#include "core/plugin/tPlugins.h"
 #include "core/tFrameworkElement.h"
 
 namespace finroc
@@ -36,11 +36,11 @@ const int8 tTCP::cSET, tTCP::cSUBSCRIBE, tTCP::cUNSUBSCRIBE, tTCP::cCHANGE_EVENT
 const int8 tTCP::cSUCCESS, tTCP::cFAIL;
 util::tString tTCP::cDEFAULT_CONNECTION_NAME = "localhost:4444";
 util::tReusablesPoolCR<tTCPCommand>* tTCP::tcp_commands = util::tAutoDeleter::AddStatic(new util::tReusablesPoolCR<tTCPCommand>());
+tTCP::tCreateAction tTCP::creator1(tTCPPeer::cGUI_FILTER, "TCP", 0);
+tTCP::tCreateAction tTCP::creator2(tTCPPeer::cDEFAULT_FILTER, "TCP ports only", 0);
+tTCP::tCreateAction tTCP::creator3(tTCPPeer::cALL_AND_EDGE_FILTER, "TCP admin", core::tCreateExternalConnectionAction::cREMOTE_EDGE_INFO);
 
-tTCP::tTCP() :
-    creator1(this, tTCPPeer::cGUI_FILTER, "TCP", 0),
-    creator2(this, tTCPPeer::cDEFAULT_FILTER, "TCP ports only", 0),
-    creator3(this, tTCPPeer::cALL_AND_EDGE_FILTER, "TCP admin", core::tCreateExternalConnectionAction::cREMOTE_EDGE_INFO)
+tTCP::tTCP()
 {
   instance = ::std::tr1::shared_ptr<tTCP>(this);
 }
@@ -67,22 +67,25 @@ tTCPCommand* tTCP::GetUnusedTCPCommand()
 
 void tTCP::Init(core::tPluginManager& mgr)
 {
-  core::tPlugins::GetInstance()->RegisterExternalConnection(::std::tr1::shared_ptr<core::tCreateExternalConnectionAction>(&(creator1)));
-  core::tPlugins::GetInstance()->RegisterExternalConnection(::std::tr1::shared_ptr<core::tCreateExternalConnectionAction>(&(creator2)));
-  core::tPlugins::GetInstance()->RegisterExternalConnection(::std::tr1::shared_ptr<core::tCreateExternalConnectionAction>(&(creator3)));
+  //        Plugins.getInstance().registerExternalConnection(creator1);
+  //        Plugins.getInstance().registerExternalConnection(creator2);
+  //        Plugins.getInstance().registerExternalConnection(creator3);
 }
 
-tTCP::tCreateAction::tCreateAction(tTCP* const outer_class_ptr_, core::tFrameworkElementTreeFilter filter_, const util::tString& name_, int flags_) :
-    outer_class_ptr(outer_class_ptr_),
+tTCP::tCreateAction::tCreateAction(core::tFrameworkElementTreeFilter filter_, const util::tString& name_, int flags_) :
     filter(filter_),
     name(name_),
-    flags(flags_)
+    flags(flags_),
+    group()
 {
+  core::tPlugins::GetInstance()->RegisterExternalConnection(::std::tr1::shared_ptr< ::finroc::core::tCreateExternalConnectionAction>(this));
+
+  group = GetBinary((void*)Dummy);
 }
 
 core::tExternalConnection* tTCP::tCreateAction::CreateExternalConnection() const
 {
-  return new tTCPPeer(tTCP::cDEFAULT_CONNECTION_NAME, filter);
+  return new tTCPPeer(cDEFAULT_CONNECTION_NAME, filter);
 }
 
 core::tFrameworkElement* tTCP::tCreateAction::CreateModule(const util::tString& name_, core::tFrameworkElement* parent, core::tConstructorParameters* params) const

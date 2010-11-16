@@ -25,9 +25,9 @@
 #define PLUGINS__TCP__TTCP_H
 
 #include "rrlib/finroc_core_utils/container/tReusablesPoolCR.h"
-#include "core/plugin/tCreateExternalConnectionAction.h"
 #include "core/plugin/tPlugin.h"
 #include "core/tFrameworkElementTreeFilter.h"
+#include "core/plugin/tCreateExternalConnectionAction.h"
 
 namespace finroc
 {
@@ -58,9 +58,6 @@ class tTCP : public util::tUncopyableObject, public core::tPlugin
   {
   private:
 
-    // Outer class TCP
-    tTCP* const outer_class_ptr;
-
     /*! Filter to used for this connection type */
     core::tFrameworkElementTreeFilter filter;
 
@@ -70,11 +67,16 @@ class tTCP : public util::tUncopyableObject, public core::tPlugin
     /*! Flags to use */
     int flags;
 
+    /*! Name of module type */
+    util::tString group;
+
   public:
 
-    tCreateAction(tTCP* const outer_class_ptr_, core::tFrameworkElementTreeFilter filter_, const util::tString& name_, int flags_);
+    tCreateAction(core::tFrameworkElementTreeFilter filter_, const util::tString& name_, int flags_);
 
     virtual core::tExternalConnection* CreateExternalConnection() const;
+
+    static void Dummy() {}
 
     virtual core::tFrameworkElement* CreateModule(const util::tString& name_, core::tFrameworkElement* parent, core::tConstructorParameters* params) const;
 
@@ -85,7 +87,7 @@ class tTCP : public util::tUncopyableObject, public core::tPlugin
 
     virtual util::tString GetModuleGroup() const
     {
-      return "tcp";
+      return group;
     }
 
     virtual util::tString GetName() const
@@ -104,15 +106,6 @@ private:
 
   /*! Pool with Reusable TCP Commands (SUBSCRIBE & UNSUBSCRIBE) */
   static util::tReusablesPoolCR<tTCPCommand>* tcp_commands;
-
-  /*! Standard TCP connection creator */
-  tCreateAction creator1;
-
-  /*! Alternative TCP connection creator */
-  tCreateAction creator2;
-
-  /*! Complete TCP connection creator */
-  tCreateAction creator3;
 
 public:
 
@@ -138,6 +131,15 @@ public:
 
   /*! Default network name */
   static util::tString cDEFAULT_CONNECTION_NAME;
+
+  /*! Standard TCP connection creator */
+  static tCreateAction creator1;
+
+  /*! Alternative TCP connection creator */
+  static tCreateAction creator2;
+
+  /*! Complete TCP connection creator */
+  static tCreateAction creator3;
 
   tTCP();
 
