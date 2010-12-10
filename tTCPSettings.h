@@ -79,19 +79,6 @@ public:
   /*! Help for debugging: this number will be inserted after every command when DEBUG_TCP is activated */
   static const int cDEBUG_TCP_NUMBER = 0xCAFEBABE;
 
-  //  /** TCP Settings from tcp.conf */
-  //  private static final Properties defaultSettings;
-
-  //  static {
-  //      // init settings
-  //      defaultSettings = new Properties();
-  //      try {
-  //          defaultSettings.load(TCP.instance.getConfFile());
-  //      } catch (Exception e) {
-  //          e.printStackTrace();
-  //      }
-  //  }
-
   // Port settings
   static core::tIntSetting* max_not_acknowledged_packets_express;
 

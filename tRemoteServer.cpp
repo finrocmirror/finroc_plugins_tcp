@@ -108,16 +108,6 @@ core::tPortCreationInfo tRemoteServer::CreatePCI(const core::tFrameworkElementIn
   core::tPortCreationInfo pci(port_info.GetFlags());
   pci.flags = port_info.GetFlags();
 
-  // unset shared flag
-  //pci.setFlag(PortFlags.NETWORK_PORT, true);
-
-  // unset copy data flags (data is always copied)
-  //pci.flags = PortFlags.setFlag(pci.flags, PortFlags.COPY_DATA, false);
-  //pci.flags = PortFlags.setFlag(pci.flags, PortFlags.COPY_REVERSE_DATA, false);
-
-  // always create send buffers (for deserialization)
-  //pci.flags = PortFlags.setFlag(pci.flags, PortFlags.OWNS_SEND_BUFFERS, true);
-
   // set queue size
   pci.max_queue_size = port_info.GetStrategy();
 
@@ -156,9 +146,6 @@ void tRemoteServer::Disconnect()
       pp->Reset();
     }
     port_iterator.Reset();
-    //      for (ProxyPort pp = portIterator.next(); pp != null; pp = portIterator.next()) {
-    //          pp.subscriptionQueueLength = 0;
-    //      }
   }
 }
 
@@ -527,10 +514,6 @@ void tRemoteServer::tProxyFrameworkElement::UpdateFromPortInfo(const core::tFram
   {
     assert(((info.op_code == core::tRuntimeListener::cADD)) && "only add operation may change framework element before initialization");
     assert(((info.GetLinkCount() == 1)) && "Framework elements currently may not be linked");
-    //              for (int i = 1; i < info.getLinks().size(); i++) {
-    //                  ProxyFrameworkElement pxe = getFrameworkElement(info.getParents().get(i));
-    //                  pxe.link(this, info.getLinks().get(i));
-    //              }
     SetDescription(info.GetLink(0)->name);
     outer_class_ptr->GetFrameworkElement(info.GetLink(0)->parent, info.GetLink(0)->extra_flags, false, info.GetLink(0)->parent)->AddChild(this);
   }
@@ -635,18 +618,6 @@ void tRemoteServer::tProxyPort::PrepareDelete()
   GetPort()->DisconnectAll();
   CheckSubscription();
   ::finroc::tcp::tTCPPort::PrepareDelete();
-}
-
-void tRemoteServer::tProxyPort::PropagateStrategyOverTheNet()
-{
-  //          if (getPort().getStrategy() == -1) {
-  //              ((Connection)connection).unsubscribe(remoteHandle);
-  //              connected = false;
-  //          } else {
-  //              ((Connection)connection).subscribe(remoteHandle, getPort().getStrategy(), getPort().isConnectedToReversePushSources(), getUpdateIntervalForNet(), getPort().getHandle());
-  //              connected = true;
-  //          }
-  CheckSubscription();
 }
 
 void tRemoteServer::tProxyPort::Reset()

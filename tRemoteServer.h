@@ -92,9 +92,6 @@ public:
 
   public:
 
-    //      /** Static ChildIterator */
-    //      private RemoteCoreRegister<ProxyPort>.Iterator ci = remotePortRegister.getIterator();
-
     tConnectorThread(tRemoteServer* const outer_class_ptr_);
 
     virtual void MainLoopCallback();
@@ -106,14 +103,8 @@ private:
   /*! Network address */
   util::tIPSocketAddress address;
 
-  /*! TCP Client Module => in parent */
-  //private final TCPClient client;
-
   /*! Bulk and Express Connections to server */
   ::std::tr1::shared_ptr<tConnection> bulk, express;
-
-  /*! Cached reference to runtime environment */
-  //private static final RuntimeEnvironment runtime = RuntimeEnvironment.getInstance();
 
   /*! This thread reconnects disconnected Remote Nodes and updates subscriptions */
   ::std::tr1::shared_ptr<tConnectorThread> connector_thread;
@@ -328,14 +319,6 @@ public:
 
     bool Matches(const core::tFrameworkElementInfo& info);
 
-    //      public ProxyFrameworkElement(@Const @Ref FrameworkElementInfo info) {
-    //          super("(yet unknown)", null, CoreFlags.ALLOWS_CHILDREN | CoreFlags.NETWORK_ELEMENT | (info.getFlags() & FrameworkElementInfo.PARENT_FLAGS_TO_STORE));
-    //          this.remoteHandle = info.getHandle();
-    //          remoteElementRegister.put(-remoteHandle, this);
-    //          updateFromPortInfo(info);
-    //          yetUnknown = false;
-    //      }
-
     /*!
      * Update information about framework element
      *
@@ -379,9 +362,6 @@ public:
 
   protected:
 
-    /* (non-Javadoc)
-     * @see core.plugin.tcp2.TCPPort#checkSubscription()
-     */
     virtual void CheckSubscription();
 
     virtual void ConnectionRemoved()
@@ -396,7 +376,10 @@ public:
 
     virtual void PrepareDelete();
 
-    virtual void PropagateStrategyOverTheNet();
+    virtual void PropagateStrategyOverTheNet()
+    {
+      CheckSubscription();
+    }
 
   public:
 

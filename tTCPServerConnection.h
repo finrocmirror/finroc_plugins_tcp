@@ -78,12 +78,6 @@ private:
   /*! FrameworkElement representation of this Connection (so temporary ports are grouped and can conveniently be deleted) */
   tPortSet* port_set;
 
-  /*! Unique ids for ports in this connection */
-  //private final AtomicInt portId = new AtomicInt();
-
-  ///** lookup table for proxy ports */
-  //private final int[] proxyPortLookup = new int[CoreRegister.MAX_ELEMENTS];
-
   /*! Send information about runtime in this connection? */
   bool send_runtime_info;
 
@@ -202,12 +196,6 @@ public:
 
     tPortSet(tTCPServerConnection* const outer_class_ptr_, tTCPServer* server, ::std::tr1::shared_ptr<tTCPServerConnection> connection_lock_);
 
-    //      @Override
-    //      public void handleCallReturn(AbstractCall pc) {
-    //          pc.setRemotePortHandle(pc.popCaller());
-    //          TCPServerConnection.this.sendCall(pc);
-    //      }
-
   };
 
 public:
@@ -229,50 +217,6 @@ public:
   protected:
 
     virtual void PostChildInit();
-
-    //      /**
-    //       * Set Push strategy
-    //       *
-    //       * \param b on or off?
-    //       */
-    //      public void setPush(boolean b) {
-    //          if (getPort().isOutputPort()) {
-    //              getPort().setReversePushStrategy(b);
-    //          } else {
-    //              getPort().setPushStrategy(b);
-    //          }
-    //      }
-
-    //      /**
-    //       * \param queueLength maximum Queue Length
-    //       */
-    //      public void setQueueLength(int queueLength) {
-    //          if (getPort().getFlag(PortFlags.OUTPUT_PORT | PortFlags.HAS_QUEUE)) {
-    //              getPort().setMaxQueueLength(queueLength);
-    //          }
-    //      }
-
-    //      /**
-    //       * \return Current Minimum network update interval for this port (takes local and remote settings into account)
-    //       */
-    //      public short getMinNetUpdateInterval() {
-    //          short t = 0;
-    //          if ((t = updateIntervalPartner) >= 0) {
-    //              return t;
-    //          } else if ((t = localPort.getMinNetUpdateInterval()) >= 0) {
-    //              return t;
-    //          } else if ((t = updateTimes.getTime(getPort().getDataType())) >= 0) {
-    //              return t;
-    //          } else if ((t = getPort().getDataType().getUpdateTime()) >= 0) {
-    //              return t;
-    //          }
-    //          return updateTimes.getGlobalDefault();
-    //      }
-    //
-    //      @Override
-    //      protected void portChanged() {
-    //          notifyWriter();
-    //      }
 
     virtual void PropagateStrategyOverTheNet()
     {

@@ -112,14 +112,6 @@ public:
   /*! Singleton instance of TCP plugin */
   static ::std::tr1::shared_ptr<tTCP> instance;
 
-  //  @Override
-  //  public CreateModuleAction[] getPluginModules() {
-  //      return new CreateModuleAction[]{
-  //              new CreateExternalConnectionAction(TCPClient.class),
-  //              new ConstructorCreateModuleAction(TCPServer.class, ExternalConnection.GROUP_NAME),
-  //      };
-  //  }
-
   /*! Stream IDs for different connection types */
   static const int8 cTCP_P2P_ID_EXPRESS = 9, cTCP_P2P_ID_BULK = 10;
 

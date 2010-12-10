@@ -56,9 +56,6 @@ public:
   /*! Strategy to use/request */
   int strategy;
 
-  /*! Mode for minimum network update interval */
-  //public byte updateIntervalMode;
-
   /*! Minimum network update interval */
   int16 update_interval;
 
@@ -87,13 +84,6 @@ public:
   }
 
   virtual void Serialize(core::tCoreOutput& os) const;
-
-//  @Override
-//  public void genericRecycle() {
-//      if (isResponsible()) {
-//          super.recycle();
-//      }
-//  }
 
 };
 

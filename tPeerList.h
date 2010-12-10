@@ -71,14 +71,6 @@ public:
   /*! @param serverPort Server port of own peer */
   tPeerList(int server_port_, int lock_order);
 
-  //  /**
-  //   * \param port Port that we are listening on (used so that we don't connect to ourselves)
-  //   */
-  //  public PeerList(int port) {
-  //      addPeer(IPSocketAddress.createUnresolved("localhost", port));
-  //      addPeer(I)
-  //  }
-
   void AddPeer(util::tIPSocketAddress isa, bool notify_on_change);
 
   /*!

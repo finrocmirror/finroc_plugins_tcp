@@ -105,12 +105,6 @@ public:
     // Outer class TCPConnection
     tTCPConnection* const outer_class_ptr;
 
-    ///** Signal that something relevant changed */
-    //public volatile boolean changedSignal;
-
-    ///** True, when thread is asleep, because nothing is happening */
-    //private volatile boolean waiting;
-
     /*! Index of last packet that was acknowledged */
     int last_ack_index;
 
