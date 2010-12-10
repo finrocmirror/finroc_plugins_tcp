@@ -78,7 +78,7 @@ class tTCP : public util::tUncopyableObject, public core::tPlugin
 
     static void Dummy() {}
 
-    virtual core::tFrameworkElement* CreateModule(const util::tString& name_, core::tFrameworkElement* parent, core::tConstructorParameters* params) const;
+    virtual core::tFrameworkElement* CreateModule(core::tFrameworkElement* parent, const util::tString& name_, core::tConstructorParameters* params) const;
 
     virtual int GetFlags() const
     {

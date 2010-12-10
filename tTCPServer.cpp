@@ -33,7 +33,7 @@ namespace finroc
 namespace tcp
 {
 tTCPServer::tTCPServer(int port_, bool try_next_ports_if_occupied_, tTCPPeer* peer_) :
-    core::tFrameworkElement("TCP Server", peer_, core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT, core::tLockOrderLevels::cLEAF_GROUP),
+    core::tFrameworkElement(peer_, "TCP Server", core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT, core::tLockOrderLevels::cLEAF_GROUP),
     port(port_),
     try_next_ports_if_occupied(try_next_ports_if_occupied_),
     serving(false),

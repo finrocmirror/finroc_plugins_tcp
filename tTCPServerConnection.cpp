@@ -311,7 +311,7 @@ void tTCPServerConnection::TreeFilterCallback(core::tFrameworkElement* fe, bool 
 }
 
 tTCPServerConnection::tPortSet::tPortSet(tTCPServerConnection* const outer_class_ptr_, tTCPServer* server, ::std::tr1::shared_ptr<tTCPServerConnection> connection_lock_) :
-    core::tFrameworkElement(util::tStringBuilder("connection") + tTCPServerConnection::connection_id.GetAndIncrement(), server, core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT, core::tLockOrderLevels::cPORT - 1),
+    core::tFrameworkElement(server, util::tStringBuilder("connection") + tTCPServerConnection::connection_id.GetAndIncrement(), core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT, core::tLockOrderLevels::cPORT - 1),
     outer_class_ptr(outer_class_ptr_),
     port_iterator(this),
     connection_lock(connection_lock_)

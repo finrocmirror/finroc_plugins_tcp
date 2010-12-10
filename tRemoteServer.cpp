@@ -45,7 +45,7 @@ namespace finroc
 namespace tcp
 {
 tRemoteServer::tRemoteServer(util::tIPSocketAddress isa, const util::tString& name, core::tFrameworkElement* parent, const core::tFrameworkElementTreeFilter& filter_, tTCPPeer* peer_) :
-    core::tFrameworkElement(name, parent, core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cALLOWS_CHILDREN | (filter_.IsPortOnlyFilter() ? 0 : core::tCoreFlags::cALTERNATE_LINK_ROOT), core::tLockOrderLevels::cREMOTE),
+    core::tFrameworkElement(parent, name, core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cALLOWS_CHILDREN | (filter_.IsPortOnlyFilter() ? 0 : core::tCoreFlags::cALTERNATE_LINK_ROOT), core::tLockOrderLevels::cREMOTE),
     address(isa),
     bulk(),
     express(),
@@ -59,7 +59,7 @@ tRemoteServer::tRemoteServer(util::tIPSocketAddress isa, const util::tString& na
     tmp_match_buffer(),
     server_creation_time(-1),
     peer(peer_),
-    global_links(filter_.IsPortOnlyFilter() ? new ::finroc::core::tFrameworkElement("global", this, core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cGLOBALLY_UNIQUE_LINK | core::tCoreFlags::cALTERNATE_LINK_ROOT, -1) : NULL),
+    global_links(filter_.IsPortOnlyFilter() ? new ::finroc::core::tFrameworkElement(this, "global", core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cGLOBALLY_UNIQUE_LINK | core::tCoreFlags::cALTERNATE_LINK_ROOT, -1) : NULL),
     disconnect_calls(0),
     deleted_soon(false)
 {
@@ -493,7 +493,7 @@ void tRemoteServer::TemporaryDisconnect()
 }
 
 tRemoteServer::tProxyFrameworkElement::tProxyFrameworkElement(tRemoteServer* const outer_class_ptr_, int handle, int extra_flags, int lock_order) :
-    core::tFrameworkElement("(yet unknown)", NULL, core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tFrameworkElementInfo::FilterParentFlags(extra_flags), lock_order),
+    core::tFrameworkElement(NULL, "(yet unknown)", core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tFrameworkElementInfo::FilterParentFlags(extra_flags), lock_order),
     outer_class_ptr(outer_class_ptr_),
     refound(true),
     remote_handle(handle),
