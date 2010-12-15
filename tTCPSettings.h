@@ -24,16 +24,11 @@
 #ifndef PLUGINS__TCP__TTCPSETTINGS_H
 #define PLUGINS__TCP__TTCPSETTINGS_H
 
-#include "core/tRuntimeSettings.h"
-#include "core/settings/tSettings.h"
-
-namespace finroc
-{
-namespace core
-{
-class tSetting;
-} // namespace finroc
-} // namespace core
+#include "core/parameter/tParameterNumeric.h"
+#include "core/datatype/tUnit.h"
+#include "core/datatype/tBounds.h"
+#include "core/datatype/tConstant.h"
+#include "core/tFrameworkElement.h"
 
 namespace finroc
 {
@@ -44,12 +39,12 @@ namespace tcp
  *
  * TCP Settings
  */
-class tTCPSettings : public core::tSettings
+class tTCPSettings : public core::tFrameworkElement
 {
 private:
 
   /*! Singleton Instance */
-  static tTCPSettings inst;
+  static tTCPSettings* inst;
 
 public:
 
@@ -80,15 +75,15 @@ public:
   static const int cDEBUG_TCP_NUMBER = 0xCAFEBABE;
 
   // Port settings
-  static core::tIntSetting* max_not_acknowledged_packets_express;
+  core::tParameterNumeric<int> max_not_acknowledged_packets_express;
 
-  static core::tIntSetting* max_not_acknowledged_packets_bulk;
+  core::tParameterNumeric<int> max_not_acknowledged_packets_bulk;
 
-  static core::tIntSetting* min_update_interval_express;
+  core::tParameterNumeric<int> min_update_interval_express;
 
-  static core::tIntSetting* min_update_interval_bulk;
+  core::tParameterNumeric<int> min_update_interval_bulk;
 
-  static core::tIntSetting* critical_ping_threshold;
+  core::tParameterNumeric<int> critical_ping_threshold;
 
 private:
 
@@ -97,9 +92,11 @@ private:
 
 public:
 
+  static tTCPSettings* GetInstance();
+
   inline static void InitInstance()
   {
-    inst.Init(core::tRuntimeSettings::GetInstance());
+    GetInstance()->Init();
   }
 
 };

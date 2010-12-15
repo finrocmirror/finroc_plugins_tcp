@@ -37,7 +37,7 @@
 #include "core/tCoreFlags.h"
 #include "core/port/net/tNetPort.h"
 #include "rrlib/finroc_core_utils/tTime.h"
-#include "core/settings/tSetting.h"
+#include "core/parameter/tParameterNumeric.h"
 
 namespace finroc
 {
@@ -392,7 +392,7 @@ tTCPServerConnection::tPingTimeMonitor* tTCPServerConnection::tPingTimeMonitor::
 void tTCPServerConnection::tPingTimeMonitor::MainLoopCallback()
 {
   int64 start_time = util::tTime::GetCoarse();
-  int64 may_wait = tTCPSettings::critical_ping_threshold->Get();
+  int64 may_wait = tTCPSettings::GetInstance()->critical_ping_threshold.Get();
 
   util::tArrayWrapper<tTCPServerConnection*>* it = connections.GetIterable();
   for (int i = 0, n = connections.Size(); i < n; i++)

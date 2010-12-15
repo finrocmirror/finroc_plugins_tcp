@@ -28,6 +28,7 @@
 #include "rrlib/finroc_core_utils/net/tNetSocket.h"
 #include "core/buffers/tCoreOutput.h"
 #include "core/buffers/tCoreInput.h"
+#include "core/parameter/tParameterNumeric.h"
 #include "plugins/tcp/tTCPSettings.h"
 #include "core/port/net/tRemoteTypes.h"
 #include "core/tLockOrderLevels.h"
@@ -42,7 +43,7 @@ namespace finroc
 {
 namespace core
 {
-class tSetting;
+class tSerializableReusable;
 } // namespace finroc
 } // namespace core
 
@@ -162,9 +163,9 @@ public:
 private:
 
   /*! References to Connection parameters */
-  const core::tIntSetting& min_update_interval;
+  const core::tParameterNumeric<int>& min_update_interval;
 
-  const core::tIntSetting& max_not_acknowledged_packets;
+  const core::tParameterNumeric<int>& max_not_acknowledged_packets;
 
   /*! Index of last acknowledged sent packet */
   volatile int last_acknowledged_packet;

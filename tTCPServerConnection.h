@@ -32,7 +32,6 @@
 #include "core/port/tPortCreationInfo.h"
 #include "plugins/tcp/tTCPConnection.h"
 #include "core/tRuntimeListener.h"
-#include "core/tChildIterator.h"
 #include "core/tFrameworkElement.h"
 #include "plugins/tcp/tTCPPort.h"
 #include "core/thread/tCoreLoopThreadBase.h"
@@ -177,7 +176,7 @@ public:
     tTCPServerConnection* const outer_class_ptr;
 
     /*! For iterating over portSet's ports */
-    core::tChildIterator port_iterator;
+    core::tFrameworkElement::tChildIterator port_iterator;
 
     /*! Ensures that connection object exists as long as port set does */
     ::std::tr1::shared_ptr<tTCPServerConnection> connection_lock;

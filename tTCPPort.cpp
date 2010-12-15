@@ -23,7 +23,7 @@
 #include "plugins/tcp/tTCPPort.h"
 #include "plugins/tcp/tTCPConnection.h"
 #include "core/port/net/tRemoteTypes.h"
-#include "core/settings/tSetting.h"
+#include "core/parameter/tParameterNumeric.h"
 #include "core/tRuntimeSettings.h"
 #include "rrlib/finroc_core_utils/tGarbageCollector.h"
 #include "core/port/rpc/tAbstractCall.h"
@@ -73,7 +73,8 @@ int16 tTCPPort::GetUpdateIntervalForNet()
   }
 
   // 5. runtime default
-  return static_cast<int16>(core::tRuntimeSettings::cDEFAULT_MINIMUM_NETWORK_UPDATE_TIME->Get());
+  int res = core::tRuntimeSettings::cDEFAULT_MINIMUM_NETWORK_UPDATE_TIME->Get();
+  return static_cast<int16>(res);
 }
 
 void tTCPPort::PortChanged()

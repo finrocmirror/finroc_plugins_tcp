@@ -25,7 +25,7 @@
 #define PLUGINS__TCP__TTCPPEER_H
 
 #include "plugins/tcp/tTCPConnection.h"
-#include "core/tChildIterator.h"
+#include "core/tFrameworkElement.h"
 #include "core/tFrameworkElementTreeFilter.h"
 #include "core/plugin/tExternalConnection.h"
 #include "core/port/net/tAbstractPeerTracker.h"
@@ -76,7 +76,7 @@ private:
   util::tString name;
 
   /*! Child iterator for internal purposes */
-  core::tChildIterator ci;
+  core::tFrameworkElement::tChildIterator ci;
 
   /*! Filter that specifies which elements in remote runtime environment we're interested in */
   core::tFrameworkElementTreeFilter filter;

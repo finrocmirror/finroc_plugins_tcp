@@ -23,7 +23,6 @@
 #include "plugins/tcp/tTCPConnection.h"
 #include "core/tRuntimeSettings.h"
 #include "plugins/tcp/tTCPPeer.h"
-#include "core/settings/tSetting.h"
 #include "rrlib/finroc_core_utils/tTime.h"
 #include "core/port/rpc/tMethodCall.h"
 #include "core/port/tThreadLocalCache.h"
@@ -45,8 +44,8 @@ namespace finroc
 namespace tcp
 {
 tTCPConnection::tTCPConnection(int8 type_, tTCPPeer* peer_, bool send_peer_info_to_partner_) :
-    min_update_interval((type_ == tTCP::cTCP_P2P_ID_BULK) ? *tTCPSettings::min_update_interval_bulk : *tTCPSettings::min_update_interval_express),
-    max_not_acknowledged_packets((type_ == tTCP::cTCP_P2P_ID_BULK) ? *tTCPSettings::max_not_acknowledged_packets_bulk : *tTCPSettings::max_not_acknowledged_packets_express),
+    min_update_interval((type_ == tTCP::cTCP_P2P_ID_BULK) ? tTCPSettings::GetInstance()->min_update_interval_bulk : tTCPSettings::GetInstance()->min_update_interval_express),
+    max_not_acknowledged_packets((type_ == tTCP::cTCP_P2P_ID_BULK) ? tTCPSettings::GetInstance()->max_not_acknowledged_packets_bulk : tTCPSettings::GetInstance()->max_not_acknowledged_packets_express),
     last_acknowledged_packet(0),
     last_ack_request_index(0),
     sent_packet_time(tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS + 1),
@@ -80,22 +79,22 @@ int64 tTCPConnection::CheckPingForDisconnect()
   ::std::tr1::shared_ptr<tWriter> locked_writer = writer.lock();
   if (locked_writer == NULL)
   {
-    return tTCPSettings::critical_ping_threshold->Get();
+    return tTCPSettings::GetInstance()->critical_ping_threshold.Get();
   }
   if (last_acknowledged_packet != locked_writer->cur_packet_index)
   {
     int64 critical_packet_time = sent_packet_time[(last_acknowledged_packet + 1) & tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS];
-    int64 time_left = critical_packet_time + tTCPSettings::critical_ping_threshold->Get() - util::tSystem::CurrentTimeMillis();
+    int64 time_left = critical_packet_time + tTCPSettings::GetInstance()->critical_ping_threshold.Get() - util::tSystem::CurrentTimeMillis();
     if (time_left < 0)
     {
       HandlePingTimeExceed();
-      return tTCPSettings::critical_ping_threshold->Get();
+      return tTCPSettings::GetInstance()->critical_ping_threshold.Get();
     }
     return time_left;
   }
   else
   {
-    return tTCPSettings::critical_ping_threshold->Get();
+    return tTCPSettings::GetInstance()->critical_ping_threshold.Get();
   }
 }
 
@@ -420,7 +419,7 @@ bool tTCPConnection::PingTimeExceeed()
   if (last_acknowledged_packet != locked_writer->cur_packet_index)
   {
     int64 critical_packet_time = sent_packet_time[(last_acknowledged_packet + 1) & tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS];
-    int64 time_left = critical_packet_time + tTCPSettings::critical_ping_threshold->Get() - util::tSystem::CurrentTimeMillis();
+    int64 time_left = critical_packet_time + tTCPSettings::GetInstance()->critical_ping_threshold.Get() - util::tSystem::CurrentTimeMillis();
     return time_left < 0;
   }
   else

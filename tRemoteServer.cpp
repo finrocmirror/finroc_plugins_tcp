@@ -38,7 +38,7 @@
 #include "rrlib/finroc_core_utils/tTime.h"
 #include "plugins/tcp/tTCPCommand.h"
 #include "plugins/tcp/tTCPSettings.h"
-#include "core/settings/tSetting.h"
+#include "core/parameter/tParameterNumeric.h"
 
 namespace finroc
 {
@@ -883,7 +883,7 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
     {
       // check ping times
       int64 start_time = util::tSystem::CurrentTimeMillis();
-      int64 may_wait = tTCPSettings::critical_ping_threshold->Get();
+      int64 may_wait = tTCPSettings::GetInstance()->critical_ping_threshold.Get();
       may_wait = util::tMath::Min(may_wait, ct_express->CheckPingForDisconnect());
       may_wait = util::tMath::Min(may_wait, ct_bulk->CheckPingForDisconnect());
 

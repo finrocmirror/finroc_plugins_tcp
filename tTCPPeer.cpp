@@ -22,7 +22,6 @@
 #include "plugins/tcp/tTCPPeer.h"
 #include "core/tCoreFlags.h"
 #include "plugins/tcp/tTCPServer.h"
-#include "core/tFrameworkElement.h"
 #include "plugins/tcp/tPeerList.h"
 #include "plugins/tcp/tRemoteServer.h"
 #include "rrlib/finroc_core_utils/net/tIPSocketAddress.h"
@@ -188,7 +187,7 @@ void tTCPPeer::DisconnectImpl()
 float tTCPPeer::GetConnectionQuality()
 {
   float worst = 1.0f;
-  core::tChildIterator ci(this);
+  core::tFrameworkElement::tChildIterator ci(this);
   for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
   {
     if (fe == server || fe->IsPort())
@@ -214,7 +213,7 @@ util::tString tTCPPeer::GetStatus(bool detailed)
   else
   {
     util::tSimpleList<util::tString> add_stuff;
-    core::tChildIterator ci(this);
+    core::tFrameworkElement::tChildIterator ci(this);
     for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
     {
       if (fe == server || (!fe->IsReady()) || fe->IsPort())

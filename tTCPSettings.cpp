@@ -20,15 +20,13 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "plugins/tcp/tTCPSettings.h"
-#include "core/datatype/tUnit.h"
-#include "core/datatype/tBounds.h"
-#include "core/datatype/tConstant.h"
+#include "core/tRuntimeSettings.h"
 
 namespace finroc
 {
 namespace tcp
 {
-tTCPSettings tTCPSettings::inst;
+tTCPSettings* tTCPSettings::inst = NULL;
 const int tTCPSettings::cCONNECTOR_THREAD_LOOP_INTERVAL;
 const int tTCPSettings::cCONNECTOR_THREAD_SUBSCRIPTION_UPDATE_INTERVAL;
 const int tTCPSettings::cMIN_PORTS_UPDATE_INTERVAL;
@@ -37,15 +35,24 @@ const int tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS;
 const int tTCPSettings::cAVG_PING_PACKETS;
 const bool tTCPSettings::cDEBUG_TCP;
 const int tTCPSettings::cDEBUG_TCP_NUMBER;
-core::tIntSetting* tTCPSettings::max_not_acknowledged_packets_express = tTCPSettings::inst.Add("Maximum not acknowledged express packets", 4, true, &(core::tUnit::cNO_UNIT), core::tBounds(1, 40, true));
-core::tIntSetting* tTCPSettings::max_not_acknowledged_packets_bulk = tTCPSettings::inst.Add("Maximum not acknowledged bulk packets", 2, true, &(core::tUnit::cNO_UNIT), core::tBounds(1, 40, true));
-core::tIntSetting* tTCPSettings::min_update_interval_express = tTCPSettings::inst.Add("Minimum Express Update Interval", 25, true, &(core::tUnit::ms), core::tBounds(1, 2000, core::tConstant::cNO_MIN_TIME_LIMIT.get()));
-core::tIntSetting* tTCPSettings::min_update_interval_bulk = tTCPSettings::inst.Add("Minimum Bulk Update Interval", 50, true, &(core::tUnit::ms), core::tBounds(1, 2000, core::tConstant::cNO_MIN_TIME_LIMIT.get()));
-core::tIntSetting* tTCPSettings::critical_ping_threshold = tTCPSettings::inst.Add("Critical Ping Threshold", 1500, true, &(core::tUnit::ms), core::tBounds(50, 20000, core::tConstant::cNO_MAX_TIME_LIMIT.get()));
 
 tTCPSettings::tTCPSettings() :
-    core::tSettings("TCP Settings", "tcp", true)
+    core::tFrameworkElement(core::tRuntimeSettings::GetInstance(), "TCP Settings"),
+    max_not_acknowledged_packets_express("Maximum not acknowledged express packets", this, &(core::tUnit::cNO_UNIT), 4, core::tBounds(1, 40, true)),
+    max_not_acknowledged_packets_bulk("Maximum not acknowledged bulk packets", this, &(core::tUnit::cNO_UNIT), 2, core::tBounds(1, 40, true)),
+    min_update_interval_express("Minimum Express Update Interval", this, &(core::tUnit::ms), 25, core::tBounds(1, 2000, core::tConstant::cNO_MIN_TIME_LIMIT.get())),
+    min_update_interval_bulk("Minimum Bulk Update Interval", this, &(core::tUnit::ms), 50, core::tBounds(1, 2000, core::tConstant::cNO_MIN_TIME_LIMIT.get())),
+    critical_ping_threshold("Critical Ping Threshold", this, &(core::tUnit::ms), 1500, core::tBounds(50, 20000, core::tConstant::cNO_MAX_TIME_LIMIT.get()))
 {
+}
+
+tTCPSettings* tTCPSettings::GetInstance()
+{
+  if (inst == NULL)
+  {
+    inst = new tTCPSettings();
+  }
+  return inst;
 }
 
 } // namespace finroc
