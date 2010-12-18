@@ -521,6 +521,10 @@ void tRemoteServer::tProxyFrameworkElement::UpdateFromPortInfo(const core::tFram
   {
     SetFlag(core::tCoreFlags::cFINSTRUCTED);
   }
+  if ((info.GetFlags() & core::tCoreFlags::cFINSTRUCTABLE_GROUP) > 0)
+  {
+    SetFlag(core::tCoreFlags::cFINSTRUCTABLE_GROUP);
+  }
   yet_unknown = false;
 }
 
