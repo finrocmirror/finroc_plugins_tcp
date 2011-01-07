@@ -197,7 +197,7 @@ float tTCPPeer::GetConnectionQuality()
     tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
     if (rs->IsReady() && (!rs->DeletedSoon()))
     {
-      worst = util::tMath::Min(worst, rs->GetConnectionQuality());
+      worst = std::min(worst, rs->GetConnectionQuality());
     }
   }
   return worst;

@@ -400,7 +400,7 @@ void tTCPServerConnection::tPingTimeMonitor::MainLoopCallback()
     tTCPServerConnection* tsc = it->Get(i);
     if (tsc != NULL)
     {
-      may_wait = util::tMath::Min(may_wait, tsc->CheckPingForDisconnect());  // safe, since connection is deleted deferred and call time is minimal
+      may_wait = std::min(may_wait, tsc->CheckPingForDisconnect());  // safe, since connection is deleted deferred and call time is minimal
     }
   }
 

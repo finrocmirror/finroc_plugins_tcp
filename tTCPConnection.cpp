@@ -161,7 +161,7 @@ int tTCPConnection::GetMaxPingTime()
   int result = 0;
   for (size_t i = 0u; i < ping_times.length; i++)
   {
-    result = util::tMath::Max(result, ping_times[i]);
+    result = std::max(result, ping_times[i]);
   }
   return result;
 }

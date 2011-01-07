@@ -182,7 +182,7 @@ float tRemoteServer::GetConnectionQuality()
       {
         return 0;
       }
-      ping_time = util::tMath::Max(ping_time, static_cast<float>(c->GetAvgPingTime()));
+      ping_time = std::max(ping_time, static_cast<float>(c->GetAvgPingTime()));
     }
   }
   if (ping_time < 300)
@@ -246,8 +246,8 @@ util::tString tRemoteServer::GetPingString()
       {
         return s + "- ";
       }
-      ping_avg = util::tMath::Max(ping_avg, c->GetAvgPingTime());
-      ping_max = util::tMath::Max(ping_max, c->GetMaxPingTime());
+      ping_avg = std::max(ping_avg, c->GetAvgPingTime());
+      ping_max = std::max(ping_max, c->GetMaxPingTime());
       data_rate += c->GetRx();
     }
   }
@@ -888,8 +888,8 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
       // check ping times
       int64 start_time = util::tSystem::CurrentTimeMillis();
       int64 may_wait = tTCPSettings::GetInstance()->critical_ping_threshold.Get();
-      may_wait = util::tMath::Min(may_wait, ct_express->CheckPingForDisconnect());
-      may_wait = util::tMath::Min(may_wait, ct_bulk->CheckPingForDisconnect());
+      may_wait = std::min(may_wait, ct_express->CheckPingForDisconnect());
+      may_wait = std::min(may_wait, ct_bulk->CheckPingForDisconnect());
 
       if (start_time > last_subscription_update + tTCPSettings::cCONNECTOR_THREAD_SUBSCRIPTION_UPDATE_INTERVAL)
       {
