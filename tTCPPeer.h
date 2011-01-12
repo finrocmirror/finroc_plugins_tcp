@@ -84,6 +84,9 @@ private:
   /*! Peer tracker that we use for discovering network nodes */
   tPeerList* tracker;
 
+  /*! Delete all ports when client disconnects? */
+  bool delete_ports_on_disconnect;
+
 public:
 
   /*! TreeFilter for different applications */
@@ -123,8 +126,9 @@ public:
    * \param mode Mode (see enum above)
    * \param preferred_server_port Port that we will try to open for server. Will try the next ones if not available. (SERVER and FULL only)
    * \param filter Filter that specifies which elements in remote runtime environment we're interested in. (CLIENT and FULL only)
+   * \param delete_ports_on_disconnect Delete all ports when client disconnects?
    */
-  tTCPPeer(const util::tString& network_name_, const util::tString& unique_peer_name, tTCPPeer::tMode mode_, int preferred_server_port, core::tFrameworkElementTreeFilter filter_);
+  tTCPPeer(const util::tString& network_name_, const util::tString& unique_peer_name, tTCPPeer::tMode mode_, int preferred_server_port, core::tFrameworkElementTreeFilter filter_, bool delete_ports_on_disconnect_);
 
   /*!
    * \param connection Active connection
@@ -137,6 +141,14 @@ public:
   /*! Start connecting
    * @throws Exception */
   void Connect();
+
+  /*!
+   * \return Delete all ports when client disconnects?
+   */
+  inline bool DeletePortsOnDisconnect()
+  {
+    return delete_ports_on_disconnect;
+  }
 
   virtual float GetConnectionQuality();
 

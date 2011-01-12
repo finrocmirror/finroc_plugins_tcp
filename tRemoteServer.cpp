@@ -27,6 +27,7 @@
 #include "core/tRuntimeEnvironment.h"
 #include "rrlib/finroc_core_utils/thread/sThreadUtil.h"
 #include "plugins/tcp/tTCP.h"
+#include "plugins/tcp/tTCPPeer.h"
 #include "core/port/tPortFlags.h"
 #include "core/buffers/tCoreOutput.h"
 #include "core/buffers/tCoreInput.h"
@@ -143,7 +144,14 @@ void tRemoteServer::Disconnect()
     port_iterator.Reset();
     for (tProxyPort* pp = port_iterator.Next(); pp != NULL; pp = port_iterator.Next())
     {
-      pp->Reset();
+      if (peer->DeletePortsOnDisconnect())
+      {
+        pp->ManagedDelete();
+      }
+      else
+      {
+        pp->Reset();
+      }
     }
     port_iterator.Reset();
   }

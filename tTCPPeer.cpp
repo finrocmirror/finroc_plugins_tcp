@@ -45,9 +45,10 @@ tTCPPeer::tTCPPeer(const util::tString& network_name_, core::tFrameworkElementTr
     ci(this),
     filter(filter_),
     tracker(NULL),
+    delete_ports_on_disconnect(filter_.IsAcceptAllFilter()),
     connections(10u, 4u)
 {
-  // this(networkName,"",Mode.CLIENT,-1,filter);
+  // this(networkName,"",Mode.CLIENT,-1,filter,filter.isAcceptAllFilter());
 
   if (IsServer())
   {
@@ -56,7 +57,7 @@ tTCPPeer::tTCPPeer(const util::tString& network_name_, core::tFrameworkElementTr
 
 }
 
-tTCPPeer::tTCPPeer(const util::tString& network_name_, const util::tString& unique_peer_name, tTCPPeer::tMode mode_, int preferred_server_port, core::tFrameworkElementTreeFilter filter_) :
+tTCPPeer::tTCPPeer(const util::tString& network_name_, const util::tString& unique_peer_name, tTCPPeer::tMode mode_, int preferred_server_port, core::tFrameworkElementTreeFilter filter_, bool delete_ports_on_disconnect_) :
     core::tExternalConnection("TCP", network_name_),
     mode(mode_),
     server(NULL),
@@ -65,6 +66,7 @@ tTCPPeer::tTCPPeer(const util::tString& network_name_, const util::tString& uniq
     ci(this),
     filter(filter_),
     tracker(NULL),
+    delete_ports_on_disconnect(delete_ports_on_disconnect_),
     connections(10u, 4u)
 {
   if (IsServer())

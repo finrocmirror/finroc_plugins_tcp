@@ -534,6 +534,7 @@ void tTCPConnection::tReader::Run()
       int64 cur_time = 0;
       tPeerList* pl = NULL;
       bool notify_writers = false;
+      int16 uid = 0;
 
       // process acknowledgement stuff and other commands common for server and client
       switch (op_code)
@@ -563,7 +564,8 @@ void tTCPConnection::tReader::Run()
         break;
 
       case tTCP::cUPDATETIME:
-        outer_class_ptr->update_times.SetTime(cis->ReadShort(), cis->ReadShort());
+        uid = cis->ReadShort();
+        outer_class_ptr->update_times.SetTime(uid, cis->ReadShort());
         break;
 
       case tTCP::cPULLCALL:
