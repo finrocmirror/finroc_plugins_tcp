@@ -140,7 +140,7 @@ void tRemoteServer::Disconnect()
       express.reset();  // needed afterwards so commmented out
     }
 
-    // reset subscriptions
+    // reset subscriptions - possibly delete elements
     port_iterator.Reset();
     for (tProxyPort* pp = port_iterator.Next(); pp != NULL; pp = port_iterator.Next())
     {
@@ -154,6 +154,16 @@ void tRemoteServer::Disconnect()
       }
     }
     port_iterator.Reset();
+
+    if (peer->DeletePortsOnDisconnect())
+    {
+      elem_iterator.Reset();
+      for (tProxyFrameworkElement* pp = elem_iterator.Next(); pp != NULL; pp = elem_iterator.Next())
+      {
+        pp->ManagedDelete();
+      }
+      elem_iterator.Reset();
+    }
   }
 }
 
