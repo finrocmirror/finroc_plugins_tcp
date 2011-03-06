@@ -30,7 +30,7 @@ namespace finroc
 {
 namespace tcp
 {
-::std::tr1::shared_ptr<tTCP> tTCP::instance;
+::std::shared_ptr<tTCP> tTCP::instance;
 const int8 tTCP::cTCP_P2P_ID_EXPRESS, tTCP::cTCP_P2P_ID_BULK;
 const int8 tTCP::cSET, tTCP::cSUBSCRIBE, tTCP::cUNSUBSCRIBE, tTCP::cCHANGE_EVENT, tTCP::cPING, tTCP::cPONG, tTCP::cPULLCALL, tTCP::cMETHODCALL, tTCP::cUPDATETIME, tTCP::cREQUEST_PORT_UPDATE, tTCP::cPORT_UPDATE, tTCP::cPULLCALL_RETURN, tTCP::cMETHODCALL_RETURN, tTCP::cPEER_INFO;
 const int8 tTCP::cSUCCESS, tTCP::cFAIL;
@@ -42,7 +42,7 @@ tTCP::tCreateAction tTCP::creator3(tTCPPeer::cALL_AND_EDGE_FILTER, "TCP admin", 
 
 tTCP::tTCP()
 {
-  instance = ::std::tr1::shared_ptr<tTCP>(this);
+  instance = ::std::shared_ptr<tTCP>(this);
 }
 
 tTCP::~tTCP()

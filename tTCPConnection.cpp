@@ -76,7 +76,7 @@ tTCPConnection::tTCPConnection(int8 type_, tTCPPeer* peer_, bool send_peer_info_
 
 int64 tTCPConnection::CheckPingForDisconnect()
 {
-  ::std::tr1::shared_ptr<tWriter> locked_writer = writer.lock();
+  ::std::shared_ptr<tWriter> locked_writer = writer.lock();
   if (locked_writer == NULL)
   {
     return tTCPSettings::GetInstance()->critical_ping_threshold.Get();
@@ -118,7 +118,7 @@ void tTCPConnection::Disconnect()
   }
 
   // join threads for thread safety
-  ::std::tr1::shared_ptr<tWriter> locked_writer = writer.lock();
+  ::std::shared_ptr<tWriter> locked_writer = writer.lock();
   if (locked_writer != NULL && util::tThread::CurrentThread() != locked_writer)
   {
     try
@@ -131,7 +131,7 @@ void tTCPConnection::Disconnect()
       FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, "warning: TCPConnection::disconnect() - Interrupted waiting for writer thread.");
     }
   }
-  ::std::tr1::shared_ptr<tReader> locked_reader = reader.lock();
+  ::std::shared_ptr<tReader> locked_reader = reader.lock();
   if (locked_reader != NULL && util::tThread::CurrentThread() != locked_reader)
   {
     try
@@ -402,7 +402,7 @@ void tTCPConnection::HandleReturningPullCall()
 
 void tTCPConnection::NotifyWriter()
 {
-  ::std::tr1::shared_ptr<tWriter> locked_writer = writer.lock();
+  ::std::shared_ptr<tWriter> locked_writer = writer.lock();
   if (locked_writer != NULL)
   {
     locked_writer->NotifyWriter();
@@ -411,7 +411,7 @@ void tTCPConnection::NotifyWriter()
 
 bool tTCPConnection::PingTimeExceeed()
 {
-  ::std::tr1::shared_ptr<tWriter> locked_writer = writer.lock();
+  ::std::shared_ptr<tWriter> locked_writer = writer.lock();
   if (locked_writer == NULL)
   {
     return false;
@@ -430,7 +430,7 @@ bool tTCPConnection::PingTimeExceeed()
 
 void tTCPConnection::SendCall(core::tSerializableReusable* call)
 {
-  ::std::tr1::shared_ptr<tWriter> locked_writer = writer.lock();
+  ::std::shared_ptr<tWriter> locked_writer = writer.lock();
   if (locked_writer != NULL && (!disconnect_signal))
   {
     locked_writer->SendCall(call);
@@ -518,7 +518,7 @@ void tTCPConnection::tReader::Run()
 {
   InitThreadLocalCache();
   // only for c++ automatic deallocation
-  ::std::tr1::shared_ptr<core::tCoreInput> cis = outer_class_ptr->cis;
+  ::std::shared_ptr<core::tCoreInput> cis = outer_class_ptr->cis;
 
   try
   {
@@ -721,7 +721,7 @@ void tTCPConnection::tWriter::NotifyWriter()
 void tTCPConnection::tWriter::Run()
 {
   InitThreadLocalCache();
-  ::std::tr1::shared_ptr<core::tCoreOutput> cos = outer_class_ptr->cos;
+  ::std::shared_ptr<core::tCoreOutput> cos = outer_class_ptr->cos;
 
   try
   {

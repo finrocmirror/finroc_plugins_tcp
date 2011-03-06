@@ -88,7 +88,7 @@ public:
     int64 last_subscription_update;
 
     /*! Bulk and Express Connections to server - copy for connector thread */
-    ::std::tr1::shared_ptr<tRemoteServer::tConnection> ct_bulk, ct_express;
+    ::std::shared_ptr<tRemoteServer::tConnection> ct_bulk, ct_express;
 
   public:
 
@@ -104,10 +104,10 @@ private:
   util::tIPSocketAddress address;
 
   /*! Bulk and Express Connections to server */
-  ::std::tr1::shared_ptr<tConnection> bulk, express;
+  ::std::shared_ptr<tConnection> bulk, express;
 
   /*! This thread reconnects disconnected Remote Nodes and updates subscriptions */
-  ::std::tr1::shared_ptr<tConnectorThread> connector_thread;
+  ::std::shared_ptr<tConnectorThread> connector_thread;
 
   /*! Temporary buffer with port information */
   core::tFrameworkElementInfo tmp_info;
@@ -433,7 +433,7 @@ public:
      */
     tConnection(tRemoteServer* const outer_class_ptr_, int8 type);
 
-    void Connect(::std::tr1::shared_ptr<util::tNetSocket> socket_, ::std::tr1::shared_ptr<tRemoteServer::tConnection> connection);
+    void Connect(::std::shared_ptr<util::tNetSocket> socket_, ::std::shared_ptr<tRemoteServer::tConnection> connection);
 
     virtual void HandleDisconnect()
     {

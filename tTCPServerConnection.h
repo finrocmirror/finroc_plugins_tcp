@@ -131,7 +131,7 @@ public:
    * \param stream_id Stream ID for connection type (see TCP class)
    * \param peer Peer that this server belongs to
    */
-  tTCPServerConnection(::std::tr1::shared_ptr<util::tNetSocket> s, int8 stream_id, tTCPServer* server, tTCPPeer* peer);
+  tTCPServerConnection(::std::shared_ptr<util::tNetSocket> s, int8 stream_id, tTCPServer* server, tTCPPeer* peer);
 
   /*!
    * Get Port for this connection. Creates Port if not yet existent.
@@ -179,7 +179,7 @@ public:
     core::tFrameworkElement::tChildIterator port_iterator;
 
     /*! Ensures that connection object exists as long as port set does */
-    ::std::tr1::shared_ptr<tTCPServerConnection> connection_lock;
+    ::std::shared_ptr<tTCPServerConnection> connection_lock;
 
     /*!
      * Notifies ports that connection is bad/disconnected so that
@@ -193,7 +193,7 @@ public:
 
   public:
 
-    tPortSet(tTCPServerConnection* const outer_class_ptr_, tTCPServer* server, ::std::tr1::shared_ptr<tTCPServerConnection> connection_lock_);
+    tPortSet(tTCPServerConnection* const outer_class_ptr_, tTCPServer* server, ::std::shared_ptr<tTCPServerConnection> connection_lock_);
 
   };
 
@@ -243,7 +243,7 @@ public:
     friend class tTCPServerConnection;
   private:
 
-    static ::std::tr1::shared_ptr<tTCPServerConnection::tPingTimeMonitor> instance;
+    static ::std::shared_ptr<tTCPServerConnection::tPingTimeMonitor> instance;
 
     /*! Locked before thread list (in C++) */
     static util::tMutexLockOrder static_class_mutex;

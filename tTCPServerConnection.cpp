@@ -46,7 +46,7 @@ namespace tcp
 util::tSafeConcurrentlyIterableList<tTCPServerConnection*> tTCPServerConnection::connections(4u, 4u);
 util::tAtomicInt tTCPServerConnection::connection_id;
 
-tTCPServerConnection::tTCPServerConnection(::std::tr1::shared_ptr<util::tNetSocket> s, int8 stream_id, tTCPServer* server, tTCPPeer* peer) :
+tTCPServerConnection::tTCPServerConnection(::std::shared_ptr<util::tNetSocket> s, int8 stream_id, tTCPServer* server, tTCPPeer* peer) :
     tTCPConnection(stream_id, stream_id == tTCP::cTCP_P2P_ID_BULK ? peer : NULL, stream_id == tTCP::cTCP_P2P_ID_BULK),
     port_set(NULL),
     send_runtime_info(false),
@@ -63,18 +63,18 @@ tTCPServerConnection::tTCPServerConnection(::std::tr1::shared_ptr<util::tNetSock
     util::tLock lock2(this);
 
     // initialize core streams (counter part to RemoteServer.Connection constructor)
-    ::std::tr1::shared_ptr<util::tLargeIntermediateStreamBuffer> lm_buf(new util::tLargeIntermediateStreamBuffer(s->GetSink()));
-    this->cos = ::std::tr1::shared_ptr<core::tCoreOutput>(new core::tCoreOutput(lm_buf));
+    ::std::shared_ptr<util::tLargeIntermediateStreamBuffer> lm_buf(new util::tLargeIntermediateStreamBuffer(s->GetSink()));
+    this->cos = ::std::shared_ptr<core::tCoreOutput>(new core::tCoreOutput(lm_buf));
     //cos = new CoreOutputStream(new BufferedOutputStreamMod(s.getOutputStream()));
     this->cos->WriteLong(core::tRuntimeEnvironment::GetInstance()->GetCreationTime());  // write base timestamp
     core::tRemoteTypes::SerializeLocalDataTypes(core::tDataTypeRegister::GetInstance(), this->cos.get());
     this->cos->Flush();
 
     // init port set here, since it might be serialized to stream
-    port_set = new tPortSet(this, server, ::std::tr1::shared_ptr<tTCPServerConnection>(this));
+    port_set = new tPortSet(this, server, ::std::shared_ptr<tTCPServerConnection>(this));
     port_set->Init();
 
-    this->cis = ::std::tr1::shared_ptr<core::tCoreInput>(new core::tCoreInput(s->GetSource()));
+    this->cis = ::std::shared_ptr<core::tCoreInput>(new core::tCoreInput(s->GetSource()));
     this->cis->SetTypeTranslation(&(this->update_times));
     this->update_times.Deserialize(this->cis.get());
 
@@ -95,13 +95,13 @@ tTCPServerConnection::tTCPServerConnection(::std::tr1::shared_ptr<util::tNetSock
     }
 
     // start incoming data listener thread
-    ::std::tr1::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, util::tStringBuilder("TCP Server ") + type_string + "-Listener for " + s->GetRemoteSocketAddress().ToString()));
+    ::std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, util::tStringBuilder("TCP Server ") + type_string + "-Listener for " + s->GetRemoteSocketAddress().ToString()));
     this->reader = listener;
     listener->LockObject(port_set->connection_lock);
     listener->Start();
 
     // start writer thread
-    ::std::tr1::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(this, util::tStringBuilder("TCP Server ") + type_string + "-Writer for " + s->GetRemoteSocketAddress().ToString()));
+    ::std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(this, util::tStringBuilder("TCP Server ") + type_string + "-Writer for " + s->GetRemoteSocketAddress().ToString()));
     this->writer = writer;
     writer->LockObject(port_set->connection_lock);
     writer->Start();
@@ -310,7 +310,7 @@ void tTCPServerConnection::TreeFilterCallback(core::tFrameworkElement* fe, bool 
   }
 }
 
-tTCPServerConnection::tPortSet::tPortSet(tTCPServerConnection* const outer_class_ptr_, tTCPServer* server, ::std::tr1::shared_ptr<tTCPServerConnection> connection_lock_) :
+tTCPServerConnection::tPortSet::tPortSet(tTCPServerConnection* const outer_class_ptr_, tTCPServer* server, ::std::shared_ptr<tTCPServerConnection> connection_lock_) :
     core::tFrameworkElement(server, util::tStringBuilder("connection") + tTCPServerConnection::connection_id.GetAndIncrement(), core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT, core::tLockOrderLevels::cPORT - 1),
     outer_class_ptr(outer_class_ptr_),
     port_iterator(this),
@@ -369,7 +369,7 @@ void tTCPServerConnection::tServerPort::PostChildInit()
   }
 }
 
-::std::tr1::shared_ptr<tTCPServerConnection::tPingTimeMonitor> tTCPServerConnection::tPingTimeMonitor::instance;
+::std::shared_ptr<tTCPServerConnection::tPingTimeMonitor> tTCPServerConnection::tPingTimeMonitor::instance;
 util::tMutexLockOrder tTCPServerConnection::tPingTimeMonitor::static_class_mutex(core::tLockOrderLevels::cINNER_MOST - 20);
 
 tTCPServerConnection::tPingTimeMonitor::tPingTimeMonitor() :

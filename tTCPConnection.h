@@ -185,22 +185,22 @@ private:
 protected:
 
   /*! Network Socket used for accessing remote Server */
-  ::std::tr1::shared_ptr<util::tNetSocket> socket;
+  ::std::shared_ptr<util::tNetSocket> socket;
 
   /*! Output Stream for sending data to remote Server */
-  ::std::tr1::shared_ptr<core::tCoreOutput> cos;
+  ::std::shared_ptr<core::tCoreOutput> cos;
 
   /*! Input Stream for receiving data ro remote Server */
-  ::std::tr1::shared_ptr<core::tCoreInput> cis;
+  ::std::shared_ptr<core::tCoreInput> cis;
 
   /*! Listener Thread */
   //protected @SharedPtr Reader listener;
 
   /*! Writer Thread */
-  ::std::tr1::weak_ptr<tWriter> writer;
+  ::std::weak_ptr<tWriter> writer;
 
   /*! Reader Thread */
-  ::std::tr1::weak_ptr<tReader> reader;
+  ::std::weak_ptr<tReader> reader;
 
   /*! Timestamp relative to which time is encoded in this stream */
   int64 time_base;

@@ -84,7 +84,7 @@ public:
    */
   tTCPServer(int port_, bool try_next_ports_if_occupied_, tTCPPeer* peer_);
 
-  virtual void AcceptConnection(::std::tr1::shared_ptr<util::tNetSocket> s, int8 first_byte);
+  virtual void AcceptConnection(::std::shared_ptr<util::tNetSocket> s, int8 first_byte);
 
   virtual bool Accepts(int8 first_byte)
   {
