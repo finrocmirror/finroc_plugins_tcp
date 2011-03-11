@@ -26,7 +26,6 @@
 #include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
 #include "core/tRuntimeEnvironment.h"
 #include "core/port/net/tRemoteTypes.h"
-#include "core/portdatabase/tDataTypeRegister.h"
 #include "rrlib/finroc_core_utils/thread/sThreadUtil.h"
 #include "core/port/tAbstractPort.h"
 #include "core/port/tPortFlags.h"
@@ -67,7 +66,7 @@ tTCPServerConnection::tTCPServerConnection(::std::shared_ptr<util::tNetSocket> s
     this->cos = ::std::shared_ptr<core::tCoreOutput>(new core::tCoreOutput(lm_buf));
     //cos = new CoreOutputStream(new BufferedOutputStreamMod(s.getOutputStream()));
     this->cos->WriteLong(core::tRuntimeEnvironment::GetInstance()->GetCreationTime());  // write base timestamp
-    core::tRemoteTypes::SerializeLocalDataTypes(core::tDataTypeRegister::GetInstance(), this->cos.get());
+    core::tRemoteTypes::SerializeLocalDataTypes(this->cos.get());
     this->cos->Flush();
 
     // init port set here, since it might be serialized to stream
@@ -392,7 +391,7 @@ tTCPServerConnection::tPingTimeMonitor* tTCPServerConnection::tPingTimeMonitor::
 void tTCPServerConnection::tPingTimeMonitor::MainLoopCallback()
 {
   int64 start_time = util::tTime::GetCoarse();
-  int64 may_wait = tTCPSettings::GetInstance()->critical_ping_threshold.Get();
+  int64 may_wait = tTCPSettings::GetInstance()->critical_ping_threshold.GetValue();
 
   util::tArrayWrapper<tTCPServerConnection*>* it = connections.GetIterable();
   for (int i = 0, n = connections.Size(); i < n; i++)

@@ -19,10 +19,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "rrlib/finroc_core_utils/tJCBase.h"
 
-#ifndef PLUGINS__TCP__TTCPSETTINGS_H
-#define PLUGINS__TCP__TTCPSETTINGS_H
+#ifndef plugins__tcp__tTCPSettings_h__
+#define plugins__tcp__tTCPSettings_h__
+
+#include "rrlib/finroc_core_utils/definitions.h"
 
 #include "core/parameter/tParameterNumeric.h"
 #include "core/datatype/tUnit.h"
@@ -69,7 +70,7 @@ public:
   // 8 (2^x for fast modulo)
 
   /*! Help for debugging: insert checks in data stream => more bandwidth */
-  static const bool cDEBUG_TCP = false;
+  static const bool cDEBUG_TCP = true;
 
   /*! Help for debugging: this number will be inserted after every command when DEBUG_TCP is activated */
   static const int cDEBUG_TCP_NUMBER = 0xCAFEBABE;
@@ -104,4 +105,4 @@ public:
 } // namespace finroc
 } // namespace tcp
 
-#endif // PLUGINS__TCP__TTCPSETTINGS_H
+#endif // plugins__tcp__tTCPSettings_h__

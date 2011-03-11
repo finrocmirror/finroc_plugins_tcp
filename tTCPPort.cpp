@@ -19,9 +19,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "core/portdatabase/tDataType.h"
 #include "plugins/tcp/tTCPPort.h"
 #include "plugins/tcp/tTCPConnection.h"
+#include "core/portdatabase/tFinrocTypeInfo.h"
 #include "core/port/net/tRemoteTypes.h"
 #include "core/parameter/tParameterNumeric.h"
 #include "core/tRuntimeSettings.h"
@@ -61,7 +61,7 @@ int16 tTCPPort::GetUpdateIntervalForNet()
 
     // 3. data type default
   }
-  else if ((t = GetPort()->GetDataType()->GetUpdateTime()) >= 0)
+  else if ((t = core::tFinrocTypeInfo::Get(GetPort()->GetDataType()).GetUpdateTime()) >= 0)
   {
     return t;
 
@@ -73,7 +73,7 @@ int16 tTCPPort::GetUpdateIntervalForNet()
   }
 
   // 5. runtime default
-  int res = core::tRuntimeSettings::cDEFAULT_MINIMUM_NETWORK_UPDATE_TIME->Get();
+  int res = core::tRuntimeSettings::cDEFAULT_MINIMUM_NETWORK_UPDATE_TIME->GetValue();
   return static_cast<int16>(res);
 }
 

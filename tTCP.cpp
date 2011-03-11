@@ -65,7 +65,7 @@ tTCPCommand* tTCP::GetUnusedTCPCommand()
   return tc;
 }
 
-void tTCP::Init(core::tPluginManager& mgr)
+void tTCP::Init()
 {
   //        Plugins.getInstance().registerExternalConnection(creator1);
   //        Plugins.getInstance().registerExternalConnection(creator2);

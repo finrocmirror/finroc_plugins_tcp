@@ -38,11 +38,11 @@ const int tTCPSettings::cDEBUG_TCP_NUMBER;
 
 tTCPSettings::tTCPSettings() :
     core::tFrameworkElement(core::tRuntimeSettings::GetInstance(), "TCP Settings"),
-    max_not_acknowledged_packets_express("Maximum not acknowledged express packets", this, &(core::tUnit::cNO_UNIT), 4, core::tBounds(1, 40, true)),
-    max_not_acknowledged_packets_bulk("Maximum not acknowledged bulk packets", this, &(core::tUnit::cNO_UNIT), 2, core::tBounds(1, 40, true)),
-    min_update_interval_express("Minimum Express Update Interval", this, &(core::tUnit::ms), 25, core::tBounds(1, 2000, core::tConstant::cNO_MIN_TIME_LIMIT.get())),
-    min_update_interval_bulk("Minimum Bulk Update Interval", this, &(core::tUnit::ms), 50, core::tBounds(1, 2000, core::tConstant::cNO_MIN_TIME_LIMIT.get())),
-    critical_ping_threshold("Critical Ping Threshold", this, &(core::tUnit::ms), 1500, core::tBounds(50, 20000, core::tConstant::cNO_MAX_TIME_LIMIT.get()))
+    max_not_acknowledged_packets_express("Maximum not acknowledged express packets", this, &(core::tUnit::cNO_UNIT), 4, core::tBounds<int>(1, 40, true)),
+    max_not_acknowledged_packets_bulk("Maximum not acknowledged bulk packets", this, &(core::tUnit::cNO_UNIT), 2, core::tBounds<int>(1, 40, true)),
+    min_update_interval_express("Minimum Express Update Interval", this, &(core::tUnit::ms), 25, core::tBounds<int>(1, 2000, core::tConstant::cNO_MIN_TIME_LIMIT->GetValue())),
+    min_update_interval_bulk("Minimum Bulk Update Interval", this, &(core::tUnit::ms), 50, core::tBounds<int>(1, 2000, core::tConstant::cNO_MIN_TIME_LIMIT->GetValue())),
+    critical_ping_threshold("Critical Ping Threshold", this, &(core::tUnit::ms), 1500, core::tBounds<int>(50, 20000, core::tConstant::cNO_MAX_TIME_LIMIT->GetValue()))
 {
 }
 

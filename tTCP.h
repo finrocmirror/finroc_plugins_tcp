@@ -19,10 +19,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "rrlib/finroc_core_utils/tJCBase.h"
 
-#ifndef PLUGINS__TCP__TTCP_H
-#define PLUGINS__TCP__TTCP_H
+#ifndef plugins__tcp__tTCP_h__
+#define plugins__tcp__tTCP_h__
+
+#include "rrlib/finroc_core_utils/definitions.h"
 
 #include "rrlib/finroc_core_utils/container/tReusablesPoolCR.h"
 #include "core/plugin/tPlugin.h"
@@ -33,7 +34,7 @@ namespace finroc
 {
 namespace core
 {
-class tPluginManager;
+class tExternalConnection;
 } // namespace finroc
 } // namespace core
 
@@ -142,11 +143,11 @@ public:
    */
   static tTCPCommand* GetUnusedTCPCommand();
 
-  virtual void Init(core::tPluginManager& mgr);
+  virtual void Init();
 
 };
 
 } // namespace finroc
 } // namespace tcp
 
-#endif // PLUGINS__TCP__TTCP_H
+#endif // plugins__tcp__tTCP_h__

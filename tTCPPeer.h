@@ -19,10 +19,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "rrlib/finroc_core_utils/tJCBase.h"
 
-#ifndef PLUGINS__TCP__TTCPPEER_H
-#define PLUGINS__TCP__TTCPPEER_H
+#ifndef plugins__tcp__tTCPPeer_h__
+#define plugins__tcp__tTCPPeer_h__
+
+#include "rrlib/finroc_core_utils/definitions.h"
 
 #include "plugins/tcp/tTCPConnection.h"
 #include "core/tFrameworkElement.h"
@@ -175,7 +176,7 @@ public:
    */
   inline bool IsClient()
   {
-    return mode == tTCPPeer::eCLIENT || mode == tTCPPeer::eFULL;
+    return mode == eCLIENT || mode == eFULL;
   }
 
   /*!
@@ -183,7 +184,7 @@ public:
    */
   inline bool IsServer()
   {
-    return mode == tTCPPeer::eSERVER || mode == tTCPPeer::eFULL;
+    return mode == eSERVER || mode == eFULL;
   }
 
   virtual void NodeDiscovered(const util::tIPSocketAddress& isa, const util::tString& name_);
@@ -212,4 +213,4 @@ public:
 } // namespace finroc
 } // namespace tcp
 
-#endif // PLUGINS__TCP__TTCPPEER_H
+#endif // plugins__tcp__tTCPPeer_h__

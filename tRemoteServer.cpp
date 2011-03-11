@@ -35,7 +35,6 @@
 #include "core/port/tAbstractPort.h"
 #include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
 #include "core/port/net/tRemoteTypes.h"
-#include "core/portdatabase/tDataTypeRegister.h"
 #include "rrlib/finroc_core_utils/tTime.h"
 #include "plugins/tcp/tTCPCommand.h"
 #include "plugins/tcp/tTCPSettings.h"
@@ -706,7 +705,7 @@ void tRemoteServer::tConnection::Connect(::std::shared_ptr<util::tNetSocket> soc
   ::std::shared_ptr<util::tLargeIntermediateStreamBuffer> lm_buf(new util::tLargeIntermediateStreamBuffer(socket_->GetSink()));
   this->cos = ::std::shared_ptr<core::tCoreOutput>(new core::tCoreOutput(lm_buf));
   this->cos->WriteByte(this->type);
-  core::tRemoteTypes::SerializeLocalDataTypes(core::tDataTypeRegister::GetInstance(), this->cos.get());
+  core::tRemoteTypes::SerializeLocalDataTypes(this->cos.get());
   bool bulk = this->type == tTCP::cTCP_P2P_ID_BULK;
   util::tString type_string = GetConnectionTypeString();
   this->cos->WriteBoolean(bulk);
@@ -905,7 +904,7 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
     {
       // check ping times
       int64 start_time = util::tSystem::CurrentTimeMillis();
-      int64 may_wait = tTCPSettings::GetInstance()->critical_ping_threshold.Get();
+      int64 may_wait = tTCPSettings::GetInstance()->critical_ping_threshold.GetValue();
       may_wait = std::min(may_wait, ct_express->CheckPingForDisconnect());
       may_wait = std::min(may_wait, ct_bulk->CheckPingForDisconnect());
 

@@ -22,8 +22,8 @@
 #include "plugins/tcp/tPeerList.h"
 #include "core/tRuntimeEnvironment.h"
 #include "rrlib/finroc_core_utils/log/tLogUser.h"
-#include "rrlib/finroc_core_utils/stream/tInputStreamBuffer.h"
-#include "rrlib/finroc_core_utils/stream/tOutputStreamBuffer.h"
+#include "rrlib/serialization/tInputStream.h"
+#include "rrlib/serialization/tOutputStream.h"
 
 namespace finroc
 {
@@ -76,7 +76,7 @@ void tPeerList::AddPeer(util::tIPSocketAddress isa, bool notify_on_change)
   }
 }
 
-void tPeerList::DeserializeAddresses(util::tInputStreamBuffer* ci, util::tIPAddress own_address, util::tIPAddress partner_address)
+void tPeerList::DeserializeAddresses(rrlib::serialization::tInputStream* ci, util::tIPAddress own_address, util::tIPAddress partner_address)
 {
   int size = ci->ReadInt();
   for (int i = 0; i < size; i++)
@@ -134,7 +134,7 @@ void tPeerList::RemovePeer(util::tIPSocketAddress isa)
   }
 }
 
-void tPeerList::SerializeAddresses(util::tOutputStreamBuffer* co)
+void tPeerList::SerializeAddresses(rrlib::serialization::tOutputStream* co)
 {
   util::tLock lock1(this);
   int size = peers.Size();

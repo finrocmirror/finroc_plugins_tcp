@@ -19,10 +19,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "rrlib/finroc_core_utils/tJCBase.h"
 
-#ifndef PLUGINS__TCP__TTCPCOMMAND_H
-#define PLUGINS__TCP__TTCPCOMMAND_H
+#ifndef plugins__tcp__tTCPCommand_h__
+#define plugins__tcp__tTCPCommand_h__
+
+#include "rrlib/finroc_core_utils/definitions.h"
 
 #include "core/portdatabase/tSerializableReusable.h"
 
@@ -90,4 +91,4 @@ public:
 } // namespace finroc
 } // namespace tcp
 
-#endif // PLUGINS__TCP__TTCPCOMMAND_H
+#endif // plugins__tcp__tTCPCommand_h__

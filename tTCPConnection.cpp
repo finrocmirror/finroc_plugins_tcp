@@ -19,11 +19,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "core/portdatabase/tDataType.h"
 #include "plugins/tcp/tTCPConnection.h"
 #include "core/tRuntimeSettings.h"
 #include "plugins/tcp/tTCPPeer.h"
 #include "rrlib/finroc_core_utils/tTime.h"
+#include "core/portdatabase/tFinrocTypeInfo.h"
 #include "core/port/rpc/tMethodCall.h"
 #include "core/port/tThreadLocalCache.h"
 #include "core/port/rpc/tMethodCallException.h"
@@ -76,25 +76,25 @@ tTCPConnection::tTCPConnection(int8 type_, tTCPPeer* peer_, bool send_peer_info_
 
 int64 tTCPConnection::CheckPingForDisconnect()
 {
-  ::std::shared_ptr<tWriter> locked_writer = writer.lock();
+  std::shared_ptr<tWriter> locked_writer = writer.lock();
   if (locked_writer == NULL)
   {
-    return tTCPSettings::GetInstance()->critical_ping_threshold.Get();
+    return tTCPSettings::GetInstance()->critical_ping_threshold.GetValue();
   }
   if (last_acknowledged_packet != locked_writer->cur_packet_index)
   {
     int64 critical_packet_time = sent_packet_time[(last_acknowledged_packet + 1) & tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS];
-    int64 time_left = critical_packet_time + tTCPSettings::GetInstance()->critical_ping_threshold.Get() - util::tSystem::CurrentTimeMillis();
+    int64 time_left = critical_packet_time + tTCPSettings::GetInstance()->critical_ping_threshold.GetValue() - util::tSystem::CurrentTimeMillis();
     if (time_left < 0)
     {
       HandlePingTimeExceed();
-      return tTCPSettings::GetInstance()->critical_ping_threshold.Get();
+      return tTCPSettings::GetInstance()->critical_ping_threshold.GetValue();
     }
     return time_left;
   }
   else
   {
-    return tTCPSettings::GetInstance()->critical_ping_threshold.Get();
+    return tTCPSettings::GetInstance()->critical_ping_threshold.GetValue();
   }
 }
 
@@ -118,7 +118,7 @@ void tTCPConnection::Disconnect()
   }
 
   // join threads for thread safety
-  ::std::shared_ptr<tWriter> locked_writer = writer.lock();
+  std::shared_ptr<tWriter> locked_writer = writer.lock();
   if (locked_writer != NULL && util::tThread::CurrentThread() != locked_writer)
   {
     try
@@ -131,7 +131,7 @@ void tTCPConnection::Disconnect()
       FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, "warning: TCPConnection::disconnect() - Interrupted waiting for writer thread.");
     }
   }
-  ::std::shared_ptr<tReader> locked_reader = reader.lock();
+  std::shared_ptr<tReader> locked_reader = reader.lock();
   if (locked_reader != NULL && util::tThread::CurrentThread() != locked_reader)
   {
     try
@@ -191,11 +191,11 @@ void tTCPConnection::HandleMethodCall()
   // read port index and retrieve proxy port
   int handle = cis->ReadInt();
   int remote_handle = cis->ReadInt();
-  core::tDataType* method_type = cis->ReadType();
+  rrlib::serialization::tDataTypeBase method_type = cis->ReadType();
   cis->ReadSkipOffset();
   tTCPPort* port = LookupPortForCallHandling(handle);
 
-  if ((port == NULL || method_type == NULL || (!method_type->IsMethodType())))
+  if ((port == NULL || method_type == NULL || (!core::tFinrocTypeInfo::IsMethodType(method_type))))
   {
     // create/decode call
     core::tMethodCall* mc = core::tThreadLocalCache::GetFast()->GetUnusedMethodCall();
@@ -259,7 +259,7 @@ void tTCPConnection::HandleMethodCallReturn()
   int handle = cis->ReadInt();
   /*int remoteHandle =*/
   cis->ReadInt();
-  core::tDataType* method_type = cis->ReadType();
+  rrlib::serialization::tDataTypeBase method_type = cis->ReadType();
   cis->ReadSkipOffset();
   tTCPPort* port = LookupPortForCallHandling(handle);
 
@@ -383,8 +383,6 @@ void tTCPConnection::HandleReturningPullCall()
       // debug output
       FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Pull return call ", (port != NULL ? port->GetPort()->GetQualifiedName() : handle), " status: ", pc->GetStatusString());
 
-      // Returning call
-      pc->DeserializeParamaters();
     }
     catch (const util::tException& e)
     {
@@ -402,7 +400,7 @@ void tTCPConnection::HandleReturningPullCall()
 
 void tTCPConnection::NotifyWriter()
 {
-  ::std::shared_ptr<tWriter> locked_writer = writer.lock();
+  std::shared_ptr<tWriter> locked_writer = writer.lock();
   if (locked_writer != NULL)
   {
     locked_writer->NotifyWriter();
@@ -411,7 +409,7 @@ void tTCPConnection::NotifyWriter()
 
 bool tTCPConnection::PingTimeExceeed()
 {
-  ::std::shared_ptr<tWriter> locked_writer = writer.lock();
+  std::shared_ptr<tWriter> locked_writer = writer.lock();
   if (locked_writer == NULL)
   {
     return false;
@@ -419,7 +417,7 @@ bool tTCPConnection::PingTimeExceeed()
   if (last_acknowledged_packet != locked_writer->cur_packet_index)
   {
     int64 critical_packet_time = sent_packet_time[(last_acknowledged_packet + 1) & tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS];
-    int64 time_left = critical_packet_time + tTCPSettings::GetInstance()->critical_ping_threshold.Get() - util::tSystem::CurrentTimeMillis();
+    int64 time_left = critical_packet_time + tTCPSettings::GetInstance()->critical_ping_threshold.GetValue() - util::tSystem::CurrentTimeMillis();
     return time_left < 0;
   }
   else
@@ -430,7 +428,7 @@ bool tTCPConnection::PingTimeExceeed()
 
 void tTCPConnection::SendCall(core::tSerializableReusable* call)
 {
-  ::std::shared_ptr<tWriter> locked_writer = writer.lock();
+  std::shared_ptr<tWriter> locked_writer = writer.lock();
   if (locked_writer != NULL && (!disconnect_signal))
   {
     locked_writer->SendCall(call);
@@ -484,12 +482,12 @@ void tTCPConnection::TerminateCommand()
   }
 }
 
-void tTCPConnection::UpdateTimeChanged(core::tDataType* dt, int16 new_update_time)
+void tTCPConnection::UpdateTimeChanged(rrlib::serialization::tDataTypeBase dt, int16 new_update_time)
 {
   // forward update time change to connection partner
   tTCPCommand* tc = tTCP::GetUnusedTCPCommand();
   tc->op_code = tTCP::cUPDATETIME;
-  tc->datatypeuid = dt == NULL ? -1 : dt->GetUid();
+  tc->datatypeuid = dt == NULL ? -1 : dt.GetUid();
   tc->update_interval = new_update_time;
   SendCall(tc);
 }
@@ -664,7 +662,7 @@ tTCPConnection::tWriter::tWriter(tTCPConnection* const outer_class_ptr_, const u
 
 bool tTCPConnection::tWriter::CanSend()
 {
-  int max_not_ack = outer_class_ptr->max_not_acknowledged_packets.Get();
+  int max_not_ack = outer_class_ptr->max_not_acknowledged_packets.GetValue();
   return cur_packet_index < outer_class_ptr->last_acknowledged_packet + max_not_ack || (max_not_ack <= 0 && cur_packet_index < outer_class_ptr->last_acknowledged_packet + tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS);
 }
 
@@ -815,8 +813,8 @@ void tTCPConnection::tWriter::Run()
       this->tc->ReleaseAllLocks();
 
       // wait for minimum update time
-      int64 wait_for = (static_cast<int64>(outer_class_ptr->min_update_interval.Get())) - (util::tSystem::CurrentTimeMillis() - start_time);
-      assert((wait_for <= outer_class_ptr->min_update_interval.Get()));
+      int64 wait_for = (static_cast<int64>(outer_class_ptr->min_update_interval.GetValue())) - (util::tSystem::CurrentTimeMillis() - start_time);
+      assert((wait_for <= outer_class_ptr->min_update_interval.GetValue()));
       if ((wait_for > 0) && (!outer_class_ptr->disconnect_signal))
       {
         ::finroc::util::tThread::Sleep(wait_for);

@@ -19,10 +19,11 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "rrlib/finroc_core_utils/tJCBase.h"
 
-#ifndef PLUGINS__TCP__TTCPCONNECTION_H
-#define PLUGINS__TCP__TTCPCONNECTION_H
+#ifndef plugins__tcp__tTCPConnection_h__
+#define plugins__tcp__tTCPConnection_h__
+
+#include "rrlib/finroc_core_utils/definitions.h"
 
 #include "plugins/tcp/tTCPPort.h"
 #include "rrlib/finroc_core_utils/net/tNetSocket.h"
@@ -33,6 +34,7 @@
 #include "core/port/net/tRemoteTypes.h"
 #include "core/tLockOrderLevels.h"
 #include "plugins/tcp/tTCP.h"
+#include "rrlib/serialization/tDataTypeBase.h"
 #include "rrlib/finroc_core_utils/log/tLogUser.h"
 #include "core/port/net/tUpdateTimeChangeListener.h"
 #include "core/thread/tCoreLoopThreadBase.h"
@@ -383,7 +385,7 @@ public:
    */
   void TerminateCommand();
 
-  virtual void UpdateTimeChanged(core::tDataType* dt, int16 new_update_time);
+  virtual void UpdateTimeChanged(rrlib::serialization::tDataTypeBase dt, int16 new_update_time);
 
   inline void WriteTimestamp(int64 time_stamp)
   {
@@ -395,4 +397,4 @@ public:
 } // namespace finroc
 } // namespace tcp
 
-#endif // PLUGINS__TCP__TTCPCONNECTION_H
+#endif // plugins__tcp__tTCPConnection_h__

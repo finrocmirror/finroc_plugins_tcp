@@ -19,23 +19,24 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "rrlib/finroc_core_utils/tJCBase.h"
 
-#ifndef PLUGINS__TCP__TPEERLIST_H
-#define PLUGINS__TCP__TPEERLIST_H
+#ifndef plugins__tcp__tPeerList_h__
+#define plugins__tcp__tPeerList_h__
+
+#include "rrlib/finroc_core_utils/definitions.h"
 
 #include "rrlib/finroc_core_utils/container/tSimpleList.h"
 #include "rrlib/finroc_core_utils/net/tIPSocketAddress.h"
 #include "rrlib/finroc_core_utils/net/tIPAddress.h"
 #include "core/port/net/tAbstractPeerTracker.h"
 
-namespace finroc
+namespace rrlib
 {
-namespace util
+namespace serialization
 {
-class tInputStreamBuffer;
-} // namespace finroc
-} // namespace util
+class tInputStream;
+} // namespace rrlib
+} // namespace serialization
 
 namespace finroc
 {
@@ -80,7 +81,7 @@ public:
    * \param own_address Our own address from remote view
    * \param partner_address IP address of partner
    */
-  void DeserializeAddresses(util::tInputStreamBuffer* ci, util::tIPAddress own_address, util::tIPAddress partner_address);
+  void DeserializeAddresses(rrlib::serialization::tInputStream* ci, util::tIPAddress own_address, util::tIPAddress partner_address);
 
   /*!
    * \return Revision of peer list (incremented with each change)
@@ -97,11 +98,11 @@ public:
    *
    * \param co Output Stream
    */
-  void SerializeAddresses(util::tOutputStreamBuffer* co);
+  void SerializeAddresses(rrlib::serialization::tOutputStream* co);
 
 };
 
 } // namespace finroc
 } // namespace tcp
 
-#endif // PLUGINS__TCP__TPEERLIST_H
+#endif // plugins__tcp__tPeerList_h__

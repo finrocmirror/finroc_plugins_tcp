@@ -38,7 +38,7 @@ core::tFrameworkElementTreeFilter tTCPPeer::cALL_AND_EDGE_FILTER(core::tCoreFlag
 
 tTCPPeer::tTCPPeer(const util::tString& network_name_, core::tFrameworkElementTreeFilter filter_) :
     core::tExternalConnection("TCP", network_name_),
-    mode(tTCPPeer::eCLIENT),
+    mode(eCLIENT),
     server(NULL),
     network_name(network_name_),
     name(""),
@@ -126,7 +126,7 @@ void tTCPPeer::ConnectImpl(const util::tString& address, bool same_address)
         ip = true;
         for (size_t i = 0u; i < port.Length(); i++)
         {
-          if (!util::tCharacter::IsDigit(port.CharAt(i)))
+          if (!isdigit(port.CharAt(i)))
           {
             ip = false;
           }
