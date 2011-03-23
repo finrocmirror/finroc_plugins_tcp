@@ -75,8 +75,8 @@ void tRemoteServer::Connect()
   disconnect_calls.Set(0);
 
   // try connecting...
-  ::std::shared_ptr<util::tNetSocket> socket_express = util::tNetSocket::CreateInstance(address);
-  ::std::shared_ptr<util::tNetSocket> socket_bulk = util::tNetSocket::CreateInstance(address);
+  std::shared_ptr<util::tNetSocket> socket_express = util::tNetSocket::CreateInstance(address);
+  std::shared_ptr<util::tNetSocket> socket_bulk = util::tNetSocket::CreateInstance(address);
 
   // connect
   finroc::util::tGarbageCollector::tFunctor deleter;
@@ -697,13 +697,13 @@ tRemoteServer::tConnection::tConnection(tRemoteServer* const outer_class_ptr_, i
 {
 }
 
-void tRemoteServer::tConnection::Connect(::std::shared_ptr<util::tNetSocket> socket_, ::std::shared_ptr<tRemoteServer::tConnection> connection)
+void tRemoteServer::tConnection::Connect(std::shared_ptr<util::tNetSocket>& socket_, std::shared_ptr<tRemoteServer::tConnection>& connection)
 {
   this->socket = socket_;
 
   // write stream id
-  ::std::shared_ptr<util::tLargeIntermediateStreamBuffer> lm_buf(new util::tLargeIntermediateStreamBuffer(socket_->GetSink()));
-  this->cos = ::std::shared_ptr<core::tCoreOutput>(new core::tCoreOutput(lm_buf));
+  std::shared_ptr<util::tLargeIntermediateStreamBuffer> lm_buf(new util::tLargeIntermediateStreamBuffer(socket_->GetSink()));
+  this->cos = std::shared_ptr<core::tCoreOutput>(new core::tCoreOutput(lm_buf));
   this->cos->WriteByte(this->type);
   core::tRemoteTypes::SerializeLocalDataTypes(this->cos.get());
   bool bulk = this->type == tTCP::cTCP_P2P_ID_BULK;
@@ -712,16 +712,16 @@ void tRemoteServer::tConnection::Connect(::std::shared_ptr<util::tNetSocket> soc
   this->cos->Flush();
 
   // initialize core streams
-  this->cis = ::std::shared_ptr<core::tCoreInput>(new core::tCoreInput(socket_->GetSource()));
+  this->cis = std::shared_ptr<core::tCoreInput>(new core::tCoreInput(socket_->GetSource()));
   this->cis->SetTypeTranslation(&(this->update_times));
   this->cis->SetTimeout(1000);
   this->time_base = this->cis->ReadLong();  // Timestamp that remote runtime was created - and relative to which time is encoded in this stream
   this->update_times.Deserialize(this->cis.get());
   this->cis->SetTimeout(-1);
 
-  ::std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, util::tStringBuilder("TCP Client ") + type_string + "-Listener for " + outer_class_ptr->GetDescription()));
+  std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, util::tStringBuilder("TCP Client ") + type_string + "-Listener for " + outer_class_ptr->GetDescription()));
   this->reader = listener;
-  ::std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(this, util::tStringBuilder("TCP Client ") + type_string + "-Writer for " + outer_class_ptr->GetDescription()));
+  std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(this, util::tStringBuilder("TCP Client ") + type_string + "-Writer for " + outer_class_ptr->GetDescription()));
   this->writer = writer;
 
   if (bulk)

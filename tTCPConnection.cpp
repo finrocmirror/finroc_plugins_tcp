@@ -516,7 +516,7 @@ void tTCPConnection::tReader::Run()
 {
   InitThreadLocalCache();
   // only for c++ automatic deallocation
-  ::std::shared_ptr<core::tCoreInput> cis = outer_class_ptr->cis;
+  std::shared_ptr<core::tCoreInput> cis = outer_class_ptr->cis;
 
   try
   {
@@ -719,7 +719,7 @@ void tTCPConnection::tWriter::NotifyWriter()
 void tTCPConnection::tWriter::Run()
 {
   InitThreadLocalCache();
-  ::std::shared_ptr<core::tCoreOutput> cos = outer_class_ptr->cos;
+  std::shared_ptr<core::tCoreOutput> cos = outer_class_ptr->cos;
 
   try
   {

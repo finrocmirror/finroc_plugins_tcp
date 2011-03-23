@@ -111,7 +111,7 @@ private:
 public:
 
   /*! Singleton instance of TCP plugin */
-  static ::std::shared_ptr<tTCP> instance;
+  static std::shared_ptr<tTCP> instance;
 
   /*! Stream IDs for different connection types */
   static const int8 cTCP_P2P_ID_EXPRESS = 9, cTCP_P2P_ID_BULK = 10;
