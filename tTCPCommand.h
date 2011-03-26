@@ -86,6 +86,11 @@ public:
 
   virtual void Serialize(core::tCoreOutput& os) const;
 
+  virtual void CustomDelete(bool b)
+  {
+    tReusable::CustomDelete(b);
+  }
+
 };
 
 } // namespace finroc
