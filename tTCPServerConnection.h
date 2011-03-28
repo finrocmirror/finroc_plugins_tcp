@@ -105,7 +105,7 @@ private:
 public:
 
   /*! List with connections for TCP servers in this runtime */
-  static util::tSafeConcurrentlyIterableList<tTCPServerConnection*> connections;
+  static util::tSafeConcurrentlyIterableList<tTCPServerConnection*>* connections;
 
 private:
 

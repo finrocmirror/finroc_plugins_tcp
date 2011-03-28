@@ -22,6 +22,7 @@
 #include "plugins/tcp/tTCPServer.h"
 
 #include "plugins/tcp/tTCPServerConnection.h"
+#include "rrlib/finroc_core_utils/tAutoDeleter.h"
 #include "plugins/tcp/tTCP.h"
 #include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
 #include "core/tRuntimeEnvironment.h"
@@ -42,7 +43,7 @@ namespace finroc
 {
 namespace tcp
 {
-util::tSafeConcurrentlyIterableList<tTCPServerConnection*> tTCPServerConnection::connections(4u, 4u);
+util::tSafeConcurrentlyIterableList<tTCPServerConnection*>* tTCPServerConnection::connections = util::tAutoDeleter::AddStatic(new util::tSafeConcurrentlyIterableList<tTCPServerConnection*>(4u, 4u));
 util::tAtomicInt tTCPServerConnection::connection_id;
 
 tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s, int8 stream_id, tTCPServer* server, tTCPPeer* peer) :
@@ -105,7 +106,7 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
     writer->LockObject(port_set->connection_lock);
     writer->Start();
 
-    connections.Add(this, false);
+    connections->Add(this, false);
     tPingTimeMonitor::GetInstance();  // start ping time monitor
   }
 }
@@ -334,7 +335,7 @@ void tTCPServerConnection::tPortSet::PrepareDelete()
     core::tRuntimeEnvironment::GetInstance()->RemoveListener(outer_class_ptr);
   }
   NotifyPortsOfDisconnect();
-  tTCPServerConnection::connections.Remove(outer_class_ptr);
+  tTCPServerConnection::connections->Remove(outer_class_ptr);
   ::finroc::core::tFrameworkElement::PrepareDelete();
 }
 
@@ -393,8 +394,8 @@ void tTCPServerConnection::tPingTimeMonitor::MainLoopCallback()
   int64 start_time = util::tTime::GetCoarse();
   int64 may_wait = tTCPSettings::GetInstance()->critical_ping_threshold.GetValue();
 
-  util::tArrayWrapper<tTCPServerConnection*>* it = connections.GetIterable();
-  for (int i = 0, n = connections.Size(); i < n; i++)
+  util::tArrayWrapper<tTCPServerConnection*>* it = connections->GetIterable();
+  for (int i = 0, n = connections->Size(); i < n; i++)
   {
     tTCPServerConnection* tsc = it->Get(i);
     if (tsc != NULL)
