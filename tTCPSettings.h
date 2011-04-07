@@ -26,10 +26,12 @@
 #include "rrlib/finroc_core_utils/definitions.h"
 
 #include "core/parameter/tParameterNumeric.h"
-#include "core/datatype/tUnit.h"
 #include "core/datatype/tBounds.h"
 #include "core/datatype/tConstant.h"
+#include "core/datatype/tUnit.h"
 #include "core/tFrameworkElement.h"
+
+#include "core/parameter/tParameter.h"
 
 namespace finroc
 {
@@ -76,15 +78,15 @@ public:
   static const int cDEBUG_TCP_NUMBER = 0xCAFEBABE;
 
   // Port settings
-  core::tParameterNumeric<int> max_not_acknowledged_packets_express;
+  core::tParameter<int> max_not_acknowledged_packets_express;
 
-  core::tParameterNumeric<int> max_not_acknowledged_packets_bulk;
+  core::tParameter<int> max_not_acknowledged_packets_bulk;
 
-  core::tParameterNumeric<int> min_update_interval_express;
+  core::tParameter<int> min_update_interval_express;
 
-  core::tParameterNumeric<int> min_update_interval_bulk;
+  core::tParameter<int> min_update_interval_bulk;
 
-  core::tParameterNumeric<int> critical_ping_threshold;
+  core::tParameter<int> critical_ping_threshold;
 
 private:
 
