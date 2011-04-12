@@ -128,12 +128,12 @@ void tRemoteServer::Disconnect()
 
   {
     util::tLock lock2(this);
-    if (bulk != NULL)
+    if (bulk.get() != NULL)
     {
       bulk->Disconnect();
       bulk.reset();  // needed afterwards so commmented out
     }
-    if (express != NULL)
+    if (express.get() != NULL)
     {
       express->Disconnect();
       express.reset();  // needed afterwards so commmented out
@@ -185,7 +185,7 @@ util::tString tRemoteServer::FormatRate(int data_rate)
 float tRemoteServer::GetConnectionQuality()
 {
   util::tLock lock1(this);
-  if (bulk == NULL && express == NULL)
+  if (bulk.get() == NULL && express.get() == NULL)
   {
     return 0;
   }
@@ -250,7 +250,7 @@ util::tString tRemoteServer::GetPingString()
   int ping_max = 0;
   int data_rate = 0;
   util::tString s = "ping (avg/max/Rx): ";
-  if (bulk == NULL && express == NULL)
+  if (bulk.get() == NULL && express.get() == NULL)
   {
     return s + "- ";
   }
@@ -856,16 +856,16 @@ tRemoteServer::tConnectorThread::tConnectorThread(tRemoteServer* const outer_cla
 
 void tRemoteServer::tConnectorThread::MainLoopCallback()
 {
-  if (ct_bulk != NULL && ct_bulk->Disconnecting())
+  if (ct_bulk.get() != NULL && ct_bulk->Disconnecting())
   {
     ct_bulk.reset();
   }
-  if (ct_express != NULL && ct_express->Disconnecting())
+  if (ct_express.get() != NULL && ct_express->Disconnecting())
   {
     ct_express.reset();
   }
 
-  if (ct_bulk == NULL && ct_express == NULL && outer_class_ptr->bulk == NULL && outer_class_ptr->express == NULL)
+  if (ct_bulk.get() == NULL && ct_express.get() == NULL && outer_class_ptr->bulk.get() == NULL && outer_class_ptr->express.get() == NULL)
   {
     // Try connecting
     try
@@ -875,11 +875,11 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
     catch (const util::tConnectException& e)
     {
       ::finroc::util::tThread::Sleep(2000);
-      if (outer_class_ptr->bulk == NULL)
+      if (outer_class_ptr->bulk.get() == NULL)
       {
         ct_bulk.reset();
       }
-      if (outer_class_ptr->express == NULL)
+      if (outer_class_ptr->express.get() == NULL)
       {
         ct_express.reset();
       }
@@ -887,18 +887,18 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
     catch (const util::tException& e)
     {
       FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_WARNING, log_domain, e);
-      if (outer_class_ptr->bulk == NULL)
+      if (outer_class_ptr->bulk.get() == NULL)
       {
         ct_bulk.reset();
       }
-      if (outer_class_ptr->express == NULL)
+      if (outer_class_ptr->express.get() == NULL)
       {
         ct_express.reset();
       }
     }
 
   }
-  else if (ct_bulk != NULL && ct_express != NULL)
+  else if (ct_bulk.get() != NULL && ct_express.get() != NULL)
   {
     try
     {

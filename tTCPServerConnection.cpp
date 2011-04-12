@@ -381,7 +381,7 @@ tTCPServerConnection::tPingTimeMonitor::tPingTimeMonitor() :
 tTCPServerConnection::tPingTimeMonitor* tTCPServerConnection::tPingTimeMonitor::GetInstance()
 {
   util::tLock lock1(static_class_mutex);
-  if (instance == NULL)
+  if (instance.get() == NULL)
   {
     instance = util::sThreadUtil::GetThreadSharedPtr(new tTCPServerConnection::tPingTimeMonitor());
     instance->Start();

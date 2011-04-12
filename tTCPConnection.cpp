@@ -77,7 +77,7 @@ tTCPConnection::tTCPConnection(int8 type_, tTCPPeer* peer_, bool send_peer_info_
 int64 tTCPConnection::CheckPingForDisconnect()
 {
   std::shared_ptr<tWriter> locked_writer = writer.lock();
-  if (locked_writer == NULL)
+  if (locked_writer.get() == NULL)
   {
     return tTCPSettings::GetInstance()->critical_ping_threshold.GetValue();
   }
@@ -119,7 +119,7 @@ void tTCPConnection::Disconnect()
 
   // join threads for thread safety
   std::shared_ptr<tWriter> locked_writer = writer.lock();
-  if (locked_writer != NULL && util::tThread::CurrentThread() != locked_writer)
+  if (locked_writer.get() != NULL && util::tThread::CurrentThread() != locked_writer)
   {
     try
     {
@@ -132,7 +132,7 @@ void tTCPConnection::Disconnect()
     }
   }
   std::shared_ptr<tReader> locked_reader = reader.lock();
-  if (locked_reader != NULL && util::tThread::CurrentThread() != locked_reader)
+  if (locked_reader.get() != NULL && util::tThread::CurrentThread() != locked_reader)
   {
     try
     {
@@ -401,7 +401,7 @@ void tTCPConnection::HandleReturningPullCall()
 void tTCPConnection::NotifyWriter()
 {
   std::shared_ptr<tWriter> locked_writer = writer.lock();
-  if (locked_writer != NULL)
+  if (locked_writer.get() != NULL)
   {
     locked_writer->NotifyWriter();
   }
@@ -410,7 +410,7 @@ void tTCPConnection::NotifyWriter()
 bool tTCPConnection::PingTimeExceeed()
 {
   std::shared_ptr<tWriter> locked_writer = writer.lock();
-  if (locked_writer == NULL)
+  if (locked_writer.get() == NULL)
   {
     return false;
   }
@@ -429,7 +429,7 @@ bool tTCPConnection::PingTimeExceeed()
 void tTCPConnection::SendCall(core::tSerializableReusable* call)
 {
   std::shared_ptr<tWriter> locked_writer = writer.lock();
-  if (locked_writer != NULL && (!disconnect_signal))
+  if (locked_writer.get() != NULL && (!disconnect_signal))
   {
     locked_writer->SendCall(call);
   }
