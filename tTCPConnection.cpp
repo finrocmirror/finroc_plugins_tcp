@@ -236,7 +236,7 @@ void tTCPConnection::HandleMethodCall()
     cis->SetBufferSource(NULL);
 
     // process call
-    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Method call ", (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
+    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Method call ", (port != NULL ? port->GetPort()->GetQualifiedName() : handle), " ", mc->GetMethod()->GetName());
     if (skip_call)
     {
       mc->SetExceptionStatus(core::tMethodCallException::eNO_CONNECTION);
