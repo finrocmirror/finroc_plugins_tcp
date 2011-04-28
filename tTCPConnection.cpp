@@ -31,6 +31,7 @@
 #include "core/port/net/tNetPort.h"
 #include "core/port/rpc/tPullCall.h"
 #include "core/port/rpc/tRPCThreadPool.h"
+#include "core/port/rpc/method/tAbstractMethod.h"
 #include "plugins/tcp/tTCPCommand.h"
 #include "rrlib/finroc_core_utils/thread/tLoopThread.h"
 #include "plugins/tcp/tPeerList.h"
