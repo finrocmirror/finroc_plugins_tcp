@@ -304,7 +304,7 @@ void tRemoteServer::PrepareDelete()
 
 void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
 {
-  FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Received updated FrameworkElementInfo: ", tmp_info.ToString());
+  FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Received updated FrameworkElementInfo: ", info.ToString());
 
   // these variables will store element to update
   tProxyFrameworkElement* fe = NULL;
@@ -382,13 +382,18 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
   else if (info.op_code == ::finroc::core::tRuntimeListener::cCHANGE || info.op_code == core::tFrameworkElementInfo::cEDGE_CHANGE)
   {
     // we're dealing with an existing framework element
-    assert((fe != NULL || port != NULL));
     if (info.IsPort())
     {
+      if (port == NULL && info.GetDataType() == NULL)    // ignore ports that we did not create, because of unknown type
+      {
+        return;
+      }
+      assert((port != NULL));
       port->UpdateFromPortInfo(info);
     }
     else
     {
+      assert((fe != NULL));
       fe->UpdateFromPortInfo(info);
     }
 
@@ -396,13 +401,18 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
   else if (info.op_code == ::finroc::core::tRuntimeListener::cREMOVE)
   {
     // we're dealing with an existing framework element
-    assert((fe != NULL || port != NULL));
     if (info.IsPort())
     {
+      if (port == NULL && info.GetDataType() == NULL)    // ignore ports that we did not create, because of unknown type
+      {
+        return;
+      }
+      assert((port != NULL));
       port->ManagedDelete();
     }
     else
     {
+      assert((fe != NULL));
       fe->ManagedDelete();
     }
 
