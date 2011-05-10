@@ -88,7 +88,8 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
       {
         util::tLock lock4(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());  // lock runtime so that we do not miss a change
         core::tRuntimeEnvironment::GetInstance()->AddListener(this);
-        element_filter.TraverseElementTree(core::tRuntimeEnvironment::GetInstance(), this, NULL, tmp);
+
+        element_filter.TraverseElementTree(core::tRuntimeEnvironment::GetInstance(), this, false, tmp);
       }
       this->cos->WriteByte(0);  // terminator
       this->cos->Flush();
