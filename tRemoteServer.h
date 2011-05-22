@@ -38,11 +38,19 @@
 #include "plugins/tcp/tTCPConnection.h"
 #include "core/thread/tCoreLoopThreadBase.h"
 
+namespace rrlib
+{
+namespace serialization
+{
+class tInputStream;
+} // namespace rrlib
+} // namespace serialization
+
 namespace finroc
 {
 namespace core
 {
-class tCoreInput;
+class tRemoteTypes;
 } // namespace finroc
 } // namespace core
 
@@ -195,7 +203,7 @@ private:
    * \param type_lookup Remote Type Database
    * \param cAre we communicating with a new server?
    */
-  void RetrieveRemotePorts(core::tCoreInput* cis, core::tCoreOutput* cos, core::tRemoteTypes* type_lookup, bool new_server);
+  void RetrieveRemotePorts(rrlib::serialization::tInputStream* cis, rrlib::serialization::tOutputStream* cos, core::tRemoteTypes* type_lookup, bool new_server);
 
 protected:
 

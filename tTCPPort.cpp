@@ -67,7 +67,7 @@ int16 tTCPPort::GetUpdateIntervalForNet()
 
     // 4. server data type default
   }
-  else if (c != NULL && (t = c->update_times.GetTime(GetPort()->GetDataType())) >= 0)
+  else if (c != NULL && (t = c->update_times->GetTime(GetPort()->GetDataType())) >= 0)
   {
     return t;
   }

@@ -29,12 +29,13 @@
 #include "plugins/tcp/tTCP.h"
 #include "plugins/tcp/tTCPPeer.h"
 #include "core/port/tPortFlags.h"
-#include "core/buffers/tCoreOutput.h"
-#include "core/buffers/tCoreInput.h"
+#include "rrlib/serialization/tOutputStream.h"
+#include "rrlib/serialization/tInputStream.h"
 #include "core/port/net/tNetPort.h"
 #include "core/port/tAbstractPort.h"
 #include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
-#include "core/port/net/tRemoteTypes.h"
+#include "core/datatype/tNumber.h"
+#include "rrlib/serialization/tDataTypeBase.h"
 #include "rrlib/finroc_core_utils/tTime.h"
 #include "plugins/tcp/tTCPCommand.h"
 #include "plugins/tcp/tTCPSettings.h"
@@ -419,7 +420,7 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
   }
 }
 
-void tRemoteServer::RetrieveRemotePorts(core::tCoreInput* cis, core::tCoreOutput* cos, core::tRemoteTypes* type_lookup, bool new_server)
+void tRemoteServer::RetrieveRemotePorts(rrlib::serialization::tInputStream* cis, rrlib::serialization::tOutputStream* cos, core::tRemoteTypes* type_lookup, bool new_server)
 {
   // recreate/reset monitoring lists if there has already been a connection
   port_iterator.Reset();
@@ -458,7 +459,7 @@ void tRemoteServer::RetrieveRemotePorts(core::tCoreInput* cis, core::tCoreOutput
   // retrieve initial port information
   while (cis->ReadByte() != 0)
   {
-    tmp_info.Deserialize(cis, *type_lookup);
+    tmp_info.Deserialize(*cis, *type_lookup);
     ProcessPortUpdate(tmp_info);
   }
   Init();
@@ -713,20 +714,22 @@ void tRemoteServer::tConnection::Connect(std::shared_ptr<util::tNetSocket>& sock
 
   // write stream id
   std::shared_ptr<util::tLargeIntermediateStreamBuffer> lm_buf(new util::tLargeIntermediateStreamBuffer(socket_->GetSink()));
-  this->cos = std::shared_ptr<core::tCoreOutput>(new core::tCoreOutput(lm_buf));
+  this->cos = std::shared_ptr<rrlib::serialization::tOutputStream>(new rrlib::serialization::tOutputStream(lm_buf, this->update_times));
   this->cos->WriteByte(this->type);
-  core::tRemoteTypes::SerializeLocalDataTypes(this->cos.get());
+  //RemoteTypes.serializeLocalDataTypes(cos);
+  this->cos->WriteType(core::tNumber::cTYPE);  // initialize type register
   bool bulk = this->type == tTCP::cTCP_P2P_ID_BULK;
   util::tString type_string = GetConnectionTypeString();
   this->cos->WriteBoolean(bulk);
   this->cos->Flush();
 
   // initialize core streams
-  this->cis = std::shared_ptr<core::tCoreInput>(new core::tCoreInput(socket_->GetSource()));
-  this->cis->SetTypeTranslation(&(this->update_times));
+  this->cis = std::shared_ptr<rrlib::serialization::tInputStream>(new rrlib::serialization::tInputStream(socket_->GetSource(), this->update_times));
   this->cis->SetTimeout(1000);
   this->time_base = this->cis->ReadLong();  // Timestamp that remote runtime was created - and relative to which time is encoded in this stream
-  this->update_times.Deserialize(this->cis.get());
+  //updateTimes.deserialize(cis);
+  rrlib::serialization::tDataTypeBase dt = this->cis->ReadType();
+  assert((dt == core::tNumber::cTYPE));
   this->cis->SetTimeout(-1);
 
   std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, util::tStringBuilder("TCP Client ") + type_string + "-Listener for " + outer_class_ptr->GetDescription()));
@@ -738,7 +741,7 @@ void tRemoteServer::tConnection::Connect(std::shared_ptr<util::tNetSocket>& sock
   {
     bool new_server = (outer_class_ptr->server_creation_time < 0) || (outer_class_ptr->server_creation_time != this->time_base);
     FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG, log_domain, (new_server ? "Connecting" : "Reconnecting"), " to server ", socket_->GetRemoteSocketAddress().ToString(), "...");
-    outer_class_ptr->RetrieveRemotePorts(this->cis.get(), this->cos.get(), &(this->update_times), new_server);
+    outer_class_ptr->RetrieveRemotePorts(this->cis.get(), this->cos.get(), this->update_times.get(), new_server);
   }
 
   // start incoming data listener thread
@@ -799,9 +802,9 @@ void tRemoteServer::tConnection::ProcessRequest(int8 op_code)
         else
         {
           int8 changed_flag = this->cis->ReadByte();
-          this->cis->SetBufferSource(p->GetPort());
-          p->ReceiveDataFromStream(this->cis.get(), util::tTime::GetCoarse(), changed_flag);
-          this->cis->SetBufferSource(NULL);
+          this->cis->SetFactory(p->GetPort());
+          p->ReceiveDataFromStream(*this->cis, util::tTime::GetCoarse(), changed_flag);
+          this->cis->SetFactory(NULL);
         }
       }
     }
@@ -813,7 +816,7 @@ void tRemoteServer::tConnection::ProcessRequest(int8 op_code)
 
   case tTCP::cPORT_UPDATE:
 
-    outer_class_ptr->tmp_info.Deserialize(this->cis.get(), this->update_times);
+    outer_class_ptr->tmp_info.Deserialize(*this->cis, *this->update_times);
     outer_class_ptr->ProcessPortUpdate(outer_class_ptr->tmp_info);
     outer_class_ptr->Init();
     break;

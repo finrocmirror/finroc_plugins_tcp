@@ -20,14 +20,14 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "plugins/tcp/tTCPCommand.h"
-#include "core/buffers/tCoreOutput.h"
+#include "rrlib/serialization/tOutputStream.h"
 #include "plugins/tcp/tTCP.h"
 
 namespace finroc
 {
 namespace tcp
 {
-void tTCPCommand::Serialize(core::tCoreOutput& os) const
+void tTCPCommand::Serialize(rrlib::serialization::tOutputStream& os) const
 {
   os.WriteByte(op_code);
   switch (op_code)
@@ -43,8 +43,8 @@ void tTCPCommand::Serialize(core::tCoreOutput& os) const
     os.WriteInt(remote_handle);
     break;
   case tTCP::cUPDATETIME:
-    os.WriteInt(datatypeuid);
-    os.WriteInt(update_interval);
+    os.WriteType(datatype);
+    os.WriteShort(update_interval);
     break;
   }
 }

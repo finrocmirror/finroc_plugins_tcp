@@ -27,8 +27,8 @@
 
 #include "plugins/tcp/tTCPPort.h"
 #include "rrlib/finroc_core_utils/net/tNetSocket.h"
-#include "core/buffers/tCoreOutput.h"
-#include "core/buffers/tCoreInput.h"
+#include "rrlib/serialization/tOutputStream.h"
+#include "rrlib/serialization/tInputStream.h"
 #include "core/parameter/tParameterNumeric.h"
 #include "plugins/tcp/tTCPSettings.h"
 #include "core/port/net/tRemoteTypes.h"
@@ -190,10 +190,10 @@ protected:
   std::shared_ptr<util::tNetSocket> socket;
 
   /*! Output Stream for sending data to remote Server */
-  std::shared_ptr<core::tCoreOutput> cos;
+  std::shared_ptr<rrlib::serialization::tOutputStream> cos;
 
   /*! Input Stream for receiving data ro remote Server */
-  std::shared_ptr<core::tCoreInput> cis;
+  std::shared_ptr<rrlib::serialization::tInputStream> cis;
 
   /*! Listener Thread */
   //protected @SharedPtr Reader listener;
@@ -208,7 +208,7 @@ protected:
   int64 time_base;
 
   /*! default connection times of connection partner */
-  core::tRemoteTypes update_times;
+  std::shared_ptr<core::tRemoteTypes> update_times;
 
   /*! Connection type - BULK or EXPRESS */
   int8 type;

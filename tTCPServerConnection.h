@@ -26,8 +26,8 @@
 #include "rrlib/finroc_core_utils/definitions.h"
 
 #include "rrlib/finroc_core_utils/stream/tChunkedBuffer.h"
-#include "core/buffers/tCoreOutput.h"
-#include "core/buffers/tCoreInput.h"
+#include "rrlib/serialization/tOutputStream.h"
+#include "rrlib/serialization/tInputStream.h"
 #include "core/tFrameworkElementTreeFilter.h"
 #include "rrlib/finroc_core_utils/net/tNetSocket.h"
 #include "core/port/tPortCreationInfo.h"
@@ -88,10 +88,10 @@ private:
   util::tChunkedBuffer runtime_info_buffer;
 
   /*! For any thread that writes runtime changes - note that when declared in this order, writer will be deleted/closed before runtimeInfoBuffer (that's intended and the correct order) */
-  core::tCoreOutput runtime_info_writer;
+  rrlib::serialization::tOutputStream runtime_info_writer;
 
   /*! For network writer thread that forwards runtime change information */
-  core::tCoreInput runtime_info_reader;
+  rrlib::serialization::tInputStream runtime_info_reader;
 
   /*! Framework element filter to decide which data is interesting for client */
   core::tFrameworkElementTreeFilter element_filter;

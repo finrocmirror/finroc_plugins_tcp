@@ -26,13 +26,17 @@
 #include "plugins/tcp/tTCP.h"
 #include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
 #include "core/tRuntimeEnvironment.h"
-#include "core/port/net/tRemoteTypes.h"
+#include "core/datatype/tNumber.h"
+#include "rrlib/serialization/tDataTypeBase.h"
 #include "rrlib/finroc_core_utils/thread/sThreadUtil.h"
 #include "core/port/tAbstractPort.h"
 #include "core/port/tPortFlags.h"
 #include "core/tLockOrderLevels.h"
 #include "rrlib/finroc_core_utils/log/tLogUser.h"
 #include "core/datatype/tFrameworkElementInfo.h"
+#include "core/port/net/tRemoteTypes.h"
+#include "plugins/tcp/tTCPCommand.h"
+#include "core/portdatabase/tFinrocTypeInfo.h"
 #include "plugins/tcp/tTCPSettings.h"
 #include "core/tCoreFlags.h"
 #include "core/port/net/tNetPort.h"
@@ -64,19 +68,21 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
 
     // initialize core streams (counter part to RemoteServer.Connection constructor)
     std::shared_ptr<util::tLargeIntermediateStreamBuffer> lm_buf(new util::tLargeIntermediateStreamBuffer(s->GetSink()));
-    this->cos = std::shared_ptr<core::tCoreOutput>(new core::tCoreOutput(lm_buf));
+    this->cos = std::shared_ptr<rrlib::serialization::tOutputStream>(new rrlib::serialization::tOutputStream(lm_buf, this->update_times));
     //cos = new CoreOutputStream(new BufferedOutputStreamMod(s.getOutputStream()));
     this->cos->WriteLong(core::tRuntimeEnvironment::GetInstance()->GetCreationTime());  // write base timestamp
-    core::tRemoteTypes::SerializeLocalDataTypes(this->cos.get());
+    //RemoteTypes.serializeLocalDataTypes(cos);
+    this->cos->WriteType(core::tNumber::cTYPE);
     this->cos->Flush();
 
     // init port set here, since it might be serialized to stream
     port_set = new tPortSet(this, server, std::shared_ptr<tTCPServerConnection>(this));
     port_set->Init();
 
-    this->cis = std::shared_ptr<core::tCoreInput>(new core::tCoreInput(s->GetSource()));
-    this->cis->SetTypeTranslation(&(this->update_times));
-    this->update_times.Deserialize(this->cis.get());
+    this->cis = std::shared_ptr<rrlib::serialization::tInputStream>(new rrlib::serialization::tInputStream(s->GetSource(), this->update_times));
+    //updateTimes.deserialize(cis);
+    rrlib::serialization::tDataTypeBase dt = this->cis->ReadType();
+    assert((dt == core::tNumber::cTYPE));
 
     util::tString type_string = GetConnectionTypeString();
 
@@ -204,9 +210,9 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
         else
         {
           int8 changed_flag = this->cis->ReadByte();
-          this->cis->SetBufferSource(p->GetPort());
-          p->ReceiveDataFromStream(this->cis.get(), util::tSystem::CurrentTimeMillis(), changed_flag);
-          this->cis->SetBufferSource(NULL);
+          this->cis->SetFactory(p->GetPort());
+          p->ReceiveDataFromStream(*this->cis, util::tSystem::CurrentTimeMillis(), changed_flag);
+          this->cis->SetFactory(NULL);
         }
       }
     }
@@ -281,6 +287,16 @@ bool tTCPServerConnection::SendData(int64 start_time)
   // updated runtime information
   while (runtime_info_reader.MoreDataAvailable())
   {
+    if (this->update_times->TypeUpdateNecessary())
+    {
+      // use update time tcp command to trigger type update
+      tTCPCommand tc;
+      tc.op_code = tTCP::cUPDATETIME;
+      tc.datatype = core::tNumber::cTYPE;
+      tc.update_interval = core::tFinrocTypeInfo::Get(core::tNumber::cTYPE).GetUpdateTime();
+      tc.Serialize(*cos);
+      TerminateCommand();
+    }
     this->cos->WriteAllAvailable(&(runtime_info_reader));
   }
 
@@ -290,7 +306,7 @@ bool tTCPServerConnection::SendData(int64 start_time)
 void tTCPServerConnection::SerializeRuntimeChange(int8 change_type, core::tFrameworkElement* element)
 {
   runtime_info_writer.WriteByte(tTCP::cPORT_UPDATE);
-  core::tFrameworkElementInfo::SerializeFrameworkElement(element, change_type, &(runtime_info_writer), element_filter, tmp);
+  core::tFrameworkElementInfo::SerializeFrameworkElement(element, change_type, runtime_info_writer, element_filter, tmp);
   if (tTCPSettings::cDEBUG_TCP)
   {
     runtime_info_writer.WriteInt(tTCPSettings::cDEBUG_TCP_NUMBER);
@@ -306,7 +322,7 @@ void tTCPServerConnection::TreeFilterCallback(core::tFrameworkElement* fe, bool 
     if (!fe->IsDeleted())
     {
       this->cos->WriteByte(tTCP::cPORT_UPDATE);
-      core::tFrameworkElementInfo::SerializeFrameworkElement(fe, ::finroc::core::tRuntimeListener::cADD, this->cos.get(), element_filter, tmp);
+      core::tFrameworkElementInfo::SerializeFrameworkElement(fe, ::finroc::core::tRuntimeListener::cADD, *this->cos, element_filter, tmp);
     }
   }
 }

@@ -28,10 +28,10 @@
 #include "core/port/tThreadLocalCache.h"
 #include "core/port/rpc/tMethodCallException.h"
 #include "core/port/tAbstractPort.h"
+#include "core/port/rpc/method/tAbstractMethod.h"
 #include "core/port/net/tNetPort.h"
 #include "core/port/rpc/tPullCall.h"
 #include "core/port/rpc/tRPCThreadPool.h"
-#include "core/port/rpc/method/tAbstractMethod.h"
 #include "plugins/tcp/tTCPCommand.h"
 #include "rrlib/finroc_core_utils/thread/tLoopThread.h"
 #include "plugins/tcp/tPeerList.h"
@@ -58,7 +58,7 @@ tTCPConnection::tTCPConnection(int8 type_, tTCPPeer* peer_, bool send_peer_info_
     writer(),
     reader(),
     time_base(0),
-    update_times(),
+    update_times(new core::tRemoteTypes()),
     type(type_),
     monitored_ports(50u, 4u),
     peer(peer_),
@@ -202,7 +202,7 @@ void tTCPConnection::HandleMethodCall()
     core::tMethodCall* mc = core::tThreadLocalCache::GetFast()->GetUnusedMethodCall();
     try
     {
-      mc->DeserializeCall(cis.get(), method_type, true);
+      mc->DeserializeCall(*cis, method_type, true);
     }
     catch (const util::tException& e)
     {
@@ -223,18 +223,18 @@ void tTCPConnection::HandleMethodCall()
 
     bool skip_call = (!port->GetPort()->IsReady());
     core::tMethodCall* mc = core::tThreadLocalCache::GetFast()->GetUnusedMethodCall();
-    cis->SetBufferSource(skip_call ? NULL : port->GetPort());
+    cis->SetFactory(skip_call ? NULL : port->GetPort());
     try
     {
-      mc->DeserializeCall(cis.get(), method_type, skip_call);
+      mc->DeserializeCall(*cis, method_type, skip_call);
     }
     catch (const util::tException& e)
     {
-      cis->SetBufferSource(NULL);
+      cis->SetFactory(NULL);
       mc->Recycle();
       return;
     }
-    cis->SetBufferSource(NULL);
+    cis->SetFactory(NULL);
 
     // process call
     FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Method call ", (port != NULL ? port->GetPort()->GetQualifiedName() : handle), " ", mc->GetMethod()->GetName());
@@ -284,19 +284,19 @@ void tTCPConnection::HandleMethodCallReturn()
     // create/decode call
     core::tMethodCall* mc = core::tThreadLocalCache::GetFast()->GetUnusedMethodCall();
     //boolean skipCall = (methodType == null || (!methodType.isMethodType()));
-    cis->SetBufferSource(port->GetPort());
+    cis->SetFactory(port->GetPort());
     try
     {
-      mc->DeserializeCall(cis.get(), method_type, false);
+      mc->DeserializeCall(*cis, method_type, false);
     }
     catch (const util::tException& e)
     {
       cis->ToSkipTarget();
-      cis->SetBufferSource(NULL);
+      cis->SetFactory(NULL);
       mc->Recycle();
       return;
     }
-    cis->SetBufferSource(NULL);
+    cis->SetFactory(NULL);
 
     // process call
     FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Method call return ", (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
@@ -377,9 +377,9 @@ void tTCPConnection::HandleReturningPullCall()
     core::tPullCall* pc = core::tThreadLocalCache::GetFast()->GetUnusedPullCall();
     try
     {
-      cis->SetBufferSource(port->GetPort());
+      cis->SetFactory(port->GetPort());
       pc->Deserialize(*cis);
-      cis->SetBufferSource(NULL);
+      cis->SetFactory(NULL);
 
       // debug output
       FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Pull return call ", (port != NULL ? port->GetPort()->GetQualifiedName() : handle), " status: ", pc->GetStatusString());
@@ -465,7 +465,7 @@ bool tTCPConnection::SendDataPrototype(int64 start_time, int8 op_code)
         cos->WriteInt(pp->GetRemoteHandle());
         cos->WriteSkipOffsetPlaceholder();
         cos->WriteByte(changed_flag);
-        pp->WriteDataToNetwork(cos.get(), start_time);
+        pp->WriteDataToNetwork(*cos, start_time);
         cos->SkipTargetHere();
         TerminateCommand();
       }
@@ -488,7 +488,7 @@ void tTCPConnection::UpdateTimeChanged(rrlib::serialization::tDataTypeBase dt, i
   // forward update time change to connection partner
   tTCPCommand* tc = tTCP::GetUnusedTCPCommand();
   tc->op_code = tTCP::cUPDATETIME;
-  tc->datatypeuid = dt == NULL ? -1 : dt.GetUid();
+  tc->datatype = dt;
   tc->update_interval = new_update_time;
   SendCall(tc);
 }
@@ -517,7 +517,7 @@ void tTCPConnection::tReader::Run()
 {
   InitThreadLocalCache();
   // only for c++ automatic deallocation
-  std::shared_ptr<core::tCoreInput> cis = outer_class_ptr->cis;
+  std::shared_ptr<rrlib::serialization::tInputStream> cis = outer_class_ptr->cis;
 
   try
   {
@@ -533,7 +533,7 @@ void tTCPConnection::tReader::Run()
       int64 cur_time = 0;
       tPeerList* pl = NULL;
       bool notify_writers = false;
-      int16 uid = 0;
+      rrlib::serialization::tDataTypeBase dt;
 
       // process acknowledgement stuff and other commands common for server and client
       switch (op_code)
@@ -563,8 +563,8 @@ void tTCPConnection::tReader::Run()
         break;
 
       case tTCP::cUPDATETIME:
-        uid = cis->ReadShort();
-        outer_class_ptr->update_times.SetTime(uid, cis->ReadShort());
+        dt = cis->ReadType();
+        outer_class_ptr->update_times->SetTime(dt, cis->ReadShort());
         break;
 
       case tTCP::cPULLCALL:
@@ -720,7 +720,7 @@ void tTCPConnection::tWriter::NotifyWriter()
 void tTCPConnection::tWriter::Run()
 {
   InitThreadLocalCache();
-  std::shared_ptr<core::tCoreOutput> cos = outer_class_ptr->cos;
+  std::shared_ptr<rrlib::serialization::tOutputStream> cos = outer_class_ptr->cos;
 
   try
   {

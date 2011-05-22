@@ -25,15 +25,16 @@
 
 #include "rrlib/finroc_core_utils/definitions.h"
 
+#include "rrlib/serialization/tDataTypeBase.h"
 #include "core/portdatabase/tSerializableReusable.h"
 
-namespace finroc
+namespace rrlib
 {
-namespace core
+namespace serialization
 {
-class tCoreInput;
-} // namespace finroc
-} // namespace core
+class tInputStream;
+} // namespace rrlib
+} // namespace serialization
 
 namespace finroc
 {
@@ -64,7 +65,7 @@ public:
   int local_index;
 
   /*! Data type uid */
-  int16 datatypeuid;
+  rrlib::serialization::tDataTypeBase datatype;
 
   /*! Subscribe with reverse push strategy? */
   bool reverse_push;
@@ -75,16 +76,16 @@ public:
       strategy(0),
       update_interval(0),
       local_index(0),
-      datatypeuid(0),
+      datatype(),
       reverse_push(false)
   {}
 
-  virtual void Deserialize(core::tCoreInput& is)
+  virtual void Deserialize(rrlib::serialization::tInputStream& is)
   {
     throw util::tRuntimeException("Unsupported - not needed - server decodes directly (more efficient)", CODE_LOCATION_MACRO);
   }
 
-  virtual void Serialize(core::tCoreOutput& os) const;
+  virtual void Serialize(rrlib::serialization::tOutputStream& os) const;
 
   virtual void CustomDelete(bool b)
   {
