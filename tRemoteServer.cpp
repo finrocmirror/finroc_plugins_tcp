@@ -45,6 +45,9 @@ namespace finroc
 {
 namespace tcp
 {
+const char* tRemoteServer::cCONNECTING = "connecting";
+const char* tRemoteServer::cDISCONNECTING = "disconnecting";
+
 tRemoteServer::tRemoteServer(util::tIPSocketAddress isa, const util::tString& name, core::tFrameworkElement* parent, const core::tFrameworkElementTreeFilter& filter_, tTCPPeer* peer_) :
     core::tFrameworkElement(parent, name, core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cALLOWS_CHILDREN | (filter_.IsPortOnlyFilter() ? 0 : core::tCoreFlags::cALTERNATE_LINK_ROOT), core::tLockOrderLevels::cREMOTE),
     address(isa),
@@ -71,6 +74,7 @@ tRemoteServer::tRemoteServer(util::tIPSocketAddress isa, const util::tString& na
 void tRemoteServer::Connect()
 {
   util::tLock lock1(this);
+  status_string = cCONNECTING;
 
   // reset disconnect count
   disconnect_calls.Set(0);
@@ -95,6 +99,7 @@ void tRemoteServer::Connect()
   {
     express->Connect(socket_express, express);  // express first, since it's required for retrieving ports, which is done in bulk connection
     bulk->Connect(socket_bulk, bulk);
+    status_string = NULL;
   }
   catch (const util::tException& e)
   {
@@ -129,6 +134,7 @@ void tRemoteServer::Disconnect()
 
   {
     util::tLock lock2(this);
+    status_string = cDISCONNECTING;
     if (bulk.get() != NULL)
     {
       bulk->Disconnect();
@@ -164,6 +170,7 @@ void tRemoteServer::Disconnect()
       }
       elem_iterator.Reset();
     }
+    status_string = NULL;
   }
 }
 
@@ -185,8 +192,7 @@ util::tString tRemoteServer::FormatRate(int data_rate)
 
 float tRemoteServer::GetConnectionQuality()
 {
-  util::tLock lock1(this);
-  if (bulk.get() == NULL && express.get() == NULL)
+  if (bulk.get() == NULL || express.get() == NULL || status_string != NULL)
   {
     return 0;
   }
@@ -246,7 +252,11 @@ float tRemoteServer::GetConnectionQuality()
 
 util::tString tRemoteServer::GetPingString()
 {
-  util::tLock lock1(this);
+  if (status_string != NULL)
+  {
+    return status_string;
+  }
+
   int ping_avg = 0;
   int ping_max = 0;
   int data_rate = 0;

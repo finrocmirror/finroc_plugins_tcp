@@ -51,6 +51,8 @@ tTCPConnection::tTCPConnection(int8 type_, tTCPPeer* peer_, bool send_peer_info_
     last_ack_request_index(0),
     sent_packet_time(tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS + 1),
     ping_times(tTCPSettings::cAVG_PING_PACKETS + 1),
+    avg_ping_time(0),
+    max_ping_time(0),
     disconnect_signal(false),
     socket(),
     cos(),
@@ -145,26 +147,6 @@ void tTCPConnection::Disconnect()
       FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, "warning: TCPConnection::disconnect() - Interrupted waiting for reader thread.");
     }
   }
-}
-
-int tTCPConnection::GetAvgPingTime()
-{
-  int result = 0;
-  for (size_t i = 0u; i < ping_times.length; i++)
-  {
-    result += ping_times[i];
-  }
-  return result / ping_times.length;
-}
-
-int tTCPConnection::GetMaxPingTime()
-{
-  int result = 0;
-  for (size_t i = 0u; i < ping_times.length; i++)
-  {
-    result = std::max(result, ping_times[i]);
-  }
-  return result;
 }
 
 int tTCPConnection::GetRx()
@@ -483,6 +465,19 @@ void tTCPConnection::TerminateCommand()
   }
 }
 
+void tTCPConnection::UpdatePingStatistics()
+{
+  int result = 0;
+  int result_avg = 0;
+  for (size_t i = 0u; i < ping_times.length; i++)
+  {
+    result = std::max(result, ping_times[i]);
+    result_avg += ping_times[i];
+  }
+  max_ping_time = result;
+  avg_ping_time = result_avg / ping_times.length;
+}
+
 void tTCPConnection::UpdateTimeChanged(rrlib::serialization::tDataTypeBase dt, int16 new_update_time)
 {
   // forward update time change to connection partner
@@ -534,6 +529,7 @@ void tTCPConnection::tReader::Run()
       tPeerList* pl = NULL;
       bool notify_writers = false;
       rrlib::serialization::tDataTypeBase dt;
+      bool update_stats = false;
 
       // process acknowledgement stuff and other commands common for server and client
       switch (op_code)
@@ -556,6 +552,11 @@ void tTCPConnection::tReader::Run()
         for (int i = outer_class_ptr->last_acknowledged_packet + 1; i <= index; i++)
         {
           outer_class_ptr->ping_times[i & tTCPSettings::cAVG_PING_PACKETS] = static_cast<int>((cur_time - outer_class_ptr->sent_packet_time[i & tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS]));
+          update_stats = true;
+        }
+        if (update_stats)
+        {
+          outer_class_ptr->UpdatePingStatistics();
         }
 
         outer_class_ptr->last_acknowledged_packet = index;

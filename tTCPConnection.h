@@ -181,6 +181,9 @@ private:
   /*! Ping time for last packages (Index is n % AVG_PING_PACKETS => efficient and safe implementation (ring queue)) */
   ::finroc::util::tArrayWrapper<int> ping_times;
 
+  /*! Ping time statistics */
+  volatile int avg_ping_time, max_ping_time;
+
   /*! Signal for disconnecting */
   volatile bool disconnect_signal;
 
@@ -238,6 +241,13 @@ public:
 
   /*! Log domain for this class */
   RRLIB_LOG_CREATE_NAMED_DOMAIN(log_domain, "tcp");
+
+private:
+
+  /*!
+   * Updates ping statistic variables
+   */
+  void UpdatePingStatistics();
 
 protected:
 
@@ -306,7 +316,10 @@ public:
   /*!
    * \return Average ping time among last TCPSettings.AVG_PING_PACKETS packets
    */
-  int GetAvgPingTime();
+  inline int GetAvgPingTime()
+  {
+    return avg_ping_time;
+  }
 
   /*!
    * \return Type of connection ("Bulk" oder "Express")
@@ -319,7 +332,10 @@ public:
   /*!
    * \return Maximum ping time among last TCPSettings.AVG_PING_PACKETS packets
    */
-  int GetMaxPingTime();
+  inline int GetMaxPingTime()
+  {
+    return max_ping_time;
+  }
 
   /*!
    * \return Data rate of bytes read from network (in bytes/s)

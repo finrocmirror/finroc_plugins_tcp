@@ -154,6 +154,15 @@ private:
   /*! Set to true when server will soon be deleted */
   bool deleted_soon;
 
+  /*! String to display when connecting */
+  static const char* cCONNECTING;
+
+  /*! String to display when disconnecting */
+  static const char* cDISCONNECTING;
+
+  /*! Not null when currently connecting or disconnecting */
+  const char* volatile status_string;
+
 public:
 
   /*! Log domain for this class */
