@@ -81,6 +81,7 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
 
     this->cis = std::shared_ptr<rrlib::serialization::tInputStream>(new rrlib::serialization::tInputStream(s->GetSource(), this->update_times));
     //updateTimes.deserialize(cis);
+    cis->SetTimeout(1000);
     rrlib::serialization::tDataTypeBase dt = this->cis->ReadType();
     assert((dt == core::tNumber::cTYPE));
 
@@ -100,6 +101,7 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
       this->cos->WriteByte(0);  // terminator
       this->cos->Flush();
     }
+    cis->SetTimeout(0);
 
     // start incoming data listener thread
     std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, util::tStringBuilder("TCP Server ") + type_string + "-Listener for " + s->GetRemoteSocketAddress().ToString()));

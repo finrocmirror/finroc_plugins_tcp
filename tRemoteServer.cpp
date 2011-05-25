@@ -105,6 +105,8 @@ void tRemoteServer::Connect()
   {
     this->bulk.reset();
     this->express.reset();
+    socket_express->Close();
+    socket_bulk->Close();
     throw e;
   }
 }
@@ -910,6 +912,7 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
     catch (const util::tException& e)
     {
       FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_WARNING, log_domain, e);
+      ::finroc::util::tThread::Sleep(2000);
       if (outer_class_ptr->bulk.get() == NULL)
       {
         ct_bulk.reset();
