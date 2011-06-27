@@ -614,7 +614,7 @@ void tTCPConnection::tReader::Run()
       CheckCommandEnd();
     }
   }
-  catch (const util::tException& e)
+  catch (const std::exception& e)
   {
     if (typeid(e) != typeid(finroc::util::tEOFException) && typeid(e) != typeid(finroc::util::tIOException))
     {
@@ -823,7 +823,7 @@ void tTCPConnection::tWriter::Run()
       }
     }
   }
-  catch (const util::tException& e)
+  catch (const std::exception& e)
   {
     FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, e);
 
