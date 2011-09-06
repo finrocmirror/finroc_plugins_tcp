@@ -53,7 +53,7 @@ void tTCPServer::AcceptConnection(std::shared_ptr<util::tNetSocket>& s, int8 fir
     }
     catch (const util::tIOException& e)
     {
-      FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_WARNING, log_domain, e);
+      FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, log_domain, e);
     }
     return;
   }
@@ -64,7 +64,7 @@ void tTCPServer::AcceptConnection(std::shared_ptr<util::tNetSocket>& s, int8 fir
   }
   catch (const util::tException& e)
   {
-    FINROC_LOG_STREAM(rrlib::logging::eLL_DEBUG_WARNING, log_domain, e);
+    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, log_domain, e);
   }
 }
 
@@ -79,7 +79,7 @@ void tTCPServer::PostChildInit()
       break;
     }
     int next_port = port + 1;
-    FINROC_LOG_STREAM(rrlib::logging::eLL_USER, log_domain, "Port ", port, " occupied - trying ", next_port);
+    FINROC_LOG_PRINT(rrlib::logging::eLL_USER, log_domain, "Port ", port, " occupied - trying ", next_port);
     port++;
   }
 

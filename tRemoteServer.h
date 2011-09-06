@@ -460,7 +460,7 @@ public:
 
     virtual void HandlePingTimeExceed()
     {
-      FINROC_LOG_STREAM(rrlib::logging::eLL_WARNING, log_domain, "TCPClient warning: critical ping time exceeded");
+      FINROC_LOG_PRINT(rrlib::logging::eLL_WARNING, log_domain, "TCPClient warning: critical ping time exceeded");
     }
 
     virtual void ProcessRequest(int8 op_code);
