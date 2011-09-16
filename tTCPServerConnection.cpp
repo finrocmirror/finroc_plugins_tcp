@@ -163,9 +163,9 @@ void tTCPServerConnection::HandleDisconnect()
   }
 }
 
-core::tPortCreationInfo tTCPServerConnection::InitPci(core::tAbstractPort* counter_part)
+core::tPortCreationInfoBase tTCPServerConnection::InitPci(core::tAbstractPort* counter_part)
 {
-  core::tPortCreationInfo pci(0);
+  core::tPortCreationInfoBase pci(0u);
   pci.max_queue_size = 0;
   pci.parent = port_set;
   int flags = 0;

@@ -29,7 +29,7 @@
 #include "core/datatype/tFrameworkElementInfo.h"
 #include "core/tFrameworkElementTreeFilter.h"
 #include "core/port/net/tRemoteCoreRegister.h"
-#include "core/port/tPortCreationInfo.h"
+#include "core/port/tPortCreationInfoBase.h"
 #include "core/tFrameworkElement.h"
 #include "core/tRuntimeListener.h"
 #include "plugins/tcp/tTCPPort.h"
@@ -184,7 +184,7 @@ private:
    * \param port_info Port Information
    * \return Port Creation info
    */
-  static core::tPortCreationInfo CreatePCI(const core::tFrameworkElementInfo& port_info);
+  static core::tPortCreationInfoBase CreatePCI(const core::tFrameworkElementInfo& port_info);
 
   /*!
    * Disconnect from remote server

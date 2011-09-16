@@ -111,9 +111,9 @@ void tRemoteServer::Connect()
   }
 }
 
-core::tPortCreationInfo tRemoteServer::CreatePCI(const core::tFrameworkElementInfo& port_info)
+core::tPortCreationInfoBase tRemoteServer::CreatePCI(const core::tFrameworkElementInfo& port_info)
 {
-  core::tPortCreationInfo pci(port_info.GetFlags());
+  core::tPortCreationInfoBase pci(port_info.GetFlags());
   pci.flags = port_info.GetFlags();
 
   // set queue size

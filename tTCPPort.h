@@ -25,7 +25,7 @@
 
 #include "rrlib/finroc_core_utils/definitions.h"
 
-#include "core/port/tPortCreationInfo.h"
+#include "core/port/tPortCreationInfoBase.h"
 #include "core/port/tAbstractPort.h"
 #include "core/port/net/tNetPort.h"
 #include "core/port/tPortFlags.h"
@@ -111,7 +111,7 @@ public:
    * \param pci Port Creation Info
    * \param connection Connection that TCP Port belongs to
    */
-  tTCPPort(core::tPortCreationInfo pci, tTCPConnection* connection_);
+  tTCPPort(core::tPortCreationInfoBase pci, tTCPConnection* connection_);
 
   int16 GetUpdateIntervalForNet();
 

@@ -30,7 +30,7 @@
 #include "rrlib/serialization/tInputStream.h"
 #include "core/tFrameworkElementTreeFilter.h"
 #include "rrlib/finroc_core_utils/net/tNetSocket.h"
-#include "core/port/tPortCreationInfo.h"
+#include "core/port/tPortCreationInfoBase.h"
 #include "plugins/tcp/tTCPConnection.h"
 #include "core/tRuntimeListener.h"
 #include "core/tFrameworkElement.h"
@@ -116,7 +116,7 @@ private:
    * \param counter_part Port that will be accessed
    * \return Port Creation Info
    */
-  core::tPortCreationInfo InitPci(core::tAbstractPort* counter_part);
+  core::tPortCreationInfoBase InitPci(core::tAbstractPort* counter_part);
 
 protected:
 

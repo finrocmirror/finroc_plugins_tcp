@@ -34,7 +34,7 @@ namespace finroc
 {
 namespace tcp
 {
-tTCPPort::tTCPPort(core::tPortCreationInfo pci, tTCPConnection* connection_) :
+tTCPPort::tTCPPort(core::tPortCreationInfoBase pci, tTCPConnection* connection_) :
     core::tNetPort(pci, connection_),
     connection(connection_),
     monitored(false),
