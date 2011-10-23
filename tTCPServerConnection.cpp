@@ -267,7 +267,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
 
 void tTCPServerConnection::RuntimeChange(int8 change_type, core::tFrameworkElement* element)
 {
-  if (element != core::tRuntimeEnvironment::GetInstance() && element_filter.Accept(element, tmp) && change_type != ::finroc::core::tRuntimeListener::cPRE_INIT)
+  if (element != core::tRuntimeEnvironment::GetInstance() && element_filter.Accept(element, tmp, change_type == tRuntimeListener::cREMOVE ? (core::tCoreFlags::cREADY | core::tCoreFlags::cDELETED) : 0) && change_type != ::finroc::core::tRuntimeListener::cPRE_INIT)
   {
     SerializeRuntimeChange(change_type, element);
   }
