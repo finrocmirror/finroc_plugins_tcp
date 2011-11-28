@@ -96,7 +96,7 @@ class tTCP : public util::tUncopyableObject, public core::tPlugin
       return name;
     }
 
-    virtual const core::tStructureParameterList* GetParameterTypes() const
+    virtual const core::tStaticParameterList* GetParameterTypes() const
     {
       return NULL;
     }
