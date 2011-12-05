@@ -219,7 +219,7 @@ void tTCPConnection::HandleMethodCall()
     cis->SetFactory(NULL);
 
     // process call
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Method call ", (port != NULL ? port->GetPort()->GetQualifiedName() : handle), " ", mc->GetMethod()->GetName());
+    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Method call ", (port != NULL ? port->GetPort()->GetQualifiedName() : util::tString(handle)), " ", mc->GetMethod()->GetName());
     if (skip_call)
     {
       mc->SetExceptionStatus(core::tMethodCallException::eNO_CONNECTION);
@@ -281,7 +281,7 @@ void tTCPConnection::HandleMethodCallReturn()
     cis->SetFactory(NULL);
 
     // process call
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Method call return ", (port != NULL ? port->GetPort()->GetQualifiedName() : handle));
+    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Method call return ", (port != NULL ? port->GetPort()->GetQualifiedName() : util::tString(handle)));
 
     // process call
     port->HandleCallReturnFromNet(mc);
@@ -310,7 +310,7 @@ void tTCPConnection::HandlePullCall()
   }
 
   // process call
-  FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command to port '", (port != NULL ? port->GetPort()->GetQualifiedName() : handle), "': ", pc->ToString());
+  FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command to port '", (port != NULL ? port->GetPort()->GetQualifiedName() : util::tString(handle)), "': ", pc->ToString());
 
   if (port == NULL || (!port->GetPort()->IsReady()))
   {
@@ -364,7 +364,7 @@ void tTCPConnection::HandleReturningPullCall()
       cis->SetFactory(NULL);
 
       // debug output
-      FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Pull return call ", (port != NULL ? port->GetPort()->GetQualifiedName() : handle), " status: ", pc->GetStatusString());
+      FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Pull return call ", (port != NULL ? port->GetPort()->GetQualifiedName() : util::tString(handle)), " status: ", pc->GetStatusString());
 
     }
     catch (const util::tException& e)
