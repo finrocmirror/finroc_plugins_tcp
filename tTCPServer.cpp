@@ -62,7 +62,7 @@ void tTCPServer::AcceptConnection(std::shared_ptr<util::tNetSocket>& s, int8 fir
     __attribute__((unused))
     tTCPServerConnection* connection = new tTCPServerConnection(s, first_byte, this, peer);
   }
-  catch (const util::tException& e)
+  catch (const std::exception& e)
   {
     FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, log_domain, e);
   }

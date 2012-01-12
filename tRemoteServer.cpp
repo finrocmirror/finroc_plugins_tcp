@@ -909,7 +909,7 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
         ct_express.reset();
       }
     }
-    catch (const util::tException& e)
+    catch (const std::exception& e)
     {
       FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, log_domain, e);
       ::finroc::util::tThread::Sleep(2000);
@@ -948,7 +948,7 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
       }
 
     }
-    catch (const util::tException& e)
+    catch (const std::exception& e)
     {
       FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, log_domain, e);
     }

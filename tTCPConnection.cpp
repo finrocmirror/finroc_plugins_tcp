@@ -114,7 +114,10 @@ void tTCPConnection::Disconnect()
   //cos = null;
   try
   {
-    socket->Close();  // stops reader
+    if (socket)
+    {
+      socket->Close();  // stops reader
+    }
   }
   catch (const util::tException& e)
   {
@@ -415,6 +418,10 @@ void tTCPConnection::SendCall(core::tSerializableReusable* call)
   if (locked_writer.get() != NULL && (!disconnect_signal))
   {
     locked_writer->SendCall(call);
+  }
+  else
+  {
+    call->GenericRecycle();
   }
 }
 

@@ -62,7 +62,7 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
     disconnect_calls(0)
 {
   this->socket = s;
-
+  try
   {
     util::tLock lock2(this);
 
@@ -117,6 +117,14 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
 
     connections->Add(this, false);
     tPingTimeMonitor::GetInstance();  // start ping time monitor
+  }
+  catch (const std::exception& e)
+  {
+    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, log_domain, e);
+    if (port_set)
+    {
+      port_set->ManagedDelete();
+    }
   }
 }
 
