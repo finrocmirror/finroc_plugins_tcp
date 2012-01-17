@@ -100,9 +100,6 @@ public:
   /*! All active connections connected to this peer */
   util::tSafeConcurrentlyIterableList<tTCPConnection*> connections;
 
-  /*! Log domain for this class */
-  RRLIB_LOG_CREATE_NAMED_DOMAIN(log_domain, "tcp");
-
 protected:
 
   virtual void ConnectImpl(const util::tString& address, bool same_address);

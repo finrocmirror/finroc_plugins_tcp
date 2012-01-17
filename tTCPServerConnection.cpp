@@ -120,7 +120,7 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
   }
   catch (const std::exception& e)
   {
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, log_domain, e);
+    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, e);
     if (port_set)
     {
       port_set->ManagedDelete();
@@ -208,7 +208,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
 
     //long timestamp = readTimestamp();
     p = GetPort(handle, true);
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Set ", (p != NULL ? p->local_port->GetQualifiedName() : util::tString(handle)));
+    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Set ", (p != NULL ? p->local_port->GetQualifiedName() : util::tString(handle)));
     if (p != NULL)
     {
       {
@@ -236,7 +236,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
 
     handle = this->cis->ReadInt();
     p = GetPort(handle, false);
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Unsubscribe ", (p != NULL ? p->local_port->GetQualifiedName() : util::tString(handle)));
+    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Unsubscribe ", (p != NULL ? p->local_port->GetQualifiedName() : util::tString(handle)));
     if (p != NULL && p->GetPort()->IsReady())    // complete disconnect
     {
       p->ManagedDelete();
@@ -254,7 +254,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
     int16 update_interval = this->cis->ReadShort();
     int remote_handle = this->cis->ReadInt();
     p = GetPort(handle, true);
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, log_domain, "Incoming Server Command: Subscribe ", (p != NULL ? p->local_port->GetQualifiedName() : util::tString(handle)), " ", strategy, " ", reverse_push, " ", update_interval, " ", remote_handle);
+    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Subscribe ", (p != NULL ? p->local_port->GetQualifiedName() : util::tString(handle)), " ", strategy, " ", reverse_push, " ", update_interval, " ", remote_handle);
     if (p != NULL)
     {
       {

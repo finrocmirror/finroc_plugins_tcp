@@ -163,11 +163,6 @@ private:
   /*! Not null when currently connecting or disconnecting */
   const char* volatile status_string;
 
-public:
-
-  /*! Log domain for this class */
-  RRLIB_LOG_CREATE_NAMED_DOMAIN(log_domain, "tcp");
-
 private:
 
   /*!
@@ -460,7 +455,7 @@ public:
 
     virtual void HandlePingTimeExceed()
     {
-      FINROC_LOG_PRINT(rrlib::logging::eLL_WARNING, log_domain, "TCPClient warning: critical ping time exceeded");
+      FINROC_LOG_PRINT(rrlib::logging::eLL_WARNING, "TCPClient warning: critical ping time exceeded");
     }
 
     virtual void ProcessRequest(int8 op_code);

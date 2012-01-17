@@ -239,9 +239,6 @@ public:
   /*! Needs to be locked after framework elements, but before runtime registry */
   util::tMutexLockOrder obj_mutex;
 
-  /*! Log domain for this class */
-  RRLIB_LOG_CREATE_NAMED_DOMAIN(log_domain, "tcp");
-
 private:
 
   /*!

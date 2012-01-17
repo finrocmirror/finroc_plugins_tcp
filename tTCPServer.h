@@ -61,11 +61,6 @@ private:
   /*! Peer that this server belongs to */
   tTCPPeer* peer;
 
-public:
-
-  /*! Log domain for this class */
-  RRLIB_LOG_CREATE_NAMED_DOMAIN(log_domain, "tcp");
-
 protected:
 
   virtual void PostChildInit();
