@@ -37,16 +37,16 @@ core::tFrameworkElementTreeFilter tTCPPeer::cDEFAULT_FILTER(core::tCoreFlags::cS
 core::tFrameworkElementTreeFilter tTCPPeer::cALL_AND_EDGE_FILTER(core::tCoreFlags::cSTATUS_FLAGS, core::tCoreFlags::cREADY | core::tCoreFlags::cPUBLISHED);
 
 tTCPPeer::tTCPPeer(const util::tString& network_name_, core::tFrameworkElementTreeFilter filter_) :
-    core::tExternalConnection("TCP", network_name_),
-    mode(eCLIENT),
-    server(NULL),
-    network_name(network_name_),
-    name(""),
-    ci(this),
-    filter(filter_),
-    tracker(NULL),
-    delete_ports_on_disconnect(filter_.IsAcceptAllFilter()),
-    connections(10u, 4u)
+  core::tExternalConnection("TCP", network_name_),
+  mode(eCLIENT),
+  server(NULL),
+  network_name(network_name_),
+  name(""),
+  ci(this),
+  filter(filter_),
+  tracker(NULL),
+  delete_ports_on_disconnect(filter_.IsAcceptAllFilter()),
+  connections(10u, 4u)
 {
   // this(networkName,"",Mode.CLIENT,-1,filter,filter.isAcceptAllFilter());
 
@@ -58,16 +58,16 @@ tTCPPeer::tTCPPeer(const util::tString& network_name_, core::tFrameworkElementTr
 }
 
 tTCPPeer::tTCPPeer(const util::tString& network_name_, const util::tString& unique_peer_name, tTCPPeer::tMode mode_, int preferred_server_port, core::tFrameworkElementTreeFilter filter_, bool delete_ports_on_disconnect_) :
-    core::tExternalConnection("TCP", network_name_),
-    mode(mode_),
-    server(NULL),
-    network_name(network_name_),
-    name(unique_peer_name),
-    ci(this),
-    filter(filter_),
-    tracker(NULL),
-    delete_ports_on_disconnect(delete_ports_on_disconnect_),
-    connections(10u, 4u)
+  core::tExternalConnection("TCP", network_name_),
+  mode(mode_),
+  server(NULL),
+  network_name(network_name_),
+  name(unique_peer_name),
+  ci(this),
+  filter(filter_),
+  tracker(NULL),
+  delete_ports_on_disconnect(delete_ports_on_disconnect_),
+  connections(10u, 4u)
 {
   if (IsServer())
   {

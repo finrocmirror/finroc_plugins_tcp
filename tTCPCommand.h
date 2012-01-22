@@ -71,13 +71,13 @@ public:
   bool reverse_push;
 
   tTCPCommand() :
-      op_code(0),
-      remote_handle(0),
-      strategy(0),
-      update_interval(0),
-      local_index(0),
-      datatype(),
-      reverse_push(false)
+    op_code(0),
+    remote_handle(0),
+    strategy(0),
+    update_interval(0),
+    local_index(0),
+    datatype(),
+    reverse_push(false)
   {}
 
   virtual void Deserialize(rrlib::serialization::tInputStream& is)

@@ -35,10 +35,10 @@ namespace finroc
 namespace tcp
 {
 tTCPPort::tTCPPort(core::tPortCreationInfoBase pci, tTCPConnection* connection_) :
-    core::tNetPort(pci, connection_),
-    connection(connection_),
-    monitored(false),
-    update_interval_partner(-1)
+  core::tNetPort(pci, connection_),
+  connection(connection_),
+  monitored(false),
+  update_interval_partner(-1)
 {
   assert((connection_ != NULL));
 }

@@ -45,30 +45,30 @@ namespace finroc
 namespace tcp
 {
 tTCPConnection::tTCPConnection(int8 type_, tTCPPeer* peer_, bool send_peer_info_to_partner_) :
-    min_update_interval((type_ == tTCP::cTCP_P2P_ID_BULK) ? tTCPSettings::GetInstance()->min_update_interval_bulk : tTCPSettings::GetInstance()->min_update_interval_express),
-    max_not_acknowledged_packets((type_ == tTCP::cTCP_P2P_ID_BULK) ? tTCPSettings::GetInstance()->max_not_acknowledged_packets_bulk : tTCPSettings::GetInstance()->max_not_acknowledged_packets_express),
-    last_acknowledged_packet(0),
-    last_ack_request_index(0),
-    sent_packet_time(tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS + 1),
-    ping_times(tTCPSettings::cAVG_PING_PACKETS + 1),
-    avg_ping_time(0),
-    max_ping_time(0),
-    disconnect_signal(false),
-    socket(),
-    cos(),
-    cis(),
-    writer(),
-    reader(),
-    time_base(0),
-    update_times(new core::tRemoteTypes()),
-    type(type_),
-    monitored_ports(50u, 4u),
-    peer(peer_),
-    send_peer_info_to_partner(send_peer_info_to_partner_),
-    last_peer_info_sent_revision(-1),
-    last_rx_timestamp(0),
-    last_rx_position(0),
-    obj_mutex(core::tLockOrderLevels::cREMOTE + 1)
+  min_update_interval((type_ == tTCP::cTCP_P2P_ID_BULK) ? tTCPSettings::GetInstance()->min_update_interval_bulk : tTCPSettings::GetInstance()->min_update_interval_express),
+  max_not_acknowledged_packets((type_ == tTCP::cTCP_P2P_ID_BULK) ? tTCPSettings::GetInstance()->max_not_acknowledged_packets_bulk : tTCPSettings::GetInstance()->max_not_acknowledged_packets_express),
+  last_acknowledged_packet(0),
+  last_ack_request_index(0),
+  sent_packet_time(tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS + 1),
+  ping_times(tTCPSettings::cAVG_PING_PACKETS + 1),
+  avg_ping_time(0),
+  max_ping_time(0),
+  disconnect_signal(false),
+  socket(),
+  cos(),
+  cis(),
+  writer(),
+  reader(),
+  time_base(0),
+  update_times(new core::tRemoteTypes()),
+  type(type_),
+  monitored_ports(50u, 4u),
+  peer(peer_),
+  send_peer_info_to_partner(send_peer_info_to_partner_),
+  last_peer_info_sent_revision(-1),
+  last_rx_timestamp(0),
+  last_rx_position(0),
+  obj_mutex(core::tLockOrderLevels::cREMOTE + 1)
 {
   core::tRuntimeSettings::GetInstance()->AddUpdateTimeChangeListener(this);
   if (peer_ != NULL)
@@ -496,8 +496,8 @@ void tTCPConnection::UpdateTimeChanged(rrlib::serialization::tDataTypeBase dt, i
 }
 
 tTCPConnection::tReader::tReader(tTCPConnection* const outer_class_ptr_, const util::tString& description) :
-    core::tCoreLoopThreadBase(-1, false, false),
-    outer_class_ptr(outer_class_ptr_)
+  core::tCoreLoopThreadBase(-1, false, false),
+  outer_class_ptr(outer_class_ptr_)
 {
   SetName(description);
   LockObject(outer_class_ptr->socket);
@@ -657,13 +657,13 @@ void tTCPConnection::tReader::StopThread()
 }
 
 tTCPConnection::tWriter::tWriter(tTCPConnection* const outer_class_ptr_, const util::tString& description) :
-    core::tCoreLoopThreadBase(-1, true, false),
-    outer_class_ptr(outer_class_ptr_),
-    last_ack_index(0),
-    cur_packet_index(0),
-    handled_changed_counter(-1),
-    writer_synch(1u, 30u, 0u, 0u),
-    calls_to_send()
+  core::tCoreLoopThreadBase(-1, true, false),
+  outer_class_ptr(outer_class_ptr_),
+  last_ack_index(0),
+  cur_packet_index(0),
+  handled_changed_counter(-1),
+  writer_synch(1u, 30u, 0u, 0u),
+  calls_to_send()
 {
   SetName(description);
   LockObject(outer_class_ptr->socket);

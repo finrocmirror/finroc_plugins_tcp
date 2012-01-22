@@ -30,10 +30,10 @@ namespace finroc
 namespace tcp
 {
 tPeerList::tPeerList(int server_port_, int lock_order) :
-    core::tAbstractPeerTracker(lock_order),
-    peers(),
-    revision(0),
-    server_port(server_port_)
+  core::tAbstractPeerTracker(lock_order),
+  peers(),
+  revision(0),
+  server_port(server_port_)
 {
   if (server_port_ > 0)
   {

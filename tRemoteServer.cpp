@@ -49,23 +49,23 @@ const char* tRemoteServer::cCONNECTING = "connecting";
 const char* tRemoteServer::cDISCONNECTING = "disconnecting";
 
 tRemoteServer::tRemoteServer(util::tIPSocketAddress isa, const util::tString& name, core::tFrameworkElement* parent, const core::tFrameworkElementTreeFilter& filter_, tTCPPeer* peer_) :
-    core::tFrameworkElement(parent, name, core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cALLOWS_CHILDREN | (filter_.IsPortOnlyFilter() ? 0 : core::tCoreFlags::cALTERNATE_LINK_ROOT), core::tLockOrderLevels::cREMOTE),
-    address(isa),
-    bulk(),
-    express(),
-    connector_thread(util::sThreadUtil::GetThreadSharedPtr(new tConnectorThread(this))),
-    tmp_info(),
-    filter(filter_),
-    remote_port_register(),
-    remote_element_register(),
-    port_iterator(remote_port_register.GetIterator()),
-    elem_iterator(remote_element_register.GetIterator()),
-    tmp_match_buffer(),
-    server_creation_time(-1),
-    peer(peer_),
-    global_links(filter_.IsPortOnlyFilter() ? new ::finroc::core::tFrameworkElement(this, "global", core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cGLOBALLY_UNIQUE_LINK | core::tCoreFlags::cALTERNATE_LINK_ROOT, -1) : NULL),
-    disconnect_calls(0),
-    deleted_soon(false)
+  core::tFrameworkElement(parent, name, core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cALLOWS_CHILDREN | (filter_.IsPortOnlyFilter() ? 0 : core::tCoreFlags::cALTERNATE_LINK_ROOT), core::tLockOrderLevels::cREMOTE),
+  address(isa),
+  bulk(),
+  express(),
+  connector_thread(util::sThreadUtil::GetThreadSharedPtr(new tConnectorThread(this))),
+  tmp_info(),
+  filter(filter_),
+  remote_port_register(),
+  remote_element_register(),
+  port_iterator(remote_port_register.GetIterator()),
+  elem_iterator(remote_element_register.GetIterator()),
+  tmp_match_buffer(),
+  server_creation_time(-1),
+  peer(peer_),
+  global_links(filter_.IsPortOnlyFilter() ? new ::finroc::core::tFrameworkElement(this, "global", core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cGLOBALLY_UNIQUE_LINK | core::tCoreFlags::cALTERNATE_LINK_ROOT, -1) : NULL),
+  disconnect_calls(0),
+  deleted_soon(false)
 {
   core::tRuntimeEnvironment::GetInstance()->AddListener(this);
   connector_thread->Start();
@@ -520,11 +520,11 @@ void tRemoteServer::TemporaryDisconnect()
 }
 
 tRemoteServer::tProxyFrameworkElement::tProxyFrameworkElement(tRemoteServer* const outer_class_ptr_, int handle, int extra_flags, int lock_order) :
-    core::tFrameworkElement(NULL, "(yet unknown)", core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tFrameworkElementInfo::FilterParentFlags(extra_flags), lock_order),
-    outer_class_ptr(outer_class_ptr_),
-    refound(true),
-    remote_handle(handle),
-    yet_unknown(true)
+  core::tFrameworkElement(NULL, "(yet unknown)", core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tFrameworkElementInfo::FilterParentFlags(extra_flags), lock_order),
+  outer_class_ptr(outer_class_ptr_),
+  refound(true),
+  remote_handle(handle),
+  yet_unknown(true)
 {
   outer_class_ptr->remote_element_register.Put(-remote_handle, this);
 }
@@ -569,12 +569,12 @@ void tRemoteServer::tProxyFrameworkElement::UpdateFromPortInfo(const core::tFram
 }
 
 tRemoteServer::tProxyPort::tProxyPort(tRemoteServer* const outer_class_ptr_, const core::tFrameworkElementInfo& port_info) :
-    tTCPPort(tRemoteServer::CreatePCI(port_info), (port_info.GetFlags() & core::tPortFlags::cIS_EXPRESS_PORT) > 0 ? outer_class_ptr_->express.get() : outer_class_ptr_->bulk.get()),
-    outer_class_ptr(outer_class_ptr_),
-    refound(true),
-    subscription_strategy(-1),
-    subscription_rev_push(false),
-    subscription_update_time(-1)
+  tTCPPort(tRemoteServer::CreatePCI(port_info), (port_info.GetFlags() & core::tPortFlags::cIS_EXPRESS_PORT) > 0 ? outer_class_ptr_->express.get() : outer_class_ptr_->bulk.get()),
+  outer_class_ptr(outer_class_ptr_),
+  refound(true),
+  subscription_strategy(-1),
+  subscription_rev_push(false),
+  subscription_update_time(-1)
 {
   this->remote_handle = port_info.GetHandle();
   outer_class_ptr->remote_port_register.Put(this->remote_handle, this);
@@ -715,8 +715,8 @@ void tRemoteServer::tProxyPort::UpdateFromPortInfo(const core::tFrameworkElement
 }
 
 tRemoteServer::tConnection::tConnection(tRemoteServer* const outer_class_ptr_, int8 type) :
-    tTCPConnection(type, type == tTCP::cTCP_P2P_ID_BULK ? outer_class_ptr_->peer : NULL, type == tTCP::cTCP_P2P_ID_BULK),
-    outer_class_ptr(outer_class_ptr_)
+  tTCPConnection(type, type == tTCP::cTCP_P2P_ID_BULK ? outer_class_ptr_->peer : NULL, type == tTCP::cTCP_P2P_ID_BULK),
+  outer_class_ptr(outer_class_ptr_)
 {
 }
 
@@ -868,11 +868,11 @@ void tRemoteServer::tConnection::Unsubscribe(int index)
 }
 
 tRemoteServer::tConnectorThread::tConnectorThread(tRemoteServer* const outer_class_ptr_) :
-    core::tCoreLoopThreadBase(tTCPSettings::cCONNECTOR_THREAD_LOOP_INTERVAL, false, false),
-    outer_class_ptr(outer_class_ptr_),
-    last_subscription_update(0),
-    ct_bulk(),
-    ct_express()
+  core::tCoreLoopThreadBase(tTCPSettings::cCONNECTOR_THREAD_LOOP_INTERVAL, false, false),
+  outer_class_ptr(outer_class_ptr_),
+  last_subscription_update(0),
+  ct_bulk(),
+  ct_express()
 {
   SetName(util::tStringBuilder("TCP Connector Thread for ") + outer_class_ptr->GetDescription());
   FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_1, "Creating ", GetName());

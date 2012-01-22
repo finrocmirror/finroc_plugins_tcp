@@ -51,15 +51,15 @@ util::tSafeConcurrentlyIterableList<tTCPServerConnection*>* tTCPServerConnection
 util::tAtomicInt tTCPServerConnection::connection_id;
 
 tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s, int8 stream_id, tTCPServer* server, tTCPPeer* peer) :
-    tTCPConnection(stream_id, stream_id == tTCP::cTCP_P2P_ID_BULK ? peer : NULL, stream_id == tTCP::cTCP_P2P_ID_BULK),
-    port_set(NULL),
-    send_runtime_info(false),
-    runtime_info_buffer(false),
-    runtime_info_writer(&(runtime_info_buffer)),
-    runtime_info_reader(&(runtime_info_buffer.GetDestructiveSource())),
-    element_filter(),
-    tmp(),
-    disconnect_calls(0)
+  tTCPConnection(stream_id, stream_id == tTCP::cTCP_P2P_ID_BULK ? peer : NULL, stream_id == tTCP::cTCP_P2P_ID_BULK),
+  port_set(NULL),
+  send_runtime_info(false),
+  runtime_info_buffer(false),
+  runtime_info_writer(&(runtime_info_buffer)),
+  runtime_info_reader(&(runtime_info_buffer.GetDestructiveSource())),
+  element_filter(),
+  tmp(),
+  disconnect_calls(0)
 {
   this->socket = s;
   try
@@ -338,10 +338,10 @@ void tTCPServerConnection::TreeFilterCallback(core::tFrameworkElement* fe, bool 
 }
 
 tTCPServerConnection::tPortSet::tPortSet(tTCPServerConnection* const outer_class_ptr_, tTCPServer* server, std::shared_ptr<tTCPServerConnection> connection_lock_) :
-    core::tFrameworkElement(server, util::tStringBuilder("connection") + tTCPServerConnection::connection_id.GetAndIncrement(), core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT, core::tLockOrderLevels::cPORT - 1),
-    outer_class_ptr(outer_class_ptr_),
-    port_iterator(this),
-    connection_lock(connection_lock_)
+  core::tFrameworkElement(server, util::tStringBuilder("connection") + tTCPServerConnection::connection_id.GetAndIncrement(), core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT, core::tLockOrderLevels::cPORT - 1),
+  outer_class_ptr(outer_class_ptr_),
+  port_iterator(this),
+  connection_lock(connection_lock_)
 {
 }
 
@@ -367,9 +367,9 @@ void tTCPServerConnection::tPortSet::PrepareDelete()
 }
 
 tTCPServerConnection::tServerPort::tServerPort(tTCPServerConnection* const outer_class_ptr_, core::tAbstractPort* counter_part, tTCPServerConnection::tPortSet* port_set) :
-    tTCPPort(outer_class_ptr_->InitPci(counter_part), outer_class_ptr_->port_set->connection_lock.get()),
-    outer_class_ptr(outer_class_ptr_),
-    local_port(counter_part)
+  tTCPPort(outer_class_ptr_->InitPci(counter_part), outer_class_ptr_->port_set->connection_lock.get()),
+  outer_class_ptr(outer_class_ptr_),
+  local_port(counter_part)
 {
 }
 
@@ -400,7 +400,7 @@ std::shared_ptr<tTCPServerConnection::tPingTimeMonitor> tTCPServerConnection::tP
 util::tMutexLockOrder tTCPServerConnection::tPingTimeMonitor::static_class_mutex(core::tLockOrderLevels::cINNER_MOST - 20);
 
 tTCPServerConnection::tPingTimeMonitor::tPingTimeMonitor() :
-    core::tCoreLoopThreadBase(tTCPSettings::cCONNECTOR_THREAD_LOOP_INTERVAL, false, false)
+  core::tCoreLoopThreadBase(tTCPSettings::cCONNECTOR_THREAD_LOOP_INTERVAL, false, false)
 {
   SetName("TCP Server Ping Time Monitor");
 }

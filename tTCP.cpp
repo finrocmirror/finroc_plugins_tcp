@@ -73,10 +73,10 @@ void tTCP::Init()
 }
 
 tTCP::tCreateAction::tCreateAction(core::tFrameworkElementTreeFilter filter_, const util::tString& name_, int flags_) :
-    filter(filter_),
-    name(name_),
-    flags(flags_),
-    group()
+  filter(filter_),
+  name(name_),
+  flags(flags_),
+  group()
 {
   core::tPlugins::GetInstance()->RegisterExternalConnection(this);
 
