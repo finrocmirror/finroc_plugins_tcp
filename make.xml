@@ -1,5 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <targets>
-  <finrocplugin name="tcp" libs="finroc_core">
+  <finrocplugin name="tcp">
     <sources>*.cpp</sources>
   </finrocplugin>
 </targets>
