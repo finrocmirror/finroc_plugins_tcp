@@ -43,7 +43,7 @@ void tTCPCommand::Serialize(rrlib::serialization::tOutputStream& os) const
     os.WriteInt(remote_handle);
     break;
   case tTCP::cUPDATETIME:
-    os.WriteType(datatype);
+    os << datatype;
     os.WriteShort(update_interval);
     break;
   }

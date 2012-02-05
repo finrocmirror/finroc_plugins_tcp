@@ -25,16 +25,9 @@
 
 #include "rrlib/finroc_core_utils/definitions.h"
 
-#include "rrlib/serialization/tDataTypeBase.h"
+#include "rrlib/rtti/tDataTypeBase.h"
 #include "core/portdatabase/tSerializableReusable.h"
 
-namespace rrlib
-{
-namespace serialization
-{
-class tInputStream;
-} // namespace rrlib
-} // namespace serialization
 
 namespace finroc
 {
@@ -65,7 +58,7 @@ public:
   int local_index;
 
   /*! Data type uid */
-  rrlib::serialization::tDataTypeBase datatype;
+  rrlib::rtti::tDataTypeBase datatype;
 
   /*! Subscribe with reverse push strategy? */
   bool reverse_push;

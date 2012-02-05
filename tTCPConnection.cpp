@@ -177,7 +177,8 @@ void tTCPConnection::HandleMethodCall()
   // read port index and retrieve proxy port
   int handle = cis->ReadInt();
   int remote_handle = cis->ReadInt();
-  rrlib::serialization::tDataTypeBase method_type = cis->ReadType();
+  rrlib::rtti::tDataTypeBase method_type;
+  (*cis) >> method_type;
   cis->ReadSkipOffset();
   tTCPPort* port = LookupPortForCallHandling(handle);
 
@@ -245,7 +246,8 @@ void tTCPConnection::HandleMethodCallReturn()
   int handle = cis->ReadInt();
   /*int remoteHandle =*/
   cis->ReadInt();
-  rrlib::serialization::tDataTypeBase method_type = cis->ReadType();
+  rrlib::rtti::tDataTypeBase method_type;
+  (*cis) >> method_type;
   cis->ReadSkipOffset();
   tTCPPort* port = LookupPortForCallHandling(handle);
 
@@ -485,7 +487,7 @@ void tTCPConnection::UpdatePingStatistics()
   avg_ping_time = result_avg / ping_times.length;
 }
 
-void tTCPConnection::UpdateTimeChanged(rrlib::serialization::tDataTypeBase dt, int16 new_update_time)
+void tTCPConnection::UpdateTimeChanged(rrlib::rtti::tDataTypeBase dt, int16 new_update_time)
 {
   // forward update time change to connection partner
   tTCPCommand* tc = tTCP::GetUnusedTCPCommand();
@@ -535,7 +537,7 @@ void tTCPConnection::tReader::Run()
       int64 cur_time = 0;
       tPeerList* pl = NULL;
       bool notify_writers = false;
-      rrlib::serialization::tDataTypeBase dt;
+      rrlib::rtti::tDataTypeBase dt;
       bool update_stats = false;
 
       // process acknowledgement stuff and other commands common for server and client
@@ -571,7 +573,7 @@ void tTCPConnection::tReader::Run()
         break;
 
       case tTCP::cUPDATETIME:
-        dt = cis->ReadType();
+        (*cis) >> dt;
         outer_class_ptr->update_times->SetTime(dt, cis->ReadShort());
         break;
 
@@ -884,7 +886,7 @@ void tTCPConnection::tWriter::SendAcknowledgementsAndCommands()
       outer_class_ptr->cos->WriteByte(mc->IsReturning(true) ? tTCP::cMETHODCALL_RETURN : tTCP::cMETHODCALL);
       outer_class_ptr->cos->WriteInt(mc->GetRemotePortHandle());
       outer_class_ptr->cos->WriteInt(mc->GetLocalPortHandle());
-      outer_class_ptr->cos->WriteType(mc->GetPortInterfaceType());
+      (*outer_class_ptr->cos) << mc->GetPortInterfaceType();
       outer_class_ptr->cos->WriteSkipOffsetPlaceholder();
     }
     call->Serialize(*outer_class_ptr->cos);

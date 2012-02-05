@@ -26,8 +26,7 @@
 #include "rrlib/finroc_core_utils/definitions.h"
 
 #include "rrlib/finroc_core_utils/stream/tChunkedBuffer.h"
-#include "rrlib/serialization/tOutputStream.h"
-#include "rrlib/serialization/tInputStream.h"
+#include "rrlib/serialization/serialization.h"
 #include "core/tFrameworkElementTreeFilter.h"
 #include "rrlib/finroc_core_utils/net/tNetSocket.h"
 #include "core/port/tPortCreationInfoBase.h"

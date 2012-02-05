@@ -30,13 +30,6 @@
 #include "rrlib/finroc_core_utils/net/tIPAddress.h"
 #include "core/port/net/tAbstractPeerTracker.h"
 
-namespace rrlib
-{
-namespace serialization
-{
-class tInputStream;
-} // namespace rrlib
-} // namespace serialization
 
 namespace finroc
 {

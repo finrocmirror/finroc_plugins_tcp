@@ -29,13 +29,11 @@
 #include "plugins/tcp/tTCP.h"
 #include "plugins/tcp/tTCPPeer.h"
 #include "core/port/tPortFlags.h"
-#include "rrlib/serialization/tOutputStream.h"
-#include "rrlib/serialization/tInputStream.h"
+#include "rrlib/serialization/serialization.h"
 #include "core/port/net/tNetPort.h"
 #include "core/port/tAbstractPort.h"
 #include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
 #include "core/datatype/tNumber.h"
-#include "rrlib/serialization/tDataTypeBase.h"
 #include "rrlib/finroc_core_utils/tTime.h"
 #include "plugins/tcp/tTCPCommand.h"
 #include "plugins/tcp/tTCPSettings.h"
@@ -729,7 +727,7 @@ void tRemoteServer::tConnection::Connect(std::shared_ptr<util::tNetSocket>& sock
   this->cos = std::shared_ptr<rrlib::serialization::tOutputStream>(new rrlib::serialization::tOutputStream(lm_buf, this->update_times));
   this->cos->WriteByte(this->type);
   //RemoteTypes.serializeLocalDataTypes(cos);
-  this->cos->WriteType(core::tNumber::cTYPE);  // initialize type register
+  (*this->cos) << core::tNumber::cTYPE;  // initialize type register
   bool bulk = this->type == tTCP::cTCP_P2P_ID_BULK;
   util::tString type_string = GetConnectionTypeString();
   this->cos->WriteBoolean(bulk);
@@ -740,7 +738,8 @@ void tRemoteServer::tConnection::Connect(std::shared_ptr<util::tNetSocket>& sock
   this->cis->SetTimeout(1000);
   this->time_base = this->cis->ReadLong();  // Timestamp that remote runtime was created - and relative to which time is encoded in this stream
   //updateTimes.deserialize(cis);
-  rrlib::serialization::tDataTypeBase dt = this->cis->ReadType();
+  rrlib::rtti::tDataTypeBase dt;
+  (*this->cis) >> dt;
   assert((dt == core::tNumber::cTYPE));
   this->cis->SetTimeout(-1);
 

@@ -22,8 +22,7 @@
 #include "plugins/tcp/tPeerList.h"
 #include "core/tRuntimeEnvironment.h"
 #include "rrlib/finroc_core_utils/log/tLogUser.h"
-#include "rrlib/serialization/tInputStream.h"
-#include "rrlib/serialization/tOutputStream.h"
+#include "rrlib/serialization/serialization.h"
 
 namespace finroc
 {

@@ -27,14 +27,13 @@
 
 #include "plugins/tcp/tTCPPort.h"
 #include "rrlib/finroc_core_utils/net/tNetSocket.h"
-#include "rrlib/serialization/tOutputStream.h"
-#include "rrlib/serialization/tInputStream.h"
+#include "rrlib/serialization/serialization.h"
 #include "core/parameter/tParameterNumeric.h"
 #include "plugins/tcp/tTCPSettings.h"
 #include "core/port/net/tRemoteTypes.h"
 #include "core/tLockOrderLevels.h"
 #include "plugins/tcp/tTCP.h"
-#include "rrlib/serialization/tDataTypeBase.h"
+#include "rrlib/rtti/tDataTypeBase.h"
 #include "rrlib/finroc_core_utils/log/tLogUser.h"
 #include "core/port/net/tUpdateTimeChangeListener.h"
 #include "core/thread/tCoreLoopThreadBase.h"
@@ -398,7 +397,7 @@ public:
    */
   void TerminateCommand();
 
-  virtual void UpdateTimeChanged(rrlib::serialization::tDataTypeBase dt, int16 new_update_time);
+  virtual void UpdateTimeChanged(rrlib::rtti::tDataTypeBase dt, int16 new_update_time);
 
   inline void WriteTimestamp(int64 time_stamp)
   {

@@ -27,7 +27,7 @@
 #include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
 #include "core/tRuntimeEnvironment.h"
 #include "core/datatype/tNumber.h"
-#include "rrlib/serialization/tDataTypeBase.h"
+#include "rrlib/rtti/tDataTypeBase.h"
 #include "rrlib/finroc_core_utils/thread/sThreadUtil.h"
 #include "core/port/tAbstractPort.h"
 #include "core/port/tPortFlags.h"
@@ -72,7 +72,7 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
     //cos = new CoreOutputStream(new BufferedOutputStreamMod(s.getOutputStream()));
     this->cos->WriteLong(core::tRuntimeEnvironment::GetInstance()->GetCreationTime());  // write base timestamp
     //RemoteTypes.serializeLocalDataTypes(cos);
-    this->cos->WriteType(core::tNumber::cTYPE);
+    (*this->cos) << core::tNumber::cTYPE;
     this->cos->Flush();
 
     // init port set here, since it might be serialized to stream
@@ -82,7 +82,8 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
     this->cis = std::shared_ptr<rrlib::serialization::tInputStream>(new rrlib::serialization::tInputStream(s->GetSource(), this->update_times));
     //updateTimes.deserialize(cis);
     cis->SetTimeout(1000);
-    rrlib::serialization::tDataTypeBase dt = this->cis->ReadType();
+    rrlib::rtti::tDataTypeBase dt;
+    (*this->cis) >> dt;
     assert((dt == core::tNumber::cTYPE));
 
     util::tString type_string = GetConnectionTypeString();

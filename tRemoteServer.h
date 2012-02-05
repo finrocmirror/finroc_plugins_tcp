@@ -38,13 +38,6 @@
 #include "plugins/tcp/tTCPConnection.h"
 #include "core/thread/tCoreLoopThreadBase.h"
 
-namespace rrlib
-{
-namespace serialization
-{
-class tInputStream;
-} // namespace rrlib
-} // namespace serialization
 
 namespace finroc
 {
