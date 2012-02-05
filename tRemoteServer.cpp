@@ -352,7 +352,7 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
       }
       else    // refound port
       {
-        printf("refound network port %p %s\n", port, port->GetPort()->GetCDescription());
+        printf("refound network port %p %s\n", port, port->GetPort()->GetCName());
         {
           util::tLock lock5(port->GetPort());
           port->refound = true;
@@ -380,7 +380,7 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
       {
         {
           util::tLock lock5(fe);
-          printf("refound network framework element %p %s\n", fe, fe->GetCDescription());
+          printf("refound network framework element %p %s\n", fe, fe->GetCName());
           fe->refound = true;
           assert(((fe->Matches(info))) && "Structure in server changed - that shouldn't happen");
           info.op_code = ::finroc::core::tRuntimeListener::cCHANGE;
@@ -538,7 +538,7 @@ bool tRemoteServer::tProxyFrameworkElement::Matches(const core::tFrameworkElemen
   {
     return false;
   }
-  if (GetDescription().Equals(info.GetLink(0)->name))
+  if (GetName().Equals(info.GetLink(0)->name))
   {
     return false;
   }
@@ -552,7 +552,7 @@ void tRemoteServer::tProxyFrameworkElement::UpdateFromPortInfo(const core::tFram
   {
     assert(((info.op_code == core::tRuntimeListener::cADD)) && "only add operation may change framework element before initialization");
     assert(((info.GetLinkCount() == 1)) && "Framework elements currently may not be linked");
-    SetDescription(info.GetLink(0)->name);
+    SetName(info.GetLink(0)->name);
     outer_class_ptr->GetFrameworkElement(info.GetLink(0)->parent, info.GetLink(0)->extra_flags, false, info.GetLink(0)->parent)->AddChild(this);
   }
   if ((info.GetFlags() & core::tCoreFlags::cFINSTRUCTED) > 0)
@@ -642,7 +642,7 @@ bool tRemoteServer::tProxyPort::Matches(const core::tFrameworkElementInfo& info)
       else
       {
         outer_class_ptr->tmp_match_buffer.Delete(0, outer_class_ptr->tmp_match_buffer.Length());
-        outer_class_ptr->tmp_match_buffer.Append(GetPort()->GetLink(i)->GetDescription());
+        outer_class_ptr->tmp_match_buffer.Append(GetPort()->GetLink(i)->GetName());
       }
       if (!outer_class_ptr->tmp_match_buffer.Equals(info.GetLink(i)->name))
       {
@@ -694,7 +694,7 @@ void tRemoteServer::tProxyPort::UpdateFromPortInfo(const core::tFrameworkElement
           GetPort()->Link(parent, port_info.GetLink(i)->name);
         }
         core::tFrameworkElement* parent = (port_info.GetLink(0)->extra_flags & core::tCoreFlags::cGLOBALLY_UNIQUE_LINK) > 0 ? outer_class_ptr->global_links : static_cast<core::tFrameworkElement*>(outer_class_ptr);
-        GetPort()->SetDescription(port_info.GetLink(0)->name);
+        GetPort()->SetName(port_info.GetLink(0)->name);
         parent->AddChild(GetPort());
       }
       else
@@ -704,7 +704,7 @@ void tRemoteServer::tProxyPort::UpdateFromPortInfo(const core::tFrameworkElement
           core::tFrameworkElement* parent = outer_class_ptr->GetFrameworkElement(port_info.GetLink(i)->parent, port_info.GetLink(i)->extra_flags, true, 0);
           GetPort()->Link(parent, port_info.GetLink(i)->name);
         }
-        GetPort()->SetDescription(port_info.GetLink(0)->name);
+        GetPort()->SetName(port_info.GetLink(0)->name);
         outer_class_ptr->GetFrameworkElement(port_info.GetLink(0)->parent, port_info.GetLink(0)->extra_flags, true, 0)->AddChild(GetPort());
       }
     }
@@ -743,9 +743,9 @@ void tRemoteServer::tConnection::Connect(std::shared_ptr<util::tNetSocket>& sock
   assert((dt == core::tNumber::cTYPE));
   this->cis->SetTimeout(-1);
 
-  std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, util::tStringBuilder("TCP Client ") + type_string + "-Listener for " + outer_class_ptr->GetDescription()));
+  std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, util::tStringBuilder("TCP Client ") + type_string + "-Listener for " + outer_class_ptr->GetName()));
   this->reader = listener;
-  std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(this, util::tStringBuilder("TCP Client ") + type_string + "-Writer for " + outer_class_ptr->GetDescription()));
+  std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(this, util::tStringBuilder("TCP Client ") + type_string + "-Writer for " + outer_class_ptr->GetName()));
   this->writer = writer;
 
   if (bulk)
@@ -873,7 +873,7 @@ tRemoteServer::tConnectorThread::tConnectorThread(tRemoteServer* const outer_cla
   ct_bulk(),
   ct_express()
 {
-  SetName(util::tStringBuilder("TCP Connector Thread for ") + outer_class_ptr->GetDescription());
+  SetName(util::tStringBuilder("TCP Connector Thread for ") + outer_class_ptr->GetName());
   FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_1, "Creating ", GetName());
   //this.setPriority(1); // low priority
 }
