@@ -101,7 +101,7 @@ void tPeerList::DeserializeAddresses(rrlib::serialization::tInputStream* ci, uti
 void tPeerList::RemovePeer(util::tIPSocketAddress isa)
 {
   // make sure: peer can only be removed, while there aren't any other connection events being processed
-  util::tSimpleList<core::tAbstractPeerTracker::tListener*> listeners_copy;
+  std::vector<core::tAbstractPeerTracker::tListener*> listeners_copy;
   this->listeners.GetListenersCopy(listeners_copy);
   util::tSimpleList<core::tAbstractPeerTracker::tListener*> post_process;
   util::tSimpleList< ::finroc::util::tObject*> post_process_obj;
@@ -112,12 +112,12 @@ void tPeerList::RemovePeer(util::tIPSocketAddress isa)
       if (peers.Contains(isa))
       {
         peers.RemoveElem(isa);
-        for (size_t i = 0u, n = listeners_copy.Size(); i < n; i++)
+        for (size_t i = 0u, n = listeners_copy.size(); i < n; i++)
         {
-          ::finroc::util::tObject* o = listeners_copy.Get(i)->NodeRemoved(isa, isa.ToString());
+          ::finroc::util::tObject* o = listeners_copy[i]->NodeRemoved(isa, isa.ToString());
           if (o != NULL)
           {
-            post_process.Add(listeners_copy.Get(i));
+            post_process.Add(listeners_copy[i]);
 
             post_process_obj.Add(o);
           }

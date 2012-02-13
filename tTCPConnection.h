@@ -283,6 +283,8 @@ public:
    */
   tTCPConnection(int8 type_, tTCPPeer* peer_, bool send_peer_info_to_partner_);
 
+  virtual ~tTCPConnection();
+
   /*!
    * Should be called regularly by monitoring thread to check whether critical
    * ping time threshold is exceeded.
@@ -295,11 +297,6 @@ public:
    * Close connection
    */
   void Disconnect();
-
-  virtual ~tTCPConnection()
-  {
-    printf("TCPConnection deleted (%s)\n", GetConnectionTypeString().GetCString());
-  }
 
   /*!
    * \return Is TCP connection disconnecting?

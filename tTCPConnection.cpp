@@ -19,26 +19,30 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "plugins/tcp/tTCPConnection.h"
-#include "core/tRuntimeSettings.h"
-#include "plugins/tcp/tTCPPeer.h"
+#include "rrlib/finroc_core_utils/net/tIPAddress.h"
+#include "rrlib/finroc_core_utils/net/tIPSocketAddress.h"
 #include "rrlib/finroc_core_utils/tTime.h"
+#include "rrlib/finroc_core_utils/thread/tLoopThread.h"
+#include "rrlib/finroc_core_utils/container/tAbstractReusable.h"
+
+#include "core/tRuntimeSettings.h"
 #include "core/portdatabase/tFinrocTypeInfo.h"
 #include "core/port/rpc/tMethodCall.h"
 #include "core/port/tThreadLocalCache.h"
 #include "core/port/rpc/tMethodCallException.h"
 #include "core/port/tAbstractPort.h"
 #include "core/port/rpc/method/tAbstractMethod.h"
+#include "core/port/rpc/tThreadLocalRPCData.h"
 #include "core/port/net/tNetPort.h"
+#include "core/port/net/tNetworkSettings.h"
 #include "core/port/rpc/tPullCall.h"
 #include "core/port/rpc/tRPCThreadPool.h"
-#include "plugins/tcp/tTCPCommand.h"
-#include "rrlib/finroc_core_utils/thread/tLoopThread.h"
-#include "plugins/tcp/tPeerList.h"
-#include "rrlib/finroc_core_utils/net/tIPAddress.h"
-#include "rrlib/finroc_core_utils/net/tIPSocketAddress.h"
 #include "core/portdatabase/tSerializableReusable.h"
-#include "rrlib/finroc_core_utils/container/tAbstractReusable.h"
+
+#include "plugins/tcp/tTCPConnection.h"
+#include "plugins/tcp/tTCPPeer.h"
+#include "plugins/tcp/tTCPCommand.h"
+#include "plugins/tcp/tPeerList.h"
 
 namespace finroc
 {
@@ -70,11 +74,15 @@ tTCPConnection::tTCPConnection(int8 type_, tTCPPeer* peer_, bool send_peer_info_
   last_rx_position(0),
   obj_mutex(core::tLockOrderLevels::cREMOTE + 1)
 {
-  core::tRuntimeSettings::GetInstance()->AddUpdateTimeChangeListener(this);
+  core::tNetworkSettings::GetInstance().AddUpdateTimeChangeListener(this);
   if (peer_ != NULL)
   {
     peer_->AddConnection(this);
   }
+}
+
+tTCPConnection::~tTCPConnection()
+{
 }
 
 int64 tTCPConnection::CheckPingForDisconnect()
@@ -87,7 +95,7 @@ int64 tTCPConnection::CheckPingForDisconnect()
   if (last_acknowledged_packet != locked_writer->cur_packet_index)
   {
     int64 critical_packet_time = sent_packet_time[(last_acknowledged_packet + 1) & tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS];
-    int64 time_left = critical_packet_time + tTCPSettings::GetInstance()->critical_ping_threshold.GetValue() - util::tSystem::CurrentTimeMillis();
+    int64 time_left = critical_packet_time + tTCPSettings::GetInstance()->critical_ping_threshold.GetValue() - util::tTime::GetPrecise();
     if (time_left < 0)
     {
       HandlePingTimeExceed();
@@ -105,7 +113,7 @@ void tTCPConnection::Disconnect()
 {
   util::tLock lock1(this);
   disconnect_signal = true;
-  core::tRuntimeSettings::GetInstance()->RemoveUpdateTimeChangeListener(this);
+  core::tNetworkSettings::GetInstance().RemoveUpdateTimeChangeListener(this);
   if (peer != NULL)
   {
     peer->RemoveConnection(this);
@@ -185,7 +193,7 @@ void tTCPConnection::HandleMethodCall()
   if ((port == NULL || method_type == NULL || (!core::tFinrocTypeInfo::IsMethodType(method_type))))
   {
     // create/decode call
-    core::tMethodCall* mc = core::tThreadLocalCache::GetFast()->GetUnusedMethodCall();
+    core::tMethodCall* mc = core::tThreadLocalRPCData::Get().GetUnusedMethodCall();
     try
     {
       mc->DeserializeCall(*cis, method_type, true);
@@ -208,8 +216,8 @@ void tTCPConnection::HandleMethodCall()
     util::tLock lock2(port->GetPort());
 
     bool skip_call = (!port->GetPort()->IsReady());
-    core::tMethodCall* mc = core::tThreadLocalCache::GetFast()->GetUnusedMethodCall();
-    cis->SetFactory(skip_call ? NULL : port->GetPort());
+    core::tMethodCall* mc = core::tThreadLocalRPCData::Get().GetUnusedMethodCall();
+    cis->SetFactory(skip_call ? NULL : port);
     try
     {
       mc->DeserializeCall(*cis, method_type, skip_call);
@@ -269,9 +277,9 @@ void tTCPConnection::HandleMethodCallReturn()
     }
 
     // create/decode call
-    core::tMethodCall* mc = core::tThreadLocalCache::GetFast()->GetUnusedMethodCall();
+    core::tMethodCall* mc = core::tThreadLocalRPCData::Get().GetUnusedMethodCall();
     //boolean skipCall = (methodType == null || (!methodType.isMethodType()));
-    cis->SetFactory(port->GetPort());
+    cis->SetFactory(port);
     try
     {
       mc->DeserializeCall(*cis, method_type, false);
@@ -303,7 +311,7 @@ void tTCPConnection::HandlePullCall()
   tTCPPort* port = LookupPortForCallHandling(handle);
 
   // create/decode call
-  core::tPullCall* pc = core::tThreadLocalCache::GetFast()->GetUnusedPullCall();
+  core::tPullCall* pc = core::tThreadLocalRPCData::Get().GetUnusedPullCall();
   try
   {
     pc->Deserialize(*cis);
@@ -328,8 +336,8 @@ void tTCPConnection::HandlePullCall()
   {
     // Execute pull in extra thread, since it can block
     //          pc.setRemotePortHandle(remoteHandle);
-    pc->PrepareForExecution(port);
-    core::tRPCThreadPool::GetInstance()->ExecuteTask(pc);
+    pc->PrepareForExecution(*port->GetPort(), *port);
+    core::tRPCThreadPool::GetInstance().ExecuteTask(pc);
   }
 }
 
@@ -361,10 +369,10 @@ void tTCPConnection::HandleReturningPullCall()
     }
 
     // deserialize pull call
-    core::tPullCall* pc = core::tThreadLocalCache::GetFast()->GetUnusedPullCall();
+    core::tPullCall* pc = core::tThreadLocalRPCData::Get().GetUnusedPullCall();
     try
     {
-      cis->SetFactory(port->GetPort());
+      cis->SetFactory(port);
       pc->Deserialize(*cis);
       cis->SetFactory(NULL);
 
@@ -405,7 +413,7 @@ bool tTCPConnection::PingTimeExceeed()
   if (last_acknowledged_packet != locked_writer->cur_packet_index)
   {
     int64 critical_packet_time = sent_packet_time[(last_acknowledged_packet + 1) & tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS];
-    int64 time_left = critical_packet_time + tTCPSettings::GetInstance()->critical_ping_threshold.GetValue() - util::tSystem::CurrentTimeMillis();
+    int64 time_left = critical_packet_time + tTCPSettings::GetInstance()->critical_ping_threshold.GetValue() - util::tTime::GetPrecise();
     return time_left < 0;
   }
   else
@@ -557,7 +565,7 @@ void tTCPConnection::tReader::Run()
         index = cis->ReadInt();
 
         // set ping times
-        cur_time = util::tSystem::CurrentTimeMillis();
+        cur_time = util::tTime::GetPrecise();
         for (int i = outer_class_ptr->last_acknowledged_packet + 1; i <= index; i++)
         {
           outer_class_ptr->ping_times[i & tTCPSettings::cAVG_PING_PACKETS] = static_cast<int>((cur_time - outer_class_ptr->sent_packet_time[i & tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS]));
@@ -792,7 +800,7 @@ void tTCPConnection::tWriter::Run()
       }
       while (true);
 
-      int64 start_time = util::tSystem::CurrentTimeMillis();
+      int64 start_time = util::tTime::GetPrecise();
 
       // send acknowledgements
       SendAcknowledgementsAndCommands();
@@ -813,7 +821,7 @@ void tTCPConnection::tWriter::Run()
         cos->WriteByte(tTCP::cPING);
         cur_packet_index++;
         cos->WriteInt(cur_packet_index);
-        outer_class_ptr->sent_packet_time[cur_packet_index & tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS] = util::tSystem::CurrentTimeMillis();
+        outer_class_ptr->sent_packet_time[cur_packet_index & tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS] = util::tTime::GetPrecise();
         outer_class_ptr->TerminateCommand();
       }
 
@@ -824,7 +832,7 @@ void tTCPConnection::tWriter::Run()
       this->tc->ReleaseAllLocks();
 
       // wait for minimum update time
-      int64 wait_for = (static_cast<int64>(outer_class_ptr->min_update_interval.GetValue())) - (util::tSystem::CurrentTimeMillis() - start_time);
+      int64 wait_for = (static_cast<int64>(outer_class_ptr->min_update_interval.GetValue())) - (util::tTime::GetPrecise() - start_time);
       assert((wait_for <= outer_class_ptr->min_update_interval.GetValue()));
       if ((wait_for > 0) && (!outer_class_ptr->disconnect_signal))
       {

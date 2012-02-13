@@ -24,19 +24,12 @@
 #define plugins__tcp__tTCP_h__
 
 #include "rrlib/finroc_core_utils/definitions.h"
-
 #include "rrlib/finroc_core_utils/container/tReusablesPoolCR.h"
+
 #include "core/plugin/tPlugin.h"
 #include "core/tFrameworkElementTreeFilter.h"
 #include "core/plugin/tCreateExternalConnectionAction.h"
 
-namespace finroc
-{
-namespace core
-{
-class tExternalConnection;
-} // namespace finroc
-} // namespace core
 
 namespace finroc
 {
@@ -50,12 +43,12 @@ class tTCPCommand;
  *
  * Plugin for P2P TCP connections
  */
-class tTCP : public util::tUncopyableObject, public core::tPlugin
+class tTCP : public core::tPlugin
 {
   /*!
    * Class for TCP create-Actions
    */
-  class tCreateAction : public util::tObject, public core::tCreateExternalConnectionAction
+  class tCreateAction : public core::tCreateExternalConnectionAction
   {
   private:
 
@@ -106,12 +99,9 @@ class tTCP : public util::tUncopyableObject, public core::tPlugin
 private:
 
   /*! Pool with Reusable TCP Commands (SUBSCRIBE & UNSUBSCRIBE) */
-  static util::tReusablesPoolCR<tTCPCommand>* tcp_commands;
+  util::tReusablesPoolCR<tTCPCommand>* tcp_commands;
 
 public:
-
-  /*! Singleton instance of TCP plugin */
-  static std::shared_ptr<tTCP> instance;
 
   /*! Stream IDs for different connection types */
   static const int8 cTCP_P2P_ID_EXPRESS = 9, cTCP_P2P_ID_BULK = 10;

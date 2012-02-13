@@ -19,35 +19,84 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "plugins/tcp/tTCPServer.h"
-
-#include "plugins/tcp/tTCPServerConnection.h"
-#include "rrlib/finroc_core_utils/tAutoDeleter.h"
-#include "plugins/tcp/tTCP.h"
+#include "rrlib/finroc_core_utils/log/tLogUser.h"
+#include "rrlib/finroc_core_utils/thread/sThreadUtil.h"
 #include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
+#include "rrlib/finroc_core_utils/tTime.h"
+#include "rrlib/rtti/tDataTypeBase.h"
+#include "rrlib/util/patterns/singleton.h"
+
 #include "core/tRuntimeEnvironment.h"
 #include "core/datatype/tNumber.h"
-#include "rrlib/rtti/tDataTypeBase.h"
-#include "rrlib/finroc_core_utils/thread/sThreadUtil.h"
 #include "core/port/tAbstractPort.h"
 #include "core/port/tPortFlags.h"
 #include "core/tLockOrderLevels.h"
-#include "rrlib/finroc_core_utils/log/tLogUser.h"
 #include "core/datatype/tFrameworkElementInfo.h"
 #include "core/port/net/tRemoteTypes.h"
-#include "plugins/tcp/tTCPCommand.h"
 #include "core/portdatabase/tFinrocTypeInfo.h"
-#include "plugins/tcp/tTCPSettings.h"
 #include "core/tCoreFlags.h"
 #include "core/port/net/tNetPort.h"
-#include "rrlib/finroc_core_utils/tTime.h"
 #include "core/parameter/tParameterNumeric.h"
+
+#include "plugins/tcp/tTCPServerConnection.h"
+#include "plugins/tcp/tTCPServer.h"
+#include "plugins/tcp/tTCP.h"
+#include "plugins/tcp/tTCPCommand.h"
+#include "plugins/tcp/tTCPSettings.h"
 
 namespace finroc
 {
 namespace tcp
 {
-util::tSafeConcurrentlyIterableList<tTCPServerConnection*>* tTCPServerConnection::connections = util::tAutoDeleter::AddStatic(new util::tSafeConcurrentlyIterableList<tTCPServerConnection*>(4u, 4u));
+
+namespace internal
+{
+template <typename T>
+struct CreateServerConnectionList
+{
+  static T* Create()
+  {
+    return new T(4u, 4u);
+  }
+  static void Destroy(T* object)
+  {
+    delete object;
+  }
+};
+
+/*!
+ * Monitors connections for critical ping time exceed
+ */
+class tPingTimeMonitor : public core::tCoreLoopThreadBase
+{
+public:
+
+  tPingTimeMonitor() :
+    core::tCoreLoopThreadBase(tTCPSettings::cCONNECTOR_THREAD_LOOP_INTERVAL, false, false)
+  {
+    SetName("TCP Server Ping Time Monitor");
+    Start();
+  }
+
+  virtual ~tPingTimeMonitor()
+  {
+    StopThread();
+    Join(2000000);
+  }
+
+  static tPingTimeMonitor& GetInstance();
+
+  virtual void MainLoopCallback();
+};
+
+}
+
+typedef rrlib::util::tSingletonHolder<util::tSafeConcurrentlyIterableList<tTCPServerConnection*>, rrlib::util::singleton::Longevity, internal::CreateServerConnectionList> tServerConnectionList;
+static inline unsigned int GetLongevity(util::tSafeConcurrentlyIterableList<tTCPServerConnection*>*)
+{
+  return 100; // runtime will already be deleted
+}
+
 util::tAtomicInt tTCPServerConnection::connection_id;
 
 tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s, int8 stream_id, tTCPServer* server, tTCPPeer* peer) :
@@ -116,8 +165,8 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
     writer->LockObject(port_set->connection_lock);
     writer->Start();
 
-    connections->Add(this, false);
-    tPingTimeMonitor::GetInstance();  // start ping time monitor
+    tServerConnectionList::Instance().Add(this, false);
+    internal::tPingTimeMonitor::GetInstance();  // start ping time monitor
   }
   catch (const std::exception& e)
   {
@@ -140,7 +189,7 @@ tTCPServerConnection::tServerPort* tTCPServerConnection::GetPort(int handle, boo
   {
     return static_cast<tServerPort*>(org_port->AsNetPort());
   }
-  tServerPort* sp = static_cast<tServerPort*>(org_port->FindNetPort(this));
+  tServerPort* sp = static_cast<tServerPort*>(core::tNetPort::FindNetPort(*org_port, this));
   if (sp == NULL && possibly_create)
   {
     sp = new tServerPort(this, org_port, port_set);
@@ -221,8 +270,8 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
         else
         {
           int8 changed_flag = this->cis->ReadByte();
-          this->cis->SetFactory(p->GetPort());
-          p->ReceiveDataFromStream(*this->cis, util::tSystem::CurrentTimeMillis(), changed_flag);
+          this->cis->SetFactory(p);
+          p->ReceiveDataFromStream(*this->cis, util::tTime::GetPrecise(), changed_flag);
           this->cis->SetFactory(NULL);
         }
       }
@@ -363,7 +412,7 @@ void tTCPServerConnection::tPortSet::PrepareDelete()
     core::tRuntimeEnvironment::GetInstance()->RemoveListener(outer_class_ptr);
   }
   NotifyPortsOfDisconnect();
-  tTCPServerConnection::connections->Remove(outer_class_ptr);
+  tServerConnectionList::Instance().Remove(outer_class_ptr);
   ::finroc::core::tFrameworkElement::PrepareDelete();
 }
 
@@ -397,33 +446,31 @@ void tTCPServerConnection::tServerPort::PostChildInit()
   }
 }
 
-std::shared_ptr<tTCPServerConnection::tPingTimeMonitor> tTCPServerConnection::tPingTimeMonitor::instance;
-util::tMutexLockOrder tTCPServerConnection::tPingTimeMonitor::static_class_mutex(core::tLockOrderLevels::cINNER_MOST - 20);
-
-tTCPServerConnection::tPingTimeMonitor::tPingTimeMonitor() :
-  core::tCoreLoopThreadBase(tTCPSettings::cCONNECTOR_THREAD_LOOP_INTERVAL, false, false)
+namespace internal
 {
-  SetName("TCP Server Ping Time Monitor");
+
+typedef rrlib::util::tSingletonHolder<tPingTimeMonitor, rrlib::util::singleton::Longevity> tPingTimeMonitorInstance;
+static inline unsigned int GetLongevity(tPingTimeMonitor*)
+{
+  return 0; // delete before runtime
 }
 
-tTCPServerConnection::tPingTimeMonitor* tTCPServerConnection::tPingTimeMonitor::GetInstance()
+tPingTimeMonitor& tPingTimeMonitor::GetInstance()
 {
+  /*! Locked before thread list (in C++) */
+  static util::tMutexLockOrder static_class_mutex(core::tLockOrderLevels::cINNER_MOST - 20);
+
   util::tLock lock1(static_class_mutex);
-  if (instance.get() == NULL)
-  {
-    instance = util::sThreadUtil::GetThreadSharedPtr(new tTCPServerConnection::tPingTimeMonitor());
-    instance->Start();
-  }
-  return instance.get();
+  return tPingTimeMonitorInstance::Instance();
 }
 
-void tTCPServerConnection::tPingTimeMonitor::MainLoopCallback()
+void tPingTimeMonitor::MainLoopCallback()
 {
   int64 start_time = util::tTime::GetCoarse();
   int64 may_wait = tTCPSettings::GetInstance()->critical_ping_threshold.GetValue();
 
-  util::tArrayWrapper<tTCPServerConnection*>* it = connections->GetIterable();
-  for (int i = 0, n = connections->Size(); i < n; i++)
+  util::tArrayWrapper<tTCPServerConnection*>* it = tServerConnectionList::Instance().GetIterable();
+  for (int i = 0, n = tServerConnectionList::Instance().Size(); i < n; i++)
   {
     tTCPServerConnection* tsc = it->Get(i);
     if (tsc != NULL)
@@ -440,6 +487,8 @@ void tTCPServerConnection::tPingTimeMonitor::MainLoopCallback()
   }
 }
 
-} // namespace finroc
+} // namespace internal
+
 } // namespace tcp
+} // namespace finroc
 

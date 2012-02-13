@@ -497,10 +497,10 @@ void tRemoteServer::RuntimeChange(int8 change_type, core::tFrameworkElement* ele
 {
   if (element->IsPort() && change_type != ::finroc::core::tRuntimeListener::cPRE_INIT)
   {
-    core::tNetPort* np = (static_cast<core::tAbstractPort*>(element))->FindNetPort(express.get());
+    core::tNetPort* np = core::tNetPort::FindNetPort(static_cast<core::tAbstractPort&>(*element), express.get());
     if (np == NULL)
     {
-      np = (static_cast<core::tAbstractPort*>(element))->FindNetPort(bulk.get());
+      np = core::tNetPort::FindNetPort(static_cast<core::tAbstractPort&>(*element), bulk.get());
     }
     if (np != NULL)
     {
@@ -813,7 +813,7 @@ void tRemoteServer::tConnection::ProcessRequest(int8 op_code)
         else
         {
           int8 changed_flag = this->cis->ReadByte();
-          this->cis->SetFactory(p->GetPort());
+          this->cis->SetFactory(p);
           p->ReceiveDataFromStream(*this->cis, util::tTime::GetCoarse(), changed_flag);
           this->cis->SetFactory(NULL);
         }
@@ -873,7 +873,7 @@ tRemoteServer::tConnectorThread::tConnectorThread(tRemoteServer* const outer_cla
   ct_bulk(),
   ct_express()
 {
-  SetName(util::tStringBuilder("TCP Connector Thread for ") + outer_class_ptr->GetName());
+  SetName(std::string("TCP Connector Thread for ") + outer_class_ptr->GetCName());
   FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_1, "Creating ", GetName());
   //this.setPriority(1); // low priority
 }
@@ -928,7 +928,7 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
     try
     {
       // check ping times
-      int64 start_time = util::tSystem::CurrentTimeMillis();
+      int64 start_time = util::tTime::GetPrecise();
       int64 may_wait = tTCPSettings::GetInstance()->critical_ping_threshold.GetValue();
       may_wait = std::min(may_wait, ct_express->CheckPingForDisconnect());
       may_wait = std::min(may_wait, ct_bulk->CheckPingForDisconnect());
@@ -940,7 +940,7 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
       }
 
       // wait remaining uncritical time
-      int64 wait_for = may_wait - (util::tSystem::CurrentTimeMillis() - start_time);
+      int64 wait_for = may_wait - (util::tTime::GetPrecise() - start_time);
       if (wait_for > 0)
       {
         ::finroc::util::tThread::Sleep(wait_for);

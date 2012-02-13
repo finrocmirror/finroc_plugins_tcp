@@ -65,10 +65,8 @@ class tTCPServerConnection : public tTCPConnection, public core::tRuntimeListene
 {
 public:
   class tPortSet; // inner class forward declaration
-public:
   class tServerPort; // inner class forward declaration
-public:
-  class tPingTimeMonitor; // inner class forward declaration
+
 private:
 
   /*! Used for creating connection IDs */
@@ -100,13 +98,6 @@ private:
 
   /*! Number of times disconnect was called, since last connect */
   util::tAtomicInt disconnect_calls;
-
-public:
-
-  /*! List with connections for TCP servers in this runtime */
-  static util::tSafeConcurrentlyIterableList<tTCPServerConnection*>* connections;
-
-private:
 
   /*!
    * (belongs to ServerPort)
@@ -230,31 +221,6 @@ public:
 
     // notify any connected input ports about disconnect
     virtual void NotifyDisconnect();
-
-  };
-
-public:
-
-  /*!
-   * Monitors connections for critical ping time exceed
-   */
-  class tPingTimeMonitor : public core::tCoreLoopThreadBase
-  {
-    friend class tTCPServerConnection;
-  private:
-
-    static std::shared_ptr<tTCPServerConnection::tPingTimeMonitor> instance;
-
-    /*! Locked before thread list (in C++) */
-    static util::tMutexLockOrder static_class_mutex;
-
-    tPingTimeMonitor();
-
-    static tTCPServerConnection::tPingTimeMonitor* GetInstance();
-
-  public:
-
-    virtual void MainLoopCallback();
 
   };
 

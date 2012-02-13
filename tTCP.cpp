@@ -19,30 +19,43 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "plugins/tcp/tTCP.h"
-#include "rrlib/finroc_core_utils/tAutoDeleter.h"
-#include "plugins/tcp/tTCPCommand.h"
-#include "plugins/tcp/tTCPPeer.h"
+#include "rrlib/util/patterns/singleton.h"
 #include "core/plugin/tPlugins.h"
 #include "core/tFrameworkElement.h"
+
+#include "plugins/tcp/tTCP.h"
+#include "plugins/tcp/tTCPCommand.h"
+#include "plugins/tcp/tTCPPeer.h"
 
 namespace finroc
 {
 namespace tcp
 {
-std::shared_ptr<tTCP> tTCP::instance;
+typedef rrlib::util::tSingletonHolder<tTCP, rrlib::util::singleton::Longevity> tTCPPlugin;
+static inline unsigned int GetLongevity(tTCP*)
+{
+  return 0xDDDDDDDD; // should be deallocated before tAllocationRegister singleton
+}
+
+static int InitTCPPlugin()
+{
+  tTCPPlugin::Instance();
+  return 0;
+}
+
+static int init_tcp_plugin = InitTCPPlugin();
+
 const int8 tTCP::cTCP_P2P_ID_EXPRESS, tTCP::cTCP_P2P_ID_BULK;
 const int8 tTCP::cSET, tTCP::cSUBSCRIBE, tTCP::cUNSUBSCRIBE, tTCP::cCHANGE_EVENT, tTCP::cPING, tTCP::cPONG, tTCP::cPULLCALL, tTCP::cMETHODCALL, tTCP::cUPDATETIME, tTCP::cREQUEST_PORT_UPDATE, tTCP::cPORT_UPDATE, tTCP::cPULLCALL_RETURN, tTCP::cMETHODCALL_RETURN, tTCP::cPEER_INFO;
 const int8 tTCP::cSUCCESS, tTCP::cFAIL;
 util::tString tTCP::cDEFAULT_CONNECTION_NAME = "localhost:4444";
-util::tReusablesPoolCR<tTCPCommand>* tTCP::tcp_commands = util::tAutoDeleter::AddStatic(new util::tReusablesPoolCR<tTCPCommand>());
 tTCP::tCreateAction tTCP::creator1(tTCPPeer::cGUI_FILTER, "TCP", 0);
 tTCP::tCreateAction tTCP::creator2(tTCPPeer::cDEFAULT_FILTER, "TCP ports only", 0);
 tTCP::tCreateAction tTCP::creator3(tTCPPeer::cALL_AND_EDGE_FILTER, "TCP admin", core::tCreateExternalConnectionAction::cREMOTE_EDGE_INFO);
 
 tTCP::tTCP()
 {
-  instance = std::shared_ptr<tTCP>(this);
+  tcp_commands = new util::tReusablesPoolCR<tTCPCommand>();
 }
 
 tTCP::~tTCP()
@@ -55,21 +68,18 @@ tTCP::~tTCP()
 
 tTCPCommand* tTCP::GetUnusedTCPCommand()
 {
-  tTCPCommand* tc = tcp_commands->GetUnused();
+  tTCP& plugin = tTCPPlugin::Instance();
+  tTCPCommand* tc = plugin.tcp_commands->GetUnused();
   if (tc == NULL)
   {
     tc = new tTCPCommand();
-    tcp_commands->Attach(tc, false);
+    plugin.tcp_commands->Attach(tc, false);
   }
-  //tc.responsibleThread = ThreadUtil.getCurrentThreadId();
   return tc;
 }
 
 void tTCP::Init()
 {
-  //        Plugins.getInstance().registerExternalConnection(creator1);
-  //        Plugins.getInstance().registerExternalConnection(creator2);
-  //        Plugins.getInstance().registerExternalConnection(creator3);
 }
 
 tTCP::tCreateAction::tCreateAction(core::tFrameworkElementTreeFilter filter_, const util::tString& name_, int flags_) :
@@ -78,8 +88,6 @@ tTCP::tCreateAction::tCreateAction(core::tFrameworkElementTreeFilter filter_, co
   flags(flags_),
   group()
 {
-  core::tPlugins::GetInstance()->RegisterExternalConnection(this);
-
   group = GetBinary((void*)Dummy);
 }
 

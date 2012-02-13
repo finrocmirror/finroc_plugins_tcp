@@ -23,9 +23,9 @@
 #include "plugins/tcp/tTCPConnection.h"
 #include "core/portdatabase/tFinrocTypeInfo.h"
 #include "core/port/net/tRemoteTypes.h"
+#include "core/port/net/tNetworkSettings.h"
 #include "core/parameter/tParameterNumeric.h"
 #include "core/tRuntimeSettings.h"
-#include "rrlib/finroc_core_utils/tGarbageCollector.h"
 #include "core/port/rpc/tAbstractCall.h"
 #include "core/port/rpc/tMethodCallException.h"
 #include "core/port/rpc/tSynchMethodCallLogic.h"
@@ -73,7 +73,7 @@ int16 tTCPPort::GetUpdateIntervalForNet()
   }
 
   // 5. runtime default
-  int res = core::tRuntimeSettings::cDEFAULT_MINIMUM_NETWORK_UPDATE_TIME->GetValue();
+  int res = core::tNetworkSettings::GetInstance().default_minimum_network_update_time.Get();
   return static_cast<int16>(res);
 }
 
@@ -91,7 +91,6 @@ void tTCPPort::PrepareDelete()
   SetMonitored(false);
   ::finroc::core::tNetPort::PrepareDelete();
   connection = NULL;
-  util::tGarbageCollector::DeleteDeferred(this);
 }
 
 void tTCPPort::SendCall(core::tAbstractCall* mc)
