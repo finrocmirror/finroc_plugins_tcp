@@ -846,23 +846,23 @@ bool tRemoteServer::tConnection::SendData(int64 start_time)
 
 void tRemoteServer::tConnection::Subscribe(int index, int16 strategy, bool reverse_push, int16 update_interval, int local_index)
 {
-  tTCPCommand* command = tTCP::GetUnusedTCPCommand();
+  tTCPCommand::tPtr command = tTCP::GetUnusedTCPCommand();
   command->op_code = tTCP::cSUBSCRIBE;
   command->remote_handle = index;
   command->strategy = strategy;
   command->reverse_push = reverse_push;
   command->update_interval = update_interval;
   command->local_index = local_index;
-  SendCall(command);
+  SendCall(std::move(command));
   //command.genericRecycle();
 }
 
 void tRemoteServer::tConnection::Unsubscribe(int index)
 {
-  tTCPCommand* command = tTCP::GetUnusedTCPCommand();
+  tTCPCommand::tPtr command = tTCP::GetUnusedTCPCommand();
   command->op_code = tTCP::cUNSUBSCRIBE;
   command->remote_handle = index;
-  SendCall(command);
+  SendCall(std::move(command));
   //command.genericRecycle();
 }
 

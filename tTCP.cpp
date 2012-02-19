@@ -24,7 +24,6 @@
 #include "core/tFrameworkElement.h"
 
 #include "plugins/tcp/tTCP.h"
-#include "plugins/tcp/tTCPCommand.h"
 #include "plugins/tcp/tTCPPeer.h"
 
 namespace finroc
@@ -66,7 +65,7 @@ tTCP::~tTCP()
   }
 }
 
-tTCPCommand* tTCP::GetUnusedTCPCommand()
+tTCPCommand::tPtr tTCP::GetUnusedTCPCommand()
 {
   tTCP& plugin = tTCPPlugin::Instance();
   tTCPCommand* tc = plugin.tcp_commands->GetUnused();
@@ -75,7 +74,7 @@ tTCPCommand* tTCP::GetUnusedTCPCommand()
     tc = new tTCPCommand();
     plugin.tcp_commands->Attach(tc, false);
   }
-  return tc;
+  return tTCPCommand::tPtr(tc);
 }
 
 void tTCP::Init()

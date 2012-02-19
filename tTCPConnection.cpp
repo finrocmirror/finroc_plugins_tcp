@@ -193,21 +193,20 @@ void tTCPConnection::HandleMethodCall()
   if ((port == NULL || method_type == NULL || (!core::tFinrocTypeInfo::IsMethodType(method_type))))
   {
     // create/decode call
-    core::tMethodCall* mc = core::tThreadLocalRPCData::Get().GetUnusedMethodCall();
+    core::tMethodCall::tPtr mc = core::tThreadLocalRPCData::Get().GetUnusedMethodCall();
     try
     {
       mc->DeserializeCall(*cis, method_type, true);
     }
     catch (const util::tException& e)
     {
-      mc->Recycle();
       return;
     }
 
     mc->SetExceptionStatus(core::tMethodCallException::eNO_CONNECTION);
     mc->SetRemotePortHandle(remote_handle);
     mc->SetLocalPortHandle(handle);
-    SendCall(mc);
+    SendCall(std::move(mc));
     cis->ToSkipTarget();
   }
 
@@ -216,7 +215,7 @@ void tTCPConnection::HandleMethodCall()
     util::tLock lock2(port->GetPort());
 
     bool skip_call = (!port->GetPort()->IsReady());
-    core::tMethodCall* mc = core::tThreadLocalRPCData::Get().GetUnusedMethodCall();
+    core::tMethodCall::tPtr mc = core::tThreadLocalRPCData::Get().GetUnusedMethodCall();
     cis->SetFactory(skip_call ? NULL : port);
     try
     {
@@ -225,7 +224,6 @@ void tTCPConnection::HandleMethodCall()
     catch (const util::tException& e)
     {
       cis->SetFactory(NULL);
-      mc->Recycle();
       return;
     }
     cis->SetFactory(NULL);
@@ -237,7 +235,7 @@ void tTCPConnection::HandleMethodCall()
       mc->SetExceptionStatus(core::tMethodCallException::eNO_CONNECTION);
       mc->SetRemotePortHandle(remote_handle);
       mc->SetLocalPortHandle(handle);
-      SendCall(mc);
+      SendCall(std::move(mc));
       cis->ToSkipTarget();
     }
     else
@@ -277,7 +275,7 @@ void tTCPConnection::HandleMethodCallReturn()
     }
 
     // create/decode call
-    core::tMethodCall* mc = core::tThreadLocalRPCData::Get().GetUnusedMethodCall();
+    core::tMethodCall::tPtr mc = core::tThreadLocalRPCData::Get().GetUnusedMethodCall();
     //boolean skipCall = (methodType == null || (!methodType.isMethodType()));
     cis->SetFactory(port);
     try
@@ -288,7 +286,6 @@ void tTCPConnection::HandleMethodCallReturn()
     {
       cis->ToSkipTarget();
       cis->SetFactory(NULL);
-      mc->Recycle();
       return;
     }
     cis->SetFactory(NULL);
@@ -297,7 +294,8 @@ void tTCPConnection::HandleMethodCallReturn()
     FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Method call return ", (port != NULL ? port->GetPort()->GetQualifiedName() : util::tString(handle)));
 
     // process call
-    port->HandleCallReturnFromNet(mc);
+    core::tAbstractCall::tPtr tmp = std::move(mc);
+    port->HandleCallReturnFromNet(tmp);
   }
 }
 
@@ -311,14 +309,13 @@ void tTCPConnection::HandlePullCall()
   tTCPPort* port = LookupPortForCallHandling(handle);
 
   // create/decode call
-  core::tPullCall* pc = core::tThreadLocalRPCData::Get().GetUnusedPullCall();
+  core::tPullCall::tPtr pc = core::tThreadLocalRPCData::Get().GetUnusedPullCall();
   try
   {
     pc->Deserialize(*cis);
   }
   catch (const util::tException& e)
   {
-    pc->Recycle();
     return;
   }
 
@@ -330,14 +327,14 @@ void tTCPConnection::HandlePullCall()
     pc->SetExceptionStatus(core::tMethodCallException::eNO_CONNECTION);
     pc->SetRemotePortHandle(remote_handle);
     pc->SetLocalPortHandle(handle);
-    SendCall(pc);
+    SendCall(std::move(pc));
   }
   else
   {
     // Execute pull in extra thread, since it can block
     //          pc.setRemotePortHandle(remoteHandle);
     pc->PrepareForExecution(*port->GetPort(), *port);
-    core::tRPCThreadPool::GetInstance().ExecuteTask(pc);
+    core::tRPCThreadPool::GetInstance().ExecuteTask(std::move(pc));
   }
 }
 
@@ -369,7 +366,7 @@ void tTCPConnection::HandleReturningPullCall()
     }
 
     // deserialize pull call
-    core::tPullCall* pc = core::tThreadLocalRPCData::Get().GetUnusedPullCall();
+    core::tPullCall::tPtr pc = core::tThreadLocalRPCData::Get().GetUnusedPullCall();
     try
     {
       cis->SetFactory(port);
@@ -383,14 +380,11 @@ void tTCPConnection::HandleReturningPullCall()
     catch (const util::tException& e)
     {
       FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, e);
-      pc->Recycle();
-      pc = NULL;
+      return;
     }
 
-    if (pc != NULL)
-    {
-      port->HandleCallReturnFromNet(pc);
-    }
+    core::tAbstractCall::tPtr tmp = std::move(pc);
+    port->HandleCallReturnFromNet(tmp);
   }
 }
 
@@ -422,17 +416,14 @@ bool tTCPConnection::PingTimeExceeed()
   }
 }
 
-void tTCPConnection::SendCall(core::tSerializableReusable* call)
+void tTCPConnection::SendCall(core::tSerializableReusable::tPtr call)
 {
   std::shared_ptr<tWriter> locked_writer = writer.lock();
   if (locked_writer.get() != NULL && (!disconnect_signal))
   {
     locked_writer->SendCall(call);
   }
-  else
-  {
-    call->GenericRecycle();
-  }
+  call.reset();
 }
 
 bool tTCPConnection::SendDataPrototype(int64 start_time, int8 op_code)
@@ -498,11 +489,11 @@ void tTCPConnection::UpdatePingStatistics()
 void tTCPConnection::UpdateTimeChanged(rrlib::rtti::tDataTypeBase dt, int16 new_update_time)
 {
   // forward update time change to connection partner
-  tTCPCommand* tc = tTCP::GetUnusedTCPCommand();
+  tTCPCommand::tPtr tc = tTCP::GetUnusedTCPCommand();
   tc->op_code = tTCP::cUPDATETIME;
   tc->datatype = dt;
   tc->update_interval = new_update_time;
-  SendCall(tc);
+  SendCall(std::move(tc));
 }
 
 tTCPConnection::tReader::tReader(tTCPConnection* const outer_class_ptr_, const util::tString& description) :
@@ -688,12 +679,11 @@ bool tTCPConnection::tWriter::CanSend()
 tTCPConnection::tWriter::~tWriter()
 {
   // recycle calls
-  core::tSerializableReusable* call = NULL;
+  core::tSerializableReusable::tPtr call;
   while ((call = calls_to_send.Dequeue()) != NULL)
   {
     assert((call->StateChange(util::tAbstractReusable::cENQUEUED, util::tAbstractReusable::cPOST_QUEUED, outer_class_ptr)));
     //call.responsibleThread = ThreadUtil.getCurrentThreadId();
-    call->GenericRecycle();  // recycle complete call
   }
 }
 
@@ -875,13 +865,13 @@ void tTCPConnection::tWriter::SendAcknowledgementsAndCommands()
   }
 
   // send waiting method calls
-  core::tSerializableReusable* call = NULL;
-  while ((call = calls_to_send.Dequeue()) != NULL)
+  core::tSerializableReusable::tPtr call;
+  while ((call = calls_to_send.Dequeue()).get())
   {
     assert((call->StateChange(util::tAbstractReusable::cENQUEUED, util::tAbstractReusable::cPOST_QUEUED, outer_class_ptr)));
     if (typeid(*call) == typeid(core::tPullCall))
     {
-      core::tPullCall* pc = static_cast<core::tPullCall*>(call);
+      core::tPullCall* pc = static_cast<core::tPullCall*>(call.get());
       outer_class_ptr->cos->WriteByte(pc->IsReturning(true) ? tTCP::cPULLCALL_RETURN : tTCP::cPULLCALL);
       outer_class_ptr->cos->WriteInt(pc->GetRemotePortHandle());
       outer_class_ptr->cos->WriteInt(pc->GetLocalPortHandle());
@@ -889,7 +879,7 @@ void tTCPConnection::tWriter::SendAcknowledgementsAndCommands()
     }
     else if (typeid(*call) == typeid(core::tMethodCall))
     {
-      core::tMethodCall* mc = static_cast<core::tMethodCall*>(call);
+      core::tMethodCall* mc = static_cast<core::tMethodCall*>(call.get());
       //assert(mc.getMethod() != null); can be null - if type is not known and we want to return call
       outer_class_ptr->cos->WriteByte(mc->IsReturning(true) ? tTCP::cMETHODCALL_RETURN : tTCP::cMETHODCALL);
       outer_class_ptr->cos->WriteInt(mc->GetRemotePortHandle());
@@ -903,7 +893,6 @@ void tTCPConnection::tWriter::SendAcknowledgementsAndCommands()
       outer_class_ptr->cos->SkipTargetHere();
     }
     outer_class_ptr->TerminateCommand();
-    call->GenericRecycle();  // call is sent... we do not need any of its objects anymore
   }
 
   // send updates on connected peers
@@ -923,7 +912,7 @@ void tTCPConnection::tWriter::SendAcknowledgementsAndCommands()
   }
 }
 
-void tTCPConnection::tWriter::SendCall(core::tSerializableReusable* call)
+void tTCPConnection::tWriter::SendCall(core::tSerializableReusable::tPtr& call)
 {
   //call.responsibleThread = -1;
   assert((call->StateChange(static_cast<int8>((util::tAbstractReusable::cUNKNOWN | util::tAbstractReusable::cUSED)), util::tAbstractReusable::cENQUEUED, outer_class_ptr)));

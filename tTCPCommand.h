@@ -42,6 +42,8 @@ class tTCPCommand : public core::tSerializableReusable
 {
 public:
 
+  typedef std::unique_ptr<tTCPCommand, tRecycler> tPtr;
+
   /*! OpCode - see TCP class */
   int8 op_code;
 

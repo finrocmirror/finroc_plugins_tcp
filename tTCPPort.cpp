@@ -93,16 +93,16 @@ void tTCPPort::PrepareDelete()
   connection = NULL;
 }
 
-void tTCPPort::SendCall(core::tAbstractCall* mc)
+void tTCPPort::SendCall(core::tAbstractCall::tPtr& mc)
 {
   tTCPConnection* c = connection;
-  if (c != NULL)
+  if (c)
   {
     // we received a method/pull call that we will forward over the net
     //mc.pushCaller(getPort());
     mc->SetRemotePortHandle(this->remote_handle);
     mc->SetLocalPortHandle(GetPort()->GetHandle());
-    c->SendCall(mc);
+    c->SendCall(std::move(mc));
   }
   else
   {
@@ -114,16 +114,16 @@ void tTCPPort::SendCall(core::tAbstractCall* mc)
   }
 }
 
-void tTCPPort::SendCallReturn(core::tAbstractCall* mc)
+void tTCPPort::SendCallReturn(core::tAbstractCall::tPtr& mc)
 {
   tTCPConnection* c = connection;
-  if (c != NULL)
+  if (c)
   {
     // we received a method/pull call that we will forward over the net
     //mc.pushCaller(getPort());
     mc->SetRemotePortHandle(this->remote_handle);
     mc->SetLocalPortHandle(GetPort()->GetHandle());
-    c->SendCall(mc);
+    c->SendCall(std::move(mc));
   }
   else
   {

@@ -30,13 +30,13 @@
 #include "core/tFrameworkElementTreeFilter.h"
 #include "core/plugin/tCreateExternalConnectionAction.h"
 
+#include "plugins/tcp/tTCPCommand.h"
 
 namespace finroc
 {
 namespace tcp
 {
 class tTCPPeer;
-class tTCPCommand;
 
 /*!
  * \author Max Reichardt
@@ -131,7 +131,7 @@ public:
   /*!
    * \return Unused TCP Command
    */
-  static tTCPCommand* GetUnusedTCPCommand();
+  static tTCPCommand::tPtr GetUnusedTCPCommand();
 
   virtual void Init();
 

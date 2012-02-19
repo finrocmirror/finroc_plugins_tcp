@@ -24,21 +24,22 @@
 #define plugins__tcp__tTCPConnection_h__
 
 #include "rrlib/finroc_core_utils/definitions.h"
-
-#include "plugins/tcp/tTCPPort.h"
+#include "rrlib/finroc_core_utils/tAtomicDoubleInt.h"
+#include "rrlib/finroc_core_utils/container/tWonderQueueUniquePtr.h"
+#include "rrlib/finroc_core_utils/log/tLogUser.h"
 #include "rrlib/finroc_core_utils/net/tNetSocket.h"
 #include "rrlib/serialization/serialization.h"
+#include "rrlib/rtti/tDataTypeBase.h"
+
 #include "core/parameter/tParameterNumeric.h"
-#include "plugins/tcp/tTCPSettings.h"
 #include "core/port/net/tRemoteTypes.h"
 #include "core/tLockOrderLevels.h"
-#include "plugins/tcp/tTCP.h"
-#include "rrlib/rtti/tDataTypeBase.h"
-#include "rrlib/finroc_core_utils/log/tLogUser.h"
 #include "core/port/net/tUpdateTimeChangeListener.h"
 #include "core/thread/tCoreLoopThreadBase.h"
-#include "rrlib/finroc_core_utils/tAtomicDoubleInt.h"
-#include "rrlib/finroc_core_utils/container/tWonderQueue.h"
+
+#include "plugins/tcp/tTCPPort.h"
+#include "plugins/tcp/tTCPSettings.h"
+#include "plugins/tcp/tTCP.h"
 
 namespace finroc
 {
@@ -123,7 +124,7 @@ public:
     util::tAtomicDoubleInt writer_synch;
 
     /*! Queue with calls/commands waiting to be sent */
-    util::tWonderQueue<core::tSerializableReusable> calls_to_send;
+    util::tWonderQueueUniquePtr<core::tSerializableReusable, core::tSerializableReusable::tRecycler> calls_to_send;
 
   public:
 
@@ -154,7 +155,7 @@ public:
      *
      * \param call Call object
      */
-    void SendCall(core::tSerializableReusable* call);
+    void SendCall(core::tSerializableReusable::tPtr& call);
 
     virtual void StopThread();
 
@@ -370,7 +371,7 @@ public:
    *
    * \param call Call object
    */
-  void SendCall(core::tSerializableReusable* call);
+  void SendCall(core::tSerializableReusable::tPtr call);
 
   /*!
    * Send data chunk. Is called regularly in writer loop whenever changed flag is set.

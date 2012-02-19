@@ -32,14 +32,6 @@
 
 namespace finroc
 {
-namespace core
-{
-class tAbstractCall;
-} // namespace finroc
-} // namespace core
-
-namespace finroc
-{
 namespace tcp
 {
 class tTCPConnection;
@@ -96,7 +88,7 @@ protected:
 
   virtual void PrepareDelete();
 
-  virtual void SendCall(core::tAbstractCall* mc);
+  virtual void SendCall(core::tAbstractCall::tPtr& mc);
 
   /*!
    * Set whether port is monitored for changes
@@ -129,7 +121,7 @@ public:
     return PublishPortDataOverTheNetForward() || PublishPortDataOverTheNetReverse();
   }
 
-  virtual void SendCallReturn(core::tAbstractCall* mc);
+  virtual void SendCallReturn(core::tAbstractCall::tPtr& mc);
 
 };
 
