@@ -680,7 +680,7 @@ tTCPConnection::tWriter::~tWriter()
 {
   // recycle calls
   core::tSerializableReusable::tPtr call;
-  while ((call = calls_to_send.Dequeue()) != NULL)
+  while ((call = calls_to_send.Dequeue()).get() != NULL)
   {
     assert((call->StateChange(util::tAbstractReusable::cENQUEUED, util::tAbstractReusable::cPOST_QUEUED, outer_class_ptr)));
     //call.responsibleThread = ThreadUtil.getCurrentThreadId();
