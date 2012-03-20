@@ -46,7 +46,7 @@ tTCPPeer::tTCPPeer(const util::tString& network_name_, core::tFrameworkElementTr
   filter(filter_),
   tracker(NULL),
   delete_ports_on_disconnect(filter_.IsAcceptAllFilter()),
-  connections(10u, 4u)
+  connections(10)
 {
   // this(networkName,"",Mode.CLIENT,-1,filter,filter.isAcceptAllFilter());
 
@@ -67,7 +67,7 @@ tTCPPeer::tTCPPeer(const util::tString& network_name_, const util::tString& uniq
   filter(filter_),
   tracker(NULL),
   delete_ports_on_disconnect(delete_ports_on_disconnect_),
-  connections(10u, 4u)
+  connections(10)
 {
   if (IsServer())
   {

@@ -56,7 +56,7 @@ struct CreateServerConnectionList
 {
   static T* Create()
   {
-    return new T(4u, 4u);
+    return new T(4u);
   }
   static void Destroy(T* object)
   {
@@ -91,8 +91,8 @@ public:
 
 }
 
-typedef rrlib::util::tSingletonHolder<util::tSafeConcurrentlyIterableList<tTCPServerConnection*>, rrlib::util::singleton::Longevity, internal::CreateServerConnectionList> tServerConnectionList;
-static inline unsigned int GetLongevity(util::tSafeConcurrentlyIterableList<tTCPServerConnection*>*)
+typedef rrlib::util::tSingletonHolder<util::tSafeConcurrentlyIterableList<tTCPServerConnection*, util::tMutexLockOrder>, rrlib::util::singleton::Longevity, internal::CreateServerConnectionList> tServerConnectionList;
+static inline unsigned int GetLongevity(util::tSafeConcurrentlyIterableList<tTCPServerConnection*, util::tMutexLockOrder>*)
 {
   return 100; // runtime will already be deleted
 }

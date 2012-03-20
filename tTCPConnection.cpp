@@ -66,7 +66,7 @@ tTCPConnection::tTCPConnection(int8 type_, tTCPPeer* peer_, bool send_peer_info_
   time_base(0),
   update_times(new core::tRemoteTypes()),
   type(type_),
-  monitored_ports(50u, 4u),
+  monitored_ports(50),
   peer(peer_),
   send_peer_info_to_partner(send_peer_info_to_partner_),
   last_peer_info_sent_revision(-1),
