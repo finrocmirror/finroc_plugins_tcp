@@ -433,7 +433,7 @@ bool tTCPConnection::SendDataPrototype(int64 start_time, int8 op_code)
   // send port data
   util::tArrayWrapper<tTCPPort*>* it = monitored_ports.GetIterable();
   int8 changed_flag = 0;
-  for (size_t i = 0u, n = monitored_ports.Size(); i < n; i++)
+  for (size_t i = 0u, n = it->Size(); i < n; i++)
   {
     tTCPPort* pp = it->Get(i);
     if (pp != NULL && pp->GetPort()->IsReady())
