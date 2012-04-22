@@ -116,24 +116,24 @@ void tTCPPeer::ConnectImpl(const util::tString& address, bool same_address)
     else
     {
       // is this an ip address?
-      int idx = address.IndexOf(":");
+      size_t idx = address.find(':');
       bool ip = false;
-      if (idx > 0)
+      if (idx != std::string::npos)
       {
-        util::tString host = address.Substring(0, idx);
-        util::tString port = address.Substring(idx + 1);
+        util::tString host = address.substr(0, idx);
+        util::tString port = address.substr(idx + 1);
 
         ip = true;
-        for (size_t i = 0u; i < port.Length(); i++)
+        for (size_t i = 0u; i < port.length(); i++)
         {
-          if (!isdigit(port.CharAt(i)))
+          if (!isdigit(port[i]))
           {
             ip = false;
           }
         }
 
         // we don't want to connect to ourselves
-        if ((host.Equals("localhost") || host.StartsWith("127.0")) && server != NULL && util::tInteger::ParseInt(port) == server->GetPort())
+        if ((boost::equals(host, "localhost") || boost::starts_with(host, "127.0")) && server != NULL && util::tInteger::ParseInt(port) == server->GetPort())
         {
           return;
         }
@@ -228,7 +228,7 @@ util::tString tTCPPeer::GetStatus(bool detailed)
         continue;
       }
       util::tString tmp = rs->GetPartnerAddress().ToString();
-      if (tmp.Equals(s))
+      if (boost::equals(tmp, s))
       {
         add_stuff.Insert(0u, rs->GetPingString());
       }

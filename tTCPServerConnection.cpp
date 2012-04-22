@@ -25,6 +25,7 @@
 #include "rrlib/finroc_core_utils/tTime.h"
 #include "rrlib/rtti/tDataTypeBase.h"
 #include "rrlib/util/patterns/singleton.h"
+#include <boost/lexical_cast.hpp>
 
 #include "core/tRuntimeEnvironment.h"
 #include "core/datatype/tNumber.h"
@@ -154,13 +155,13 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
     cis->SetTimeout(0);
 
     // start incoming data listener thread
-    std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, util::tStringBuilder("TCP Server ") + type_string + "-Listener for " + s->GetRemoteSocketAddress().ToString()));
+    std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, std::string("TCP Server ") + type_string + "-Listener for " + s->GetRemoteSocketAddress()));
     this->reader = listener;
     listener->LockObject(port_set->connection_lock);
     listener->Start();
 
     // start writer thread
-    std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(this, util::tStringBuilder("TCP Server ") + type_string + "-Writer for " + s->GetRemoteSocketAddress().ToString()));
+    std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(this, std::string("TCP Server ") + type_string + "-Writer for " + s->GetRemoteSocketAddress()));
     this->writer = writer;
     writer->LockObject(port_set->connection_lock);
     writer->Start();
@@ -258,7 +259,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
 
     //long timestamp = readTimestamp();
     p = GetPort(handle, true);
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Set ", (p != NULL ? p->local_port->GetQualifiedName() : util::tString(handle)));
+    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Set ", (p != NULL ? p->local_port->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)));
     if (p != NULL)
     {
       {
@@ -286,7 +287,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
 
     handle = this->cis->ReadInt();
     p = GetPort(handle, false);
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Unsubscribe ", (p != NULL ? p->local_port->GetQualifiedName() : util::tString(handle)));
+    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Unsubscribe ", (p != NULL ? p->local_port->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)));
     if (p != NULL && p->GetPort()->IsReady())    // complete disconnect
     {
       p->ManagedDelete();
@@ -304,7 +305,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
     int16 update_interval = this->cis->ReadShort();
     int remote_handle = this->cis->ReadInt();
     p = GetPort(handle, true);
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Subscribe ", (p != NULL ? p->local_port->GetQualifiedName() : util::tString(handle)), " ", strategy, " ", reverse_push, " ", update_interval, " ", remote_handle);
+    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Subscribe ", (p != NULL ? p->local_port->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " ", strategy, " ", reverse_push, " ", update_interval, " ", remote_handle);
     if (p != NULL)
     {
       {
@@ -388,7 +389,7 @@ void tTCPServerConnection::TreeFilterCallback(core::tFrameworkElement* fe, bool 
 }
 
 tTCPServerConnection::tPortSet::tPortSet(tTCPServerConnection* const outer_class_ptr_, tTCPServer* server, std::shared_ptr<tTCPServerConnection> connection_lock_) :
-  core::tFrameworkElement(server, util::tStringBuilder("connection") + tTCPServerConnection::connection_id.GetAndIncrement(), core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT, core::tLockOrderLevels::cPORT - 1),
+  core::tFrameworkElement(server, std::string("connection") + boost::lexical_cast<util::tString>(tTCPServerConnection::connection_id.GetAndIncrement()), core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT, core::tLockOrderLevels::cPORT - 1),
   outer_class_ptr(outer_class_ptr_),
   port_iterator(this),
   connection_lock(connection_lock_)

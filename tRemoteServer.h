@@ -130,7 +130,7 @@ private:
   core::tRemoteCoreRegister< ::finroc::tcp::tRemoteServer::tProxyFrameworkElement*>::tIterator elem_iterator;
 
   /*! Temporary buffer for match checks (only used by bulk reader or connector thread) */
-  util::tStringBuilder tmp_match_buffer;
+  std::string tmp_match_buffer;
 
   /*! Timestamp of when server was created - used to identify whether we are still communicating with same instance after connection loss */
   int64 server_creation_time;

@@ -20,24 +20,26 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "rrlib/finroc_core_utils/tGarbageCollector.h"
+#include "rrlib/finroc_core_utils/thread/sThreadUtil.h"
+#include "rrlib/serialization/serialization.h"
+#include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
+#include "rrlib/finroc_core_utils/tTime.h"
+#include <boost/lexical_cast.hpp>
 
-#include "plugins/tcp/tRemoteServer.h"
 #include "core/tCoreFlags.h"
 #include "core/tLockOrderLevels.h"
 #include "core/tRuntimeEnvironment.h"
-#include "rrlib/finroc_core_utils/thread/sThreadUtil.h"
-#include "plugins/tcp/tTCP.h"
-#include "plugins/tcp/tTCPPeer.h"
 #include "core/port/tPortFlags.h"
-#include "rrlib/serialization/serialization.h"
 #include "core/port/net/tNetPort.h"
 #include "core/port/tAbstractPort.h"
-#include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
 #include "core/datatype/tNumber.h"
-#include "rrlib/finroc_core_utils/tTime.h"
+#include "core/parameter/tParameterNumeric.h"
+
+#include "plugins/tcp/tRemoteServer.h"
+#include "plugins/tcp/tTCP.h"
+#include "plugins/tcp/tTCPPeer.h"
 #include "plugins/tcp/tTCPCommand.h"
 #include "plugins/tcp/tTCPSettings.h"
-#include "core/parameter/tParameterNumeric.h"
 
 namespace finroc
 {
@@ -178,15 +180,15 @@ util::tString tRemoteServer::FormatRate(int data_rate)
 {
   if (data_rate < 1000)
   {
-    return util::tStringBuilder("") + data_rate;
+    return boost::lexical_cast<std::string>(data_rate);
   }
   else if (data_rate < 10000000)
   {
-    return (data_rate / 1000) + "k";
+    return boost::lexical_cast<std::string>(data_rate / 1000) + "k";
   }
   else
   {
-    return (data_rate / 1000000) + "M";
+    return boost::lexical_cast<std::string>(data_rate / 1000000) + "M";
   }
 }
 
@@ -279,7 +281,7 @@ util::tString tRemoteServer::GetPingString()
       data_rate += c->GetRx();
     }
   }
-  return s + ping_avg + "ms/" + ping_max + "ms/" + FormatRate(data_rate);
+  return s + boost::lexical_cast<std::string>(ping_avg) + "ms/" + boost::lexical_cast<std::string>(ping_max) + "ms/" + FormatRate(data_rate);
 }
 
 void tRemoteServer::PrepareDelete()
@@ -538,7 +540,7 @@ bool tRemoteServer::tProxyFrameworkElement::Matches(const core::tFrameworkElemen
   {
     return false;
   }
-  if (GetName().Equals(info.GetLink(0)->name))
+  if (boost::equals(GetName(), info.GetLink(0)->name))
   {
     return false;
   }
@@ -641,10 +643,10 @@ bool tRemoteServer::tProxyPort::Matches(const core::tFrameworkElementInfo& info)
       }
       else
       {
-        outer_class_ptr->tmp_match_buffer.Delete(0, outer_class_ptr->tmp_match_buffer.Length());
-        outer_class_ptr->tmp_match_buffer.Append(GetPort()->GetLink(i)->GetName());
+        outer_class_ptr->tmp_match_buffer.clear();
+        outer_class_ptr->tmp_match_buffer.append(GetPort()->GetLink(i)->GetName());
       }
-      if (!outer_class_ptr->tmp_match_buffer.Equals(info.GetLink(i)->name))
+      if (!boost::equals(outer_class_ptr->tmp_match_buffer, info.GetLink(i)->name))
       {
         return false;
       }
@@ -743,15 +745,15 @@ void tRemoteServer::tConnection::Connect(std::shared_ptr<util::tNetSocket>& sock
   assert((dt == core::tNumber::cTYPE));
   this->cis->SetTimeout(-1);
 
-  std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, util::tStringBuilder("TCP Client ") + type_string + "-Listener for " + outer_class_ptr->GetName()));
+  std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, std::string("TCP Client ") + type_string + "-Listener for " + outer_class_ptr->GetName()));
   this->reader = listener;
-  std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(this, util::tStringBuilder("TCP Client ") + type_string + "-Writer for " + outer_class_ptr->GetName()));
+  std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(this, std::string("TCP Client ") + type_string + "-Writer for " + outer_class_ptr->GetName()));
   this->writer = writer;
 
   if (bulk)
   {
     bool new_server = (outer_class_ptr->server_creation_time < 0) || (outer_class_ptr->server_creation_time != this->time_base);
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG, (new_server ? "Connecting" : "Reconnecting"), " to server ", socket_->GetRemoteSocketAddress().ToString(), "...");
+    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG, (new_server ? "Connecting" : "Reconnecting"), " to server ", socket_->GetRemoteSocketAddress(), "...");
     outer_class_ptr->RetrieveRemotePorts(this->cis.get(), this->cos.get(), this->update_times.get(), new_server);
   }
 
@@ -833,7 +835,7 @@ void tRemoteServer::tConnection::ProcessRequest(int8 op_code)
     break;
 
   default:
-    throw util::tException(util::tStringBuilder("Client Listener does not accept this opcode: ") + op_code);
+    throw util::tException(std::string("Client Listener does not accept this opcode: ") + boost::lexical_cast<std::string>(op_code));
   }
 }
 

@@ -94,7 +94,7 @@ private:
   core::tFrameworkElementTreeFilter element_filter;
 
   /*! Temporary string builder - only used by reader thread */
-  util::tStringBuilder tmp;
+  std::string tmp;
 
   /*! Number of times disconnect was called, since last connect */
   util::tAtomicInt disconnect_calls;
