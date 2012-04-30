@@ -204,7 +204,7 @@ void tTCPConnection::HandleMethodCall()
       return;
     }
 
-    mc->SetExceptionStatus(core::tMethodCallException::eNO_CONNECTION);
+    mc->SetExceptionStatus(core::tMethodCallException::tType::NO_CONNECTION);
     mc->SetRemotePortHandle(remote_handle);
     mc->SetLocalPortHandle(handle);
     SendCall(std::move(mc));
@@ -233,7 +233,7 @@ void tTCPConnection::HandleMethodCall()
     FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Method call ", (port != NULL ? port->GetPort()->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " ", mc->GetMethod()->GetName());
     if (skip_call)
     {
-      mc->SetExceptionStatus(core::tMethodCallException::eNO_CONNECTION);
+      mc->SetExceptionStatus(core::tMethodCallException::tType::NO_CONNECTION);
       mc->SetRemotePortHandle(remote_handle);
       mc->SetLocalPortHandle(handle);
       SendCall(std::move(mc));
@@ -325,7 +325,7 @@ void tTCPConnection::HandlePullCall()
 
   if (port == NULL || (!port->GetPort()->IsReady()))
   {
-    pc->SetExceptionStatus(core::tMethodCallException::eNO_CONNECTION);
+    pc->SetExceptionStatus(core::tMethodCallException::tType::NO_CONNECTION);
     pc->SetRemotePortHandle(remote_handle);
     pc->SetLocalPortHandle(handle);
     SendCall(std::move(pc));
@@ -427,7 +427,7 @@ void tTCPConnection::SendCall(core::tSerializableReusable::tPtr call)
   call.reset();
 }
 
-bool tTCPConnection::SendDataPrototype(int64 start_time, int8 op_code)
+bool tTCPConnection::SendDataPrototype(int64 start_time, tOpCode op_code)
 {
   bool request_acknowledgement = false;
 
@@ -452,7 +452,7 @@ bool tTCPConnection::SendDataPrototype(int64 start_time, int8 op_code)
         pp->SetLastUpdate(start_time);
 
         // execute/write set command to stream
-        cos->WriteByte(op_code);
+        cos->WriteEnum(op_code);
         cos->WriteInt(pp->GetRemoteHandle());
         cos->WriteSkipOffsetPlaceholder();
         cos->WriteByte(changed_flag);
@@ -491,7 +491,7 @@ void tTCPConnection::UpdateTimeChanged(rrlib::rtti::tDataTypeBase dt, int16 new_
 {
   // forward update time change to connection partner
   tTCPCommand::tPtr tc = tTCP::GetUnusedTCPCommand();
-  tc->op_code = tTCP::cUPDATETIME;
+  tc->op_code = tOpCode::UPDATE_TIME;
   tc->datatype = dt;
   tc->update_interval = new_update_time;
   SendCall(std::move(tc));
@@ -528,8 +528,8 @@ void tTCPConnection::tReader::Run()
     while (!outer_class_ptr->disconnect_signal)
     {
       // we are waiting for change events and acknowledgement related stuff
-      int8 op_code = cis->ReadByte();
-      //System.out.println("Incoming command - opcode " + opCode);
+      tOpCode op_code;
+      (*cis) >> op_code;
 
       // create vars before switch-statement (because of C++)
       int ack_req_index = 0;
@@ -543,7 +543,7 @@ void tTCPConnection::tReader::Run()
       // process acknowledgement stuff and other commands common for server and client
       switch (op_code)
       {
-      case tTCP::cPING:
+      case tOpCode::PING:
         ack_req_index = cis->ReadInt();
         if (ack_req_index != outer_class_ptr->last_ack_request_index + 1)
         {
@@ -553,7 +553,7 @@ void tTCPConnection::tReader::Run()
         outer_class_ptr->NotifyWriter();
         break;
 
-      case tTCP::cPONG:
+      case tOpCode::PONG:
         index = cis->ReadInt();
 
         // set ping times
@@ -572,28 +572,28 @@ void tTCPConnection::tReader::Run()
         outer_class_ptr->NotifyWriter();
         break;
 
-      case tTCP::cUPDATETIME:
+      case tOpCode::UPDATE_TIME:
         (*cis) >> dt;
         outer_class_ptr->update_times->SetTime(dt, cis->ReadShort());
         break;
 
-      case tTCP::cPULLCALL:
+      case tOpCode::PULLCALL:
         outer_class_ptr->HandlePullCall();
         break;
 
-      case tTCP::cPULLCALL_RETURN:
+      case tOpCode::PULLCALL_RETURN:
         outer_class_ptr->HandleReturningPullCall();
         break;
 
-      case tTCP::cMETHODCALL:
+      case tOpCode::METHODCALL:
         outer_class_ptr->HandleMethodCall();
         break;
 
-      case tTCP::cMETHODCALL_RETURN:
+      case tOpCode::METHODCALL_RETURN:
         outer_class_ptr->HandleMethodCallReturn();
         break;
 
-      case tTCP::cPEER_INFO:
+      case tOpCode::PEER_INFO:
         cis->ReadSkipOffset();
         if (outer_class_ptr->peer == NULL)
         {
@@ -809,7 +809,7 @@ void tTCPConnection::tWriter::Run()
 
       if (request_acknowledgement)
       {
-        cos->WriteByte(tTCP::cPING);
+        cos->WriteEnum(tOpCode::PING);
         cur_packet_index++;
         cos->WriteInt(cur_packet_index);
         outer_class_ptr->sent_packet_time[cur_packet_index & tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS] = util::tTime::GetPrecise();
@@ -859,7 +859,7 @@ void tTCPConnection::tWriter::SendAcknowledgementsAndCommands()
   // send receive notification
   if (last_ack_index < outer_class_ptr->last_ack_request_index)
   {
-    outer_class_ptr->cos->WriteByte(tTCP::cPONG);
+    outer_class_ptr->cos->WriteEnum(tOpCode::PONG);
     last_ack_index = outer_class_ptr->last_ack_request_index;
     outer_class_ptr->cos->WriteInt(last_ack_index);
     outer_class_ptr->TerminateCommand();
@@ -873,7 +873,7 @@ void tTCPConnection::tWriter::SendAcknowledgementsAndCommands()
     if (typeid(*call) == typeid(core::tPullCall))
     {
       core::tPullCall* pc = static_cast<core::tPullCall*>(call.get());
-      outer_class_ptr->cos->WriteByte(pc->IsReturning(true) ? tTCP::cPULLCALL_RETURN : tTCP::cPULLCALL);
+      outer_class_ptr->cos->WriteEnum(pc->IsReturning(true) ? tOpCode::PULLCALL_RETURN : tOpCode::PULLCALL);
       outer_class_ptr->cos->WriteInt(pc->GetRemotePortHandle());
       outer_class_ptr->cos->WriteInt(pc->GetLocalPortHandle());
       outer_class_ptr->cos->WriteSkipOffsetPlaceholder();
@@ -882,7 +882,7 @@ void tTCPConnection::tWriter::SendAcknowledgementsAndCommands()
     {
       core::tMethodCall* mc = static_cast<core::tMethodCall*>(call.get());
       //assert(mc.getMethod() != null); can be null - if type is not known and we want to return call
-      outer_class_ptr->cos->WriteByte(mc->IsReturning(true) ? tTCP::cMETHODCALL_RETURN : tTCP::cMETHODCALL);
+      outer_class_ptr->cos->WriteEnum(mc->IsReturning(true) ? tOpCode::METHODCALL_RETURN : tOpCode::METHODCALL);
       outer_class_ptr->cos->WriteInt(mc->GetRemotePortHandle());
       outer_class_ptr->cos->WriteInt(mc->GetLocalPortHandle());
       (*outer_class_ptr->cos) << mc->GetPortInterfaceType();
@@ -903,7 +903,7 @@ void tTCPConnection::tWriter::SendAcknowledgementsAndCommands()
     if (outer_class_ptr->last_peer_info_sent_revision < peer_info_revision)
     {
       outer_class_ptr->last_peer_info_sent_revision = peer_info_revision;
-      outer_class_ptr->cos->WriteByte(tTCP::cPEER_INFO);
+      outer_class_ptr->cos->WriteEnum(tOpCode::PEER_INFO);
       outer_class_ptr->cos->WriteSkipOffsetPlaceholder();
       outer_class_ptr->socket->GetRemoteIPSocketAddress().GetAddress().Serialize(outer_class_ptr->cos.get());
       outer_class_ptr->peer->GetPeerList()->SerializeAddresses(outer_class_ptr->cos.get());

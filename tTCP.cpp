@@ -45,7 +45,6 @@ static int InitTCPPlugin()
 static int init_tcp_plugin = InitTCPPlugin();
 
 const int8 tTCP::cTCP_P2P_ID_EXPRESS, tTCP::cTCP_P2P_ID_BULK;
-const int8 tTCP::cSET, tTCP::cSUBSCRIBE, tTCP::cUNSUBSCRIBE, tTCP::cCHANGE_EVENT, tTCP::cPING, tTCP::cPONG, tTCP::cPULLCALL, tTCP::cMETHODCALL, tTCP::cUPDATETIME, tTCP::cREQUEST_PORT_UPDATE, tTCP::cPORT_UPDATE, tTCP::cPULLCALL_RETURN, tTCP::cMETHODCALL_RETURN, tTCP::cPEER_INFO;
 const int8 tTCP::cSUCCESS, tTCP::cFAIL;
 util::tString tTCP::cDEFAULT_CONNECTION_NAME = "localhost:4444";
 tTCP::tCreateAction tTCP::creator1(tTCPPeer::cGUI_FILTER, "TCP", 0);

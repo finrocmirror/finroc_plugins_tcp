@@ -359,7 +359,7 @@ public:
   /*!
    * Called when listener receives request
    */
-  virtual void ProcessRequest(int8 op_code) = 0;
+  virtual void ProcessRequest(tOpCode op_code) = 0;
 
   inline int64 ReadTimestamp()
   {
@@ -388,7 +388,7 @@ public:
    * \param op_code OpCode to use for send operations
    * \return Is this an packet that needs acknowledgement ?
    */
-  bool SendDataPrototype(int64 start_time, int8 op_code);
+  bool SendDataPrototype(int64 start_time, tOpCode op_code);
 
   /*!
    * Needs to be called after a command has been serialized to the output stream

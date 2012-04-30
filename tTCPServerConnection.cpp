@@ -245,14 +245,14 @@ core::tPortCreationInfoBase tTCPServerConnection::InitPci(core::tAbstractPort* c
   return pci;
 }
 
-void tTCPServerConnection::ProcessRequest(int8 op_code)
+void tTCPServerConnection::ProcessRequest(tOpCode op_code)
 {
   int handle = 0;
   tServerPort* p = NULL;
 
   switch (op_code)
   {
-  case tTCP::cSET:  // Set data command
+  case tOpCode::SET:  // Set data command
 
     handle = this->cis->ReadInt();
     this->cis->ReadSkipOffset();
@@ -283,7 +283,7 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
     }
     break;
 
-  case tTCP::cUNSUBSCRIBE:  // Unsubscribe data
+  case tOpCode::UNSUBSCRIBE:  // Unsubscribe data
 
     handle = this->cis->ReadInt();
     p = GetPort(handle, false);
@@ -297,27 +297,27 @@ void tTCPServerConnection::ProcessRequest(int8 op_code)
   default:
     throw util::tRuntimeException("Unknown OpCode", CODE_LOCATION_MACRO);
 
-  case tTCP::cSUBSCRIBE:  // Subscribe to data
+  case tOpCode::SUBSCRIBE:  // Subscribe to data
 
     handle = this->cis->ReadInt();
     int16 strategy = this->cis->ReadShort();
     bool reverse_push = this->cis->ReadBoolean();
     int16 update_interval = this->cis->ReadShort();
     int remote_handle = this->cis->ReadInt();
+    rrlib::serialization::tDataEncoding enc = this->cis->ReadEnum<rrlib::serialization::tDataEncoding>();
     p = GetPort(handle, true);
     FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Subscribe ", (p != NULL ? p->local_port->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " ", strategy, " ", reverse_push, " ", update_interval, " ", remote_handle);
     if (p != NULL)
     {
+      util::tLock lock4(p->GetPort()->GetRegistryLock());
+      if (p->GetPort()->IsReady())
       {
-        util::tLock lock4(p->GetPort()->GetRegistryLock());
-        if (p->GetPort()->IsReady())
-        {
-          p->GetPort()->SetMinNetUpdateInterval(update_interval);
-          p->update_interval_partner = update_interval;
-          p->SetRemoteHandle(remote_handle);
-          p->GetPort()->SetReversePushStrategy(reverse_push);
-          p->PropagateStrategyFromTheNet(strategy);
-        }
+        p->SetEncoding(enc);
+        p->GetPort()->SetMinNetUpdateInterval(update_interval);
+        p->update_interval_partner = update_interval;
+        p->SetRemoteHandle(remote_handle);
+        p->GetPort()->SetReversePushStrategy(reverse_push);
+        p->PropagateStrategyFromTheNet(strategy);
       }
     }
     break;
@@ -343,7 +343,7 @@ void tTCPServerConnection::RuntimeEdgeChange(int8 change_type, core::tAbstractPo
 bool tTCPServerConnection::SendData(int64 start_time)
 {
   // send port data
-  bool request_acknowledgement = ::finroc::tcp::tTCPConnection::SendDataPrototype(start_time, tTCP::cCHANGE_EVENT);
+  bool request_acknowledgement = tTCPConnection::SendDataPrototype(start_time, tOpCode::CHANGE_EVENT);
 
   // updated runtime information
   while (runtime_info_reader.MoreDataAvailable())
@@ -352,7 +352,7 @@ bool tTCPServerConnection::SendData(int64 start_time)
     {
       // use update time tcp command to trigger type update
       tTCPCommand tc;
-      tc.op_code = tTCP::cUPDATETIME;
+      tc.op_code = tOpCode::UPDATE_TIME;
       tc.datatype = core::tNumber::cTYPE;
       tc.update_interval = core::tFinrocTypeInfo::Get(core::tNumber::cTYPE).GetUpdateTime();
       tc.Serialize(*cos);
@@ -366,7 +366,7 @@ bool tTCPServerConnection::SendData(int64 start_time)
 
 void tTCPServerConnection::SerializeRuntimeChange(int8 change_type, core::tFrameworkElement* element)
 {
-  runtime_info_writer.WriteByte(tTCP::cPORT_UPDATE);
+  runtime_info_writer.WriteEnum(tOpCode::STRUCTURE_UPDATE);
   core::tFrameworkElementInfo::SerializeFrameworkElement(element, change_type, runtime_info_writer, element_filter, tmp);
   if (tTCPSettings::cDEBUG_TCP)
   {
@@ -382,7 +382,7 @@ void tTCPServerConnection::TreeFilterCallback(core::tFrameworkElement* fe, bool 
   {
     if (!fe->IsDeleted())
     {
-      this->cos->WriteByte(tTCP::cPORT_UPDATE);
+      this->cos->WriteEnum(tOpCode::STRUCTURE_UPDATE);
       core::tFrameworkElementInfo::SerializeFrameworkElement(fe, ::finroc::core::tRuntimeListener::cADD, *this->cos, element_filter, tmp);
     }
   }

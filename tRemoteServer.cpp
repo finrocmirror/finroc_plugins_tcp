@@ -615,7 +615,7 @@ void tRemoteServer::tProxyPort::CheckSubscription()
     }
     else if (strategy != subscription_strategy || time != subscription_update_time || rev_push != subscription_rev_push)
     {
-      c->Subscribe(this->remote_handle, strategy, rev_push, time, p->GetHandle());
+      c->Subscribe(this->remote_handle, strategy, rev_push, time, p->GetHandle(), GetEncoding());
       subscription_strategy = strategy;
       subscription_rev_push = rev_push;
       subscription_update_time = time;
@@ -778,7 +778,7 @@ tTCPPort* tRemoteServer::tConnection::LookupPortForCallHandling(int port_index)
   return p;
 }
 
-void tRemoteServer::tConnection::ProcessRequest(int8 op_code)
+void tRemoteServer::tConnection::ProcessRequest(tOpCode op_code)
 {
   int port_index = 0;
   core::tNetPort* p = NULL;
@@ -787,7 +787,7 @@ void tRemoteServer::tConnection::ProcessRequest(int8 op_code)
 
   switch (op_code)
   {
-  case tTCP::cCHANGE_EVENT:
+  case tOpCode::CHANGE_EVENT:
 
     // read port index and retrieve proxy port
     port_index = this->cis->ReadInt();
@@ -827,7 +827,7 @@ void tRemoteServer::tConnection::ProcessRequest(int8 op_code)
     }
     break;
 
-  case tTCP::cPORT_UPDATE:
+  case tOpCode::STRUCTURE_UPDATE:
 
     outer_class_ptr->tmp_info.Deserialize(*this->cis, *this->update_times);
     outer_class_ptr->ProcessPortUpdate(outer_class_ptr->tmp_info);
@@ -835,26 +835,26 @@ void tRemoteServer::tConnection::ProcessRequest(int8 op_code)
     break;
 
   default:
-    throw util::tException(std::string("Client Listener does not accept this opcode: ") + boost::lexical_cast<std::string>(op_code));
+    throw util::tException(std::string("Client Listener does not accept this opcode: ") + make_builder::GetEnumString(op_code));
   }
 }
 
 bool tRemoteServer::tConnection::SendData(int64 start_time)
 {
   // send port data
-  return ::finroc::tcp::tTCPConnection::SendDataPrototype(start_time, tTCP::cSET);
-
+  return ::finroc::tcp::tTCPConnection::SendDataPrototype(start_time, tOpCode::SET);
 }
 
-void tRemoteServer::tConnection::Subscribe(int index, int16 strategy, bool reverse_push, int16 update_interval, int local_index)
+void tRemoteServer::tConnection::Subscribe(int index, int16 strategy, bool reverse_push, int16 update_interval, int local_index, rrlib::serialization::tDataEncoding enc)
 {
   tTCPCommand::tPtr command = tTCP::GetUnusedTCPCommand();
-  command->op_code = tTCP::cSUBSCRIBE;
+  command->op_code = tOpCode::SUBSCRIBE;
   command->remote_handle = index;
   command->strategy = strategy;
   command->reverse_push = reverse_push;
   command->update_interval = update_interval;
   command->local_index = local_index;
+  command->encoding = enc;
   SendCall(std::move(command));
   //command.genericRecycle();
 }
@@ -862,7 +862,7 @@ void tRemoteServer::tConnection::Subscribe(int index, int16 strategy, bool rever
 void tRemoteServer::tConnection::Unsubscribe(int index)
 {
   tTCPCommand::tPtr command = tTCP::GetUnusedTCPCommand();
-  command->op_code = tTCP::cUNSUBSCRIBE;
+  command->op_code = tOpCode::UNSUBSCRIBE;
   command->remote_handle = index;
   SendCall(std::move(command));
   //command.genericRecycle();

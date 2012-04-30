@@ -29,22 +29,25 @@ namespace tcp
 {
 void tTCPCommand::Serialize(rrlib::serialization::tOutputStream& os) const
 {
-  os.WriteByte(op_code);
+  os.WriteEnum(op_code);
   switch (op_code)
   {
-  case tTCP::cSUBSCRIBE:
+  case tOpCode::SUBSCRIBE:
     os.WriteInt(remote_handle);
     os.WriteShort(strategy);
     os.WriteBoolean(reverse_push);
     os.WriteShort(update_interval);
     os.WriteInt(local_index);
     break;
-  case tTCP::cUNSUBSCRIBE:
+  case tOpCode::UNSUBSCRIBE:
     os.WriteInt(remote_handle);
     break;
-  case tTCP::cUPDATETIME:
+  case tOpCode::UPDATE_TIME:
     os << datatype;
     os.WriteShort(update_interval);
+    break;
+  default:
+    FINROC_LOG_PRINTF(rrlib::logging::eLL_ERROR, "Invalid opcode");
     break;
   }
 }

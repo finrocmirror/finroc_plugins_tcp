@@ -106,7 +106,7 @@ void tTCPPort::SendCall(core::tAbstractCall::tPtr& mc)
   }
   else
   {
-    mc->SetExceptionStatus(core::tMethodCallException::eNO_CONNECTION);
+    mc->SetExceptionStatus(core::tMethodCallException::tType::NO_CONNECTION);
     core::tSynchMethodCallLogic::HandleMethodReturn(mc);
     // no connection - throw exception
     //mc.setStatus(AbstractCall.CONNECTION_EXCEPTION);
@@ -127,7 +127,7 @@ void tTCPPort::SendCallReturn(core::tAbstractCall::tPtr& mc)
   }
   else
   {
-    mc->SetExceptionStatus(core::tMethodCallException::eNO_CONNECTION);
+    mc->SetExceptionStatus(core::tMethodCallException::tType::NO_CONNECTION);
     core::tSynchMethodCallLogic::HandleMethodReturn(mc);
     // no connection - throw exception
     //mc.setStatus(AbstractCall.CONNECTION_EXCEPTION);

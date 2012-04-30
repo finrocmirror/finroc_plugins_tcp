@@ -451,7 +451,7 @@ public:
       FINROC_LOG_PRINT(rrlib::logging::eLL_WARNING, "TCPClient warning: critical ping time exceeded");
     }
 
-    virtual void ProcessRequest(int8 op_code);
+    virtual void ProcessRequest(tOpCode op_code);
 
     virtual bool SendData(int64 start_time);
 
@@ -463,8 +463,9 @@ public:
      * \param update_interval Minimum interval in ms between notifications (values <= 0 mean: use server defaults)
      * \param local_index Local Port Index
      * \param data_type DataType got from server
+     * \param enc Data type to use when writing data to the network
      */
-    void Subscribe(int index, int16 strategy, bool reverse_push, int16 update_interval, int local_index);
+    void Subscribe(int index, int16 strategy, bool reverse_push, int16 update_interval, int local_index, rrlib::serialization::tDataEncoding enc);
 
     /*!
      * Unsubscribe from port changes on remote server

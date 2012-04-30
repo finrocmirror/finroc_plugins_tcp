@@ -141,7 +141,7 @@ public:
     port_set->NotifyPortsOfDisconnect();
   }
 
-  virtual void ProcessRequest(int8 op_code);
+  virtual void ProcessRequest(tOpCode op_code);
 
   virtual void RuntimeChange(int8 change_type, core::tFrameworkElement* element);
 
