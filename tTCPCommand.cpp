@@ -38,6 +38,7 @@ void tTCPCommand::Serialize(rrlib::serialization::tOutputStream& os) const
     os.WriteBoolean(reverse_push);
     os.WriteShort(update_interval);
     os.WriteInt(local_index);
+    os.WriteEnum(encoding);
     break;
   case tOpCode::UNSUBSCRIBE:
     os.WriteInt(remote_handle);
