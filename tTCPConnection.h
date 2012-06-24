@@ -23,6 +23,7 @@
 #ifndef plugins__tcp__tTCPConnection_h__
 #define plugins__tcp__tTCPConnection_h__
 
+#include <array>
 #include "rrlib/finroc_core_utils/definitions.h"
 #include "rrlib/finroc_core_utils/tAtomicDoubleInt.h"
 #include "rrlib/finroc_core_utils/container/tWonderQueueUniquePtr.h"
@@ -43,14 +44,6 @@
 
 namespace finroc
 {
-namespace core
-{
-class tSerializableReusable;
-} // namespace finroc
-} // namespace core
-
-namespace finroc
-{
 namespace tcp
 {
 class tTCPPeer;
@@ -62,7 +55,7 @@ class tTCPPeer;
  *
  * (writer and listener members need to be initialized by subclass)
  */
-class tTCPConnection : public util::tLogUser, public core::tUpdateTimeChangeListener
+class tTCPConnection : public util::tLogUser, public core::tUpdateTimeChangeListener, public util::tMutexLockOrder
 {
 public:
 
@@ -74,7 +67,7 @@ public:
   private:
 
     // Outer class TCPConnection
-    tTCPConnection* const outer_class_ptr;
+    tTCPConnection& outer_class;
 
     /*!
      * Check that command is terminated correctly when TCPSettings.DEBUG_TCP is activated
@@ -83,7 +76,7 @@ public:
 
   public:
 
-    tReader(tTCPConnection* const outer_class_ptr_, const util::tString& description);
+    tReader(tTCPConnection& outer_class, const util::tString& description);
 
     virtual void MainLoopCallback()
     {
@@ -106,7 +99,7 @@ public:
   private:
 
     // Outer class TCPConnection
-    tTCPConnection* const outer_class_ptr;
+    tTCPConnection& outer_class;
 
     /*! Index of last packet that was acknowledged */
     int last_ack_index;
@@ -128,7 +121,7 @@ public:
 
   public:
 
-    tWriter(tTCPConnection* const outer_class_ptr_, const util::tString& description);
+    tWriter(tTCPConnection& outer_class, const util::tString& description);
 
     bool CanSend();
 
@@ -165,27 +158,27 @@ public:
 private:
 
   /*! References to Connection parameters */
-  const core::tParameterNumeric<int>& min_update_interval;
+  core::tParameter<rrlib::time::tDuration>& min_update_interval;
 
-  const core::tParameterNumeric<int>& max_not_acknowledged_packets;
+  core::tParameter<int>& max_not_acknowledged_packets;
 
   /*! Index of last acknowledged sent packet */
-  volatile int last_acknowledged_packet;
+  std::atomic<int> last_acknowledged_packet;
 
   /*! Index of last acknowledgement request that was received */
-  volatile int last_ack_request_index;
+  std::atomic<int> last_ack_request_index;
 
   /*! Timestamp of when packet n was sent (Index is n % MAX_NOT_ACKNOWLEDGED_PACKETS => efficient and safe implementation (ring queue)) */
-  ::finroc::util::tArrayWrapper<int64> sent_packet_time;
+  std::array < rrlib::time::tTimestamp, tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS + 1 > sent_packet_time;
 
   /*! Ping time for last packages (Index is n % AVG_PING_PACKETS => efficient and safe implementation (ring queue)) */
-  ::finroc::util::tArrayWrapper<int> ping_times;
+  std::array < rrlib::time::tDuration, tTCPSettings::cAVG_PING_PACKETS + 1 > ping_times;
 
   /*! Ping time statistics */
-  volatile int avg_ping_time, max_ping_time;
+  rrlib::time::tAtomicDuration avg_ping_time, max_ping_time;
 
   /*! Signal for disconnecting */
-  volatile bool disconnect_signal;
+  std::atomic<bool> disconnect_signal;
 
 protected:
 
@@ -208,7 +201,7 @@ protected:
   std::weak_ptr<tReader> reader;
 
   /*! Timestamp relative to which time is encoded in this stream */
-  int64 time_base;
+  rrlib::time::tTimestamp time_base;
 
   /*! default connection times of connection partner */
   std::shared_ptr<core::tRemoteTypes> update_times;
@@ -229,15 +222,10 @@ protected:
   int last_peer_info_sent_revision;
 
   /*! Rx related: last time RX was retrieved */
-  int64 last_rx_timestamp;
+  rrlib::time::tTimestamp last_rx_timestamp;
 
   /*! Rx related: last time RX was retrieved: how much have we received in total? */
-  int64 last_rx_position;
-
-public:
-
-  /*! Needs to be locked after framework elements, but before runtime registry */
-  util::tMutexLockOrder obj_mutex;
+  int64_t last_rx_position;
 
 private:
 
@@ -292,7 +280,7 @@ public:
    *
    * \return Time the calling thread may wait before calling again (it futile to call this method before)
    */
-  int64 CheckPingForDisconnect();
+  rrlib::time::tDuration CheckPingForDisconnect();
 
   /*!
    * Close connection
@@ -304,15 +292,15 @@ public:
    */
   inline bool Disconnecting()
   {
-    return disconnect_signal;
+    return disconnect_signal.load();
   }
 
   /*!
    * \return Average ping time among last TCPSettings.AVG_PING_PACKETS packets
    */
-  inline int GetAvgPingTime()
+  inline rrlib::time::tDuration GetAvgPingTime()
   {
-    return avg_ping_time;
+    return avg_ping_time.Load();
   }
 
   /*!
@@ -326,9 +314,9 @@ public:
   /*!
    * \return Maximum ping time among last TCPSettings.AVG_PING_PACKETS packets
    */
-  inline int GetMaxPingTime()
+  inline rrlib::time::tDuration GetMaxPingTime()
   {
-    return max_ping_time;
+    return max_ping_time.Load();
   }
 
   /*!
@@ -361,10 +349,10 @@ public:
    */
   virtual void ProcessRequest(tOpCode op_code) = 0;
 
-  inline int64 ReadTimestamp()
-  {
-    return cis->ReadInt() + time_base;
-  }
+//  inline int64 ReadTimestamp()
+//  {
+//    return cis->ReadInt() + time_base;
+//  }
 
   /*!
    * Send call to connection partner
@@ -379,7 +367,7 @@ public:
    * \param start_time Timestamp when send operation was started
    * \return Is this an packet that needs acknowledgement ?
    */
-  virtual bool SendData(int64 start_time) = 0;
+  virtual bool SendData(const rrlib::time::tTimestamp& start_time) = 0;
 
   /*!
    * Common/standard implementation of above
@@ -388,7 +376,7 @@ public:
    * \param op_code OpCode to use for send operations
    * \return Is this an packet that needs acknowledgement ?
    */
-  bool SendDataPrototype(int64 start_time, tOpCode op_code);
+  bool SendDataPrototype(const rrlib::time::tTimestamp& start_time, tOpCode op_code);
 
   /*!
    * Needs to be called after a command has been serialized to the output stream
@@ -397,10 +385,10 @@ public:
 
   virtual void UpdateTimeChanged(rrlib::rtti::tDataTypeBase dt, int16 new_update_time);
 
-  inline void WriteTimestamp(int64 time_stamp)
-  {
-    cos->WriteInt(static_cast<int>((time_stamp - time_base)));
-  }
+//  inline void WriteTimestamp(int64 time_stamp)
+//  {
+//    cos->WriteInt(static_cast<int>((time_stamp - time_base)));
+//  }
 
 };
 

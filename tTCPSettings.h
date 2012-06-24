@@ -52,13 +52,13 @@ private:
 public:
 
   /*! Loop Interval for Connector Thread... currently only 1ms since waiting is done depending on critical ping times instead */
-  static const int cCONNECTOR_THREAD_LOOP_INTERVAL = 1;
+  static constexpr rrlib::time::tDuration cCONNECTOR_THREAD_LOOP_INTERVAL = std::chrono::milliseconds(1);
 
-  /*! How often will Connector Thread update subscriptions? (in ms) */
-  static const int cCONNECTOR_THREAD_SUBSCRIPTION_UPDATE_INTERVAL = 2000;
+  /*! How often will Connector Thread update subscriptions? */
+  static constexpr rrlib::time::tDuration cCONNECTOR_THREAD_SUBSCRIPTION_UPDATE_INTERVAL = std::chrono::seconds(2);
 
   /*! Minimum Update Time for remote Ports */
-  static const int cMIN_PORTS_UPDATE_INTERVAL = 200;
+  static constexpr rrlib::time::tDuration cMIN_PORTS_UPDATE_INTERVAL = std::chrono::milliseconds(200);
 
   /*! Size of dequeue queue in TCP Port */
   static const int cDEQUEUE_QUEUE_SIZE = 50;
@@ -82,11 +82,11 @@ public:
 
   core::tParameter<int> max_not_acknowledged_packets_bulk;
 
-  core::tParameter<int> min_update_interval_express;
+  core::tParameter<rrlib::time::tDuration> min_update_interval_express;
 
-  core::tParameter<int> min_update_interval_bulk;
+  core::tParameter<rrlib::time::tDuration> min_update_interval_bulk;
 
-  core::tParameter<int> critical_ping_threshold;
+  core::tParameter<rrlib::time::tDuration> critical_ping_threshold;
 
 private:
 

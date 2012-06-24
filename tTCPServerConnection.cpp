@@ -22,7 +22,6 @@
 #include "rrlib/finroc_core_utils/log/tLogUser.h"
 #include "rrlib/finroc_core_utils/thread/sThreadUtil.h"
 #include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
-#include "rrlib/finroc_core_utils/tTime.h"
 #include "rrlib/rtti/tDataTypeBase.h"
 #include "rrlib/util/patterns/singleton.h"
 #include <boost/lexical_cast.hpp>
@@ -82,7 +81,7 @@ public:
   virtual ~tPingTimeMonitor()
   {
     StopThread();
-    Join(2000000);
+    Join();
   }
 
   static tPingTimeMonitor& GetInstance();
@@ -114,24 +113,24 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
   this->socket = s;
   try
   {
-    util::tLock lock2(this);
+    util::tLock lock2(*this);
 
     // initialize core streams (counter part to RemoteServer.Connection constructor)
     std::shared_ptr<util::tLargeIntermediateStreamBuffer> lm_buf(new util::tLargeIntermediateStreamBuffer(s->GetSink()));
     this->cos = std::shared_ptr<rrlib::serialization::tOutputStream>(new rrlib::serialization::tOutputStream(lm_buf, this->update_times));
     //cos = new CoreOutputStream(new BufferedOutputStreamMod(s.getOutputStream()));
-    this->cos->WriteLong(core::tRuntimeEnvironment::GetInstance()->GetCreationTime());  // write base timestamp
+    (*this->cos) << finroc::core::tRuntimeEnvironment::GetInstance()->GetCreationTime();  // write base timestamp
     //RemoteTypes.serializeLocalDataTypes(cos);
     (*this->cos) << core::tNumber::cTYPE;
     this->cos->Flush();
 
     // init port set here, since it might be serialized to stream
-    port_set = new tPortSet(this, server, std::shared_ptr<tTCPServerConnection>(this));
+    port_set = new tPortSet(*this, server, std::shared_ptr<tTCPServerConnection>(this));
     port_set->Init();
 
     this->cis = std::shared_ptr<rrlib::serialization::tInputStream>(new rrlib::serialization::tInputStream(s->GetSource(), this->update_times));
     //updateTimes.deserialize(cis);
-    cis->SetTimeout(1000);
+    cis->SetTimeout(std::chrono::seconds(1));
     rrlib::rtti::tDataTypeBase dt;
     (*this->cis) >> dt;
     assert((dt == core::tNumber::cTYPE));
@@ -145,23 +144,33 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
       send_runtime_info = true;
       {
         util::tLock lock4(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());  // lock runtime so that we do not miss a change
-        core::tRuntimeEnvironment::GetInstance()->AddListener(this);
+        core::tRuntimeEnvironment::GetInstance()->AddListener(*this);
 
-        element_filter.TraverseElementTree(core::tRuntimeEnvironment::GetInstance(), this, false, tmp);
+        element_filter.TraverseElementTree(*core::tRuntimeEnvironment::GetInstance(), tmp, [&](core::tFrameworkElement & fe)
+        {
+          if (&fe != core::tRuntimeEnvironment::GetInstance())
+          {
+            if (!fe.IsDeleted())
+            {
+              this->cos->WriteEnum(tOpCode::STRUCTURE_UPDATE);
+              core::tFrameworkElementInfo::SerializeFrameworkElement(fe, core::tRuntimeListener::cADD, *this->cos, element_filter, tmp);
+            }
+          }
+        });
       }
       this->cos->WriteByte(0);  // terminator
       this->cos->Flush();
     }
-    cis->SetTimeout(0);
+    cis->SetTimeout(rrlib::time::tDuration::zero());
 
     // start incoming data listener thread
-    std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, std::string("TCP Server ") + type_string + "-Listener for " + s->GetRemoteSocketAddress()));
+    std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(*this, std::string("TCP Server ") + type_string + "-Listener for " + s->GetRemoteSocketAddress()));
     this->reader = listener;
     listener->LockObject(port_set->connection_lock);
     listener->Start();
 
     // start writer thread
-    std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(this, std::string("TCP Server ") + type_string + "-Writer for " + s->GetRemoteSocketAddress()));
+    std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(*this, std::string("TCP Server ") + type_string + "-Writer for " + s->GetRemoteSocketAddress()));
     this->writer = writer;
     writer->LockObject(port_set->connection_lock);
     writer->Start();
@@ -193,7 +202,7 @@ tTCPServerConnection::tServerPort* tTCPServerConnection::GetPort(int handle, boo
   tServerPort* sp = static_cast<tServerPort*>(core::tNetPort::FindNetPort(*org_port, this));
   if (sp == NULL && possibly_create)
   {
-    sp = new tServerPort(this, org_port, port_set);
+    sp = new tServerPort(*this, org_port, port_set);
     sp->GetPort()->Init();
   }
   return sp;
@@ -209,15 +218,14 @@ void tTCPServerConnection::HandleDisconnect()
   }
 
   {
-    util::tLock lock2(port_set);
+    util::tLock lock2(*port_set);
     bool port_set_deleted = port_set->IsDeleted();
+
+    util::tLock lock3(*this);
+    Disconnect();
+    if (!port_set_deleted)
     {
-      util::tLock lock3(this);
-      Disconnect();
-      if (!port_set_deleted)
-      {
-        port_set->ManagedDelete();
-      }
+      port_set->ManagedDelete();
     }
   }
 }
@@ -263,7 +271,7 @@ void tTCPServerConnection::ProcessRequest(tOpCode op_code)
     if (p != NULL)
     {
       {
-        util::tLock lock4(p->GetPort());
+        util::tLock lock4(*p->GetPort());
         if (!p->GetPort()->IsReady())
         {
           this->cis->ToSkipTarget();
@@ -272,7 +280,7 @@ void tTCPServerConnection::ProcessRequest(tOpCode op_code)
         {
           int8 changed_flag = this->cis->ReadByte();
           this->cis->SetFactory(p);
-          p->ReceiveDataFromStream(*this->cis, util::tTime::GetPrecise(), changed_flag);
+          p->ReceiveDataFromStream(*this->cis, rrlib::time::Now(), changed_flag);
           this->cis->SetFactory(NULL);
         }
       }
@@ -324,15 +332,15 @@ void tTCPServerConnection::ProcessRequest(tOpCode op_code)
   }
 }
 
-void tTCPServerConnection::RuntimeChange(int8 change_type, core::tFrameworkElement* element)
+void tTCPServerConnection::RuntimeChange(int8 change_type, core::tFrameworkElement& element)
 {
-  if (element != core::tRuntimeEnvironment::GetInstance() && element_filter.Accept(element, tmp, change_type == tRuntimeListener::cREMOVE ? (core::tCoreFlags::cREADY | core::tCoreFlags::cDELETED) : 0) && change_type != ::finroc::core::tRuntimeListener::cPRE_INIT)
+  if (&element != core::tRuntimeEnvironment::GetInstance() && element_filter.Accept(element, tmp, change_type == tRuntimeListener::cREMOVE ? (core::tCoreFlags::cREADY | core::tCoreFlags::cDELETED) : 0) && change_type != ::finroc::core::tRuntimeListener::cPRE_INIT)
   {
     SerializeRuntimeChange(change_type, element);
   }
 }
 
-void tTCPServerConnection::RuntimeEdgeChange(int8 change_type, core::tAbstractPort* source, core::tAbstractPort* target)
+void tTCPServerConnection::RuntimeEdgeChange(int8 change_type, core::tAbstractPort& source, core::tAbstractPort& target)
 {
   if (element_filter.Accept(source, tmp) && element_filter.IsAcceptAllFilter())
   {
@@ -340,7 +348,7 @@ void tTCPServerConnection::RuntimeEdgeChange(int8 change_type, core::tAbstractPo
   }
 }
 
-bool tTCPServerConnection::SendData(int64 start_time)
+bool tTCPServerConnection::SendData(const rrlib::time::tTimestamp& start_time)
 {
   // send port data
   bool request_acknowledgement = tTCPConnection::SendDataPrototype(start_time, tOpCode::CHANGE_EVENT);
@@ -364,7 +372,7 @@ bool tTCPServerConnection::SendData(int64 start_time)
   return request_acknowledgement;
 }
 
-void tTCPServerConnection::SerializeRuntimeChange(int8 change_type, core::tFrameworkElement* element)
+void tTCPServerConnection::SerializeRuntimeChange(int8 change_type, core::tFrameworkElement& element)
 {
   runtime_info_writer.WriteEnum(tOpCode::STRUCTURE_UPDATE);
   core::tFrameworkElementInfo::SerializeFrameworkElement(element, change_type, runtime_info_writer, element_filter, tmp);
@@ -376,21 +384,9 @@ void tTCPServerConnection::SerializeRuntimeChange(int8 change_type, core::tFrame
   NotifyWriter();
 }
 
-void tTCPServerConnection::TreeFilterCallback(core::tFrameworkElement* fe, bool unused)
-{
-  if (fe != core::tRuntimeEnvironment::GetInstance())
-  {
-    if (!fe->IsDeleted())
-    {
-      this->cos->WriteEnum(tOpCode::STRUCTURE_UPDATE);
-      core::tFrameworkElementInfo::SerializeFrameworkElement(fe, ::finroc::core::tRuntimeListener::cADD, *this->cos, element_filter, tmp);
-    }
-  }
-}
-
-tTCPServerConnection::tPortSet::tPortSet(tTCPServerConnection* const outer_class_ptr_, tTCPServer* server, std::shared_ptr<tTCPServerConnection> connection_lock_) :
+tTCPServerConnection::tPortSet::tPortSet(tTCPServerConnection& outer_class, tTCPServer* server, std::shared_ptr<tTCPServerConnection> connection_lock_) :
   core::tFrameworkElement(server, std::string("connection") + boost::lexical_cast<util::tString>(tTCPServerConnection::connection_id.GetAndIncrement()), core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT, core::tLockOrderLevels::cPORT - 1),
-  outer_class_ptr(outer_class_ptr_),
+  outer_class(outer_class),
   port_iterator(this),
   connection_lock(connection_lock_)
 {
@@ -407,19 +403,18 @@ void tTCPServerConnection::tPortSet::NotifyPortsOfDisconnect()
 
 void tTCPServerConnection::tPortSet::PrepareDelete()
 {
-  outer_class_ptr->HandleDisconnect();
-  if (outer_class_ptr->send_runtime_info)
+  outer_class.HandleDisconnect();
+  if (outer_class.send_runtime_info)
   {
-    core::tRuntimeEnvironment::GetInstance()->RemoveListener(outer_class_ptr);
+    core::tRuntimeEnvironment::GetInstance()->RemoveListener(outer_class);
   }
   NotifyPortsOfDisconnect();
-  tServerConnectionList::Instance().Remove(outer_class_ptr);
-  ::finroc::core::tFrameworkElement::PrepareDelete();
+  tServerConnectionList::Instance().Remove(&outer_class);
+  tFrameworkElement::PrepareDelete();
 }
 
-tTCPServerConnection::tServerPort::tServerPort(tTCPServerConnection* const outer_class_ptr_, core::tAbstractPort* counter_part, tTCPServerConnection::tPortSet* port_set) :
-  tTCPPort(outer_class_ptr_->InitPci(counter_part), outer_class_ptr_->port_set->connection_lock.get()),
-  outer_class_ptr(outer_class_ptr_),
+tTCPServerConnection::tServerPort::tServerPort(tTCPServerConnection& outer_class, core::tAbstractPort* counter_part, tTCPServerConnection::tPortSet* port_set) :
+  tTCPPort(outer_class.InitPci(counter_part), outer_class.port_set->connection_lock.get()),
   local_port(counter_part)
 {
 }
@@ -467,8 +462,8 @@ tPingTimeMonitor& tPingTimeMonitor::GetInstance()
 
 void tPingTimeMonitor::MainLoopCallback()
 {
-  int64 start_time = util::tTime::GetCoarse();
-  int64 may_wait = tTCPSettings::GetInstance()->critical_ping_threshold.GetValue();
+  rrlib::time::tTimestamp start_time = rrlib::time::Now(false);
+  rrlib::time::tDuration may_wait = tTCPSettings::GetInstance()->critical_ping_threshold.Get();
 
   util::tArrayWrapper<tTCPServerConnection*>* it = tServerConnectionList::Instance().GetIterable();
   for (int i = 0, n = tServerConnectionList::Instance().Size(); i < n; i++)
@@ -481,10 +476,10 @@ void tPingTimeMonitor::MainLoopCallback()
   }
 
   // wait remaining uncritical time
-  int64 wait_for = may_wait - (util::tTime::GetCoarse() - start_time);
-  if (wait_for > 0)
+  rrlib::time::tDuration wait_for = may_wait - (rrlib::time::Now(false) - start_time);
+  if (wait_for > rrlib::time::tDuration::zero())
   {
-    ::finroc::util::tThread::Sleep(wait_for);
+    Sleep(wait_for, false);
   }
 }
 

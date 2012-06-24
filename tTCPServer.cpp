@@ -44,7 +44,7 @@ tTCPServer::tTCPServer(int port_, bool try_next_ports_if_occupied_, tTCPPeer* pe
 
 void tTCPServer::AcceptConnection(std::shared_ptr<util::tNetSocket>& s, int8 first_byte)
 {
-  util::tLock lock1(this);
+  util::tLock lock1(*this);
   if (IsDeleted())
   {
     try

@@ -87,7 +87,7 @@ public:
     tRemoteServer* const outer_class_ptr;
 
     /*! Timestamp of last subscription update */
-    int64 last_subscription_update;
+    rrlib::time::tTimestamp last_subscription_update;
 
     /*! Bulk and Express Connections to server - copy for connector thread */
     std::shared_ptr<tRemoteServer::tConnection> ct_bulk, ct_express;
@@ -133,7 +133,7 @@ private:
   std::string tmp_match_buffer;
 
   /*! Timestamp of when server was created - used to identify whether we are still communicating with same instance after connection loss */
-  int64 server_creation_time;
+  rrlib::time::tTimestamp server_creation_time;
 
   /*! Peer that this server belongs to */
   tTCPPeer* peer;
@@ -269,13 +269,13 @@ public:
    */
   inline void Reconnect()
   {
-    util::tLock lock2(this);
+    util::tLock lock2(*this);
     connector_thread->ContinueThread();
   }
 
-  virtual void RuntimeChange(int8 change_type, core::tFrameworkElement* element);
+  virtual void RuntimeChange(int8 change_type, core::tFrameworkElement& element);
 
-  virtual void RuntimeEdgeChange(int8 change_type, core::tAbstractPort* source, core::tAbstractPort* target)
+  virtual void RuntimeEdgeChange(int8 change_type, core::tAbstractPort& source, core::tAbstractPort& target)
   {
     RuntimeChange(change_type, source);
     RuntimeChange(change_type, target);
@@ -421,7 +421,7 @@ public:
   private:
 
     // Outer class RemoteServer
-    tRemoteServer* const outer_class_ptr;
+    tRemoteServer& outer_class;
 
   protected:
 
@@ -437,13 +437,13 @@ public:
      *
      * \param type Connection type
      */
-    tConnection(tRemoteServer* const outer_class_ptr_, int8 type);
+    tConnection(tRemoteServer& outer_class, int8 type);
 
     void Connect(std::shared_ptr<util::tNetSocket>& socket_, std::shared_ptr<tRemoteServer::tConnection>& connection);
 
     virtual void HandleDisconnect()
     {
-      outer_class_ptr->Disconnect();
+      outer_class.Disconnect();
     }
 
     virtual void HandlePingTimeExceed()
@@ -453,7 +453,7 @@ public:
 
     virtual void ProcessRequest(tOpCode op_code);
 
-    virtual bool SendData(int64 start_time);
+    virtual bool SendData(const rrlib::time::tTimestamp& start_time);
 
     /*!
      * Subscribe to port changes on remote server

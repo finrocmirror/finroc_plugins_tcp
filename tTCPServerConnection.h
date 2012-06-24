@@ -143,15 +143,13 @@ public:
 
   virtual void ProcessRequest(tOpCode op_code);
 
-  virtual void RuntimeChange(int8 change_type, core::tFrameworkElement* element);
+  virtual void RuntimeChange(int8 change_type, core::tFrameworkElement& element);
 
-  virtual void RuntimeEdgeChange(int8 change_type, core::tAbstractPort* source, core::tAbstractPort* target);
+  virtual void RuntimeEdgeChange(int8 change_type, core::tAbstractPort& source, core::tAbstractPort& target);
 
-  virtual bool SendData(int64 start_time);
+  virtual bool SendData(const rrlib::time::tTimestamp& start_time);
 
-  void SerializeRuntimeChange(int8 change_type, core::tFrameworkElement* element);
-
-  void TreeFilterCallback(core::tFrameworkElement* fe, bool unused);
+  void SerializeRuntimeChange(int8 change_type, core::tFrameworkElement& element);
 
 public:
 
@@ -164,7 +162,7 @@ public:
   private:
 
     // Outer class TCPServerConnection
-    tTCPServerConnection* const outer_class_ptr;
+    tTCPServerConnection& outer_class;
 
     /*! For iterating over portSet's ports */
     core::tFrameworkElement::tChildIterator port_iterator;
@@ -184,7 +182,7 @@ public:
 
   public:
 
-    tPortSet(tTCPServerConnection* const outer_class_ptr_, tTCPServer* server, std::shared_ptr<tTCPServerConnection> connection_lock_);
+    tPortSet(tTCPServerConnection& outer_class, tTCPServer* server, std::shared_ptr<tTCPServerConnection> connection_lock_);
 
   };
 
@@ -197,9 +195,6 @@ public:
   {
     friend class tTCPServerConnection;
   private:
-
-    // Outer class TCPServerConnection
-    tTCPServerConnection* const outer_class_ptr;
 
     /*! Local partner port */
     core::tAbstractPort* local_port;
@@ -217,7 +212,7 @@ public:
 
     /*! Edge to connect server port with local port
      * \param port_set */
-    tServerPort(tTCPServerConnection* const outer_class_ptr_, core::tAbstractPort* counter_part, tTCPServerConnection::tPortSet* port_set);
+    tServerPort(tTCPServerConnection& outer_class, core::tAbstractPort* counter_part, tTCPServerConnection::tPortSet* port_set);
 
     // notify any connected input ports about disconnect
     virtual void NotifyDisconnect();

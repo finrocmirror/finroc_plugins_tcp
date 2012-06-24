@@ -19,11 +19,10 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "rrlib/finroc_core_utils/tGarbageCollector.h"
+#include "rrlib/finroc_core_utils/tGarbageDeleter.h"
 #include "rrlib/finroc_core_utils/thread/sThreadUtil.h"
 #include "rrlib/serialization/serialization.h"
 #include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
-#include "rrlib/finroc_core_utils/tTime.h"
 #include <boost/lexical_cast.hpp>
 
 #include "core/tCoreFlags.h"
@@ -61,19 +60,19 @@ tRemoteServer::tRemoteServer(util::tIPSocketAddress isa, const util::tString& na
   port_iterator(remote_port_register.GetIterator()),
   elem_iterator(remote_element_register.GetIterator()),
   tmp_match_buffer(),
-  server_creation_time(-1),
+  server_creation_time(rrlib::time::cNO_TIME),
   peer(peer_),
   global_links(filter_.IsPortOnlyFilter() ? new ::finroc::core::tFrameworkElement(this, "global", core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cGLOBALLY_UNIQUE_LINK | core::tCoreFlags::cALTERNATE_LINK_ROOT, -1) : NULL),
   disconnect_calls(0),
   deleted_soon(false)
 {
-  core::tRuntimeEnvironment::GetInstance()->AddListener(this);
+  core::tRuntimeEnvironment::GetInstance()->AddListener(*this);
   connector_thread->Start();
 }
 
 void tRemoteServer::Connect()
 {
-  util::tLock lock1(this);
+  util::tLock lock1(*this);
   status_string = cCONNECTING;
 
   // reset disconnect count
@@ -84,9 +83,9 @@ void tRemoteServer::Connect()
   std::shared_ptr<util::tNetSocket> socket_bulk = util::tNetSocket::CreateInstance(address);
 
   // connect
-  finroc::util::tGarbageCollector::tFunctor deleter;
-  std::shared_ptr<tConnection> express(new tConnection(this, tTCP::cTCP_P2P_ID_EXPRESS), deleter);
-  std::shared_ptr<tConnection> bulk(new tConnection(this, tTCP::cTCP_P2P_ID_BULK), deleter);
+  finroc::util::tGarbageDeleter::tFunctor deleter;
+  std::shared_ptr<tConnection> express(new tConnection(*this, tTCP::cTCP_P2P_ID_EXPRESS), deleter);
+  std::shared_ptr<tConnection> bulk(new tConnection(*this, tTCP::cTCP_P2P_ID_BULK), deleter);
 
   // Set bulk and express here, because of other threads that might try to access them
   this->bulk = bulk;
@@ -135,7 +134,7 @@ void tRemoteServer::Disconnect()
   }
 
   {
-    util::tLock lock2(this);
+    util::tLock lock2(*this);
     status_string = cDISCONNECTING;
     if (bulk.get() != NULL)
     {
@@ -198,7 +197,7 @@ float tRemoteServer::GetConnectionQuality()
   {
     return 0;
   }
-  float ping_time = 0;
+  rrlib::time::tDuration ping_time(0);
   for (int i = 0; i < 2; i++)
   {
     tConnection* c = (i == 0) ? bulk.get() : express.get();
@@ -208,20 +207,20 @@ float tRemoteServer::GetConnectionQuality()
       {
         return 0;
       }
-      ping_time = std::max(ping_time, static_cast<float>(c->GetAvgPingTime()));
+      ping_time = std::max(ping_time, c->GetAvgPingTime());
     }
   }
-  if (ping_time < 300)
+  if (ping_time < std::chrono::milliseconds(300))
   {
     return 1;
   }
-  else if (ping_time > 1300)
+  else if (ping_time > std::chrono::milliseconds(1300))
   {
     return 0;
   }
   else
   {
-    return (static_cast<float>(ping_time) - 300.0f) / 1000.0f;
+    return (std::chrono::duration_cast<std::chrono::milliseconds>(ping_time).count() - 300.0f) / 1000.0f;
   }
 }
 
@@ -259,8 +258,8 @@ util::tString tRemoteServer::GetPingString()
     return status_string;
   }
 
-  int ping_avg = 0;
-  int ping_max = 0;
+  rrlib::time::tDuration ping_avg(0);
+  rrlib::time::tDuration ping_max(0);
   int data_rate = 0;
   util::tString s = "ping (avg/max/Rx): ";
   if (bulk.get() == NULL && express.get() == NULL)
@@ -281,23 +280,18 @@ util::tString tRemoteServer::GetPingString()
       data_rate += c->GetRx();
     }
   }
-  return s + boost::lexical_cast<std::string>(ping_avg) + "ms/" + boost::lexical_cast<std::string>(ping_max) + "ms/" + FormatRate(data_rate);
+  char buf[200];
+  sprintf(buf, "%ldms/%ldms/", std::chrono::duration_cast<std::chrono::milliseconds>(ping_avg).count(), std::chrono::duration_cast<std::chrono::milliseconds>(ping_max).count());
+  return s + buf + FormatRate(data_rate);
 }
 
 void tRemoteServer::PrepareDelete()
 {
-  util::tLock lock1(this);
-  core::tRuntimeEnvironment::GetInstance()->RemoveListener(this);
+  util::tLock lock1(*this);
+  core::tRuntimeEnvironment::GetInstance()->RemoveListener(*this);
   FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_1, "RemoteServer: Stopping ConnectorThread");
   connector_thread->StopThread();
-  try
-  {
-    connector_thread->Join();
-  }
-  catch (const util::tInterruptedException& e)
-  {
-    FINROC_LOG_PRINT(rrlib::logging::eLL_WARNING, "warning: RemoteServer::prepareDelete() - Interrupted waiting for connector thread.");
-  }
+  connector_thread->Join();
 
   FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG, "RemoteServer: Disconnecting");
   Disconnect();
@@ -356,7 +350,7 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
       {
         printf("refound network port %p %s\n", port, port->GetPort()->GetCName());
         {
-          util::tLock lock5(port->GetPort());
+          util::tLock lock5(*port->GetPort());
           port->refound = true;
           port->connection = (info.GetFlags() & core::tPortFlags::cIS_EXPRESS_PORT) > 0 ? express.get() : bulk.get();
           assert(((port->Matches(info))) && "Structure in server changed - that shouldn't happen");
@@ -381,7 +375,7 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
       else if (fe != NULL)    // refound
       {
         {
-          util::tLock lock5(fe);
+          util::tLock lock5(*fe);
           printf("refound network framework element %p %s\n", fe, fe->GetCName());
           fe->refound = true;
           assert(((fe->Matches(info))) && "Structure in server changed - that shouldn't happen");
@@ -495,14 +489,14 @@ void tRemoteServer::RetrieveRemotePorts(rrlib::serialization::tInputStream* cis,
 
 }
 
-void tRemoteServer::RuntimeChange(int8 change_type, core::tFrameworkElement* element)
+void tRemoteServer::RuntimeChange(int8 change_type, core::tFrameworkElement& element)
 {
-  if (element->IsPort() && change_type != ::finroc::core::tRuntimeListener::cPRE_INIT)
+  if (element.IsPort() && change_type != tRuntimeListener::cPRE_INIT)
   {
-    core::tNetPort* np = core::tNetPort::FindNetPort(static_cast<core::tAbstractPort&>(*element), express.get());
+    core::tNetPort* np = core::tNetPort::FindNetPort(static_cast<core::tAbstractPort&>(element), express.get());
     if (np == NULL)
     {
-      np = core::tNetPort::FindNetPort(static_cast<core::tAbstractPort&>(*element), bulk.get());
+      np = core::tNetPort::FindNetPort(static_cast<core::tAbstractPort&>(element), bulk.get());
     }
     if (np != NULL)
     {
@@ -513,7 +507,7 @@ void tRemoteServer::RuntimeChange(int8 change_type, core::tFrameworkElement* ele
 
 void tRemoteServer::TemporaryDisconnect()
 {
-  util::tLock lock1(this);
+  util::tLock lock1(*this);
 
   connector_thread->PauseThread();
   Disconnect();
@@ -531,7 +525,7 @@ tRemoteServer::tProxyFrameworkElement::tProxyFrameworkElement(tRemoteServer* con
 
 bool tRemoteServer::tProxyFrameworkElement::Matches(const core::tFrameworkElementInfo& info)
 {
-  util::tLock lock1(this);
+  util::tLock lock1(*this);
   if (remote_handle != info.GetHandle() || info.GetLinkCount() != GetLinkCount())
   {
     return false;
@@ -549,7 +543,7 @@ bool tRemoteServer::tProxyFrameworkElement::Matches(const core::tFrameworkElemen
 
 void tRemoteServer::tProxyFrameworkElement::UpdateFromPortInfo(const core::tFrameworkElementInfo& info)
 {
-  util::tLock lock1(this);
+  util::tLock lock1(*this);
   if (!IsReady())
   {
     assert(((info.op_code == core::tRuntimeListener::cADD)) && "only add operation may change framework element before initialization");
@@ -626,7 +620,7 @@ void tRemoteServer::tProxyPort::CheckSubscription()
 bool tRemoteServer::tProxyPort::Matches(const core::tFrameworkElementInfo& info)
 {
   {
-    util::tLock lock2(GetPort());
+    util::tLock lock2(*GetPort());
     if (this->remote_handle != info.GetHandle() || info.GetLinkCount() != GetPort()->GetLinkCount())
     {
       return false;
@@ -714,9 +708,9 @@ void tRemoteServer::tProxyPort::UpdateFromPortInfo(const core::tFrameworkElement
   }
 }
 
-tRemoteServer::tConnection::tConnection(tRemoteServer* const outer_class_ptr_, int8 type) :
-  tTCPConnection(type, type == tTCP::cTCP_P2P_ID_BULK ? outer_class_ptr_->peer : NULL, type == tTCP::cTCP_P2P_ID_BULK),
-  outer_class_ptr(outer_class_ptr_)
+tRemoteServer::tConnection::tConnection(tRemoteServer& outer_class, int8 type) :
+  tTCPConnection(type, type == tTCP::cTCP_P2P_ID_BULK ? outer_class.peer : NULL, type == tTCP::cTCP_P2P_ID_BULK),
+  outer_class(outer_class)
 {
 }
 
@@ -737,24 +731,24 @@ void tRemoteServer::tConnection::Connect(std::shared_ptr<util::tNetSocket>& sock
 
   // initialize core streams
   this->cis = std::shared_ptr<rrlib::serialization::tInputStream>(new rrlib::serialization::tInputStream(socket_->GetSource(), this->update_times));
-  this->cis->SetTimeout(1000);
-  this->time_base = this->cis->ReadLong();  // Timestamp that remote runtime was created - and relative to which time is encoded in this stream
+  this->cis->SetTimeout(std::chrono::seconds(1));
+  (*this->cis) >> this->time_base;  // Timestamp that remote runtime was created - and relative to which time is encoded in this stream
   //updateTimes.deserialize(cis);
   rrlib::rtti::tDataTypeBase dt;
   (*this->cis) >> dt;
   assert((dt == core::tNumber::cTYPE));
-  this->cis->SetTimeout(-1);
+  this->cis->SetTimeout(rrlib::time::tDuration::zero());
 
-  std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(this, std::string("TCP Client ") + type_string + "-Listener for " + outer_class_ptr->GetName()));
+  std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(*this, std::string("TCP Client ") + type_string + "-Listener for " + outer_class.GetName()));
   this->reader = listener;
-  std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(this, std::string("TCP Client ") + type_string + "-Writer for " + outer_class_ptr->GetName()));
+  std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(*this, std::string("TCP Client ") + type_string + "-Writer for " + outer_class.GetName()));
   this->writer = writer;
 
   if (bulk)
   {
-    bool new_server = (outer_class_ptr->server_creation_time < 0) || (outer_class_ptr->server_creation_time != this->time_base);
+    bool new_server = (outer_class.server_creation_time == rrlib::time::cNO_TIME) || (outer_class.server_creation_time != this->time_base);
     FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG, (new_server ? "Connecting" : "Reconnecting"), " to server ", socket_->GetRemoteSocketAddress(), "...");
-    outer_class_ptr->RetrieveRemotePorts(this->cis.get(), this->cos.get(), this->update_times.get(), new_server);
+    outer_class.RetrieveRemotePorts(this->cis.get(), this->cos.get(), this->update_times.get(), new_server);
   }
 
   // start incoming data listener thread
@@ -807,7 +801,7 @@ void tRemoteServer::tConnection::ProcessRequest(tOpCode op_code)
     {
       // make sure, "our" port is not deleted while we use it
       {
-        util::tLock lock4(ap);
+        util::tLock lock4(*ap);
         if (!ap->IsReady())
         {
           this->cis->ToSkipTarget();
@@ -816,7 +810,7 @@ void tRemoteServer::tConnection::ProcessRequest(tOpCode op_code)
         {
           int8 changed_flag = this->cis->ReadByte();
           this->cis->SetFactory(p);
-          p->ReceiveDataFromStream(*this->cis, util::tTime::GetCoarse(), changed_flag);
+          p->ReceiveDataFromStream(*this->cis, rrlib::time::Now(false), changed_flag);
           this->cis->SetFactory(NULL);
         }
       }
@@ -829,9 +823,9 @@ void tRemoteServer::tConnection::ProcessRequest(tOpCode op_code)
 
   case tOpCode::STRUCTURE_UPDATE:
 
-    outer_class_ptr->tmp_info.Deserialize(*this->cis, *this->update_times);
-    outer_class_ptr->ProcessPortUpdate(outer_class_ptr->tmp_info);
-    outer_class_ptr->Init();
+    outer_class.tmp_info.Deserialize(*this->cis, *this->update_times);
+    outer_class.ProcessPortUpdate(outer_class.tmp_info);
+    outer_class.Init();
     break;
 
   default:
@@ -839,7 +833,7 @@ void tRemoteServer::tConnection::ProcessRequest(tOpCode op_code)
   }
 }
 
-bool tRemoteServer::tConnection::SendData(int64 start_time)
+bool tRemoteServer::tConnection::SendData(const rrlib::time::tTimestamp& start_time)
 {
   // send port data
   return ::finroc::tcp::tTCPConnection::SendDataPrototype(start_time, tOpCode::SET);
@@ -871,7 +865,7 @@ void tRemoteServer::tConnection::Unsubscribe(int index)
 tRemoteServer::tConnectorThread::tConnectorThread(tRemoteServer* const outer_class_ptr_) :
   core::tCoreLoopThreadBase(tTCPSettings::cCONNECTOR_THREAD_LOOP_INTERVAL, false, false),
   outer_class_ptr(outer_class_ptr_),
-  last_subscription_update(0),
+  last_subscription_update(rrlib::time::tDuration(0)),
   ct_bulk(),
   ct_express()
 {
@@ -900,7 +894,7 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
     }
     catch (const util::tConnectException& e)
     {
-      ::finroc::util::tThread::Sleep(2000);
+      Sleep(std::chrono::seconds(2), false);
       if (outer_class_ptr->bulk.get() == NULL)
       {
         ct_bulk.reset();
@@ -913,7 +907,7 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
     catch (const std::exception& e)
     {
       FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, e);
-      ::finroc::util::tThread::Sleep(2000);
+      Sleep(std::chrono::seconds(2), false);
       if (outer_class_ptr->bulk.get() == NULL)
       {
         ct_bulk.reset();
@@ -930,24 +924,22 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
     try
     {
       // check ping times
-      int64 start_time = util::tTime::GetPrecise();
-      int64 may_wait = tTCPSettings::GetInstance()->critical_ping_threshold.GetValue();
+      rrlib::time::tTimestamp start_time = rrlib::time::Now();
+      rrlib::time::tDuration may_wait = tTCPSettings::GetInstance()->critical_ping_threshold.Get();
       may_wait = std::min(may_wait, ct_express->CheckPingForDisconnect());
       may_wait = std::min(may_wait, ct_bulk->CheckPingForDisconnect());
 
       if (start_time > last_subscription_update + tTCPSettings::cCONNECTOR_THREAD_SUBSCRIPTION_UPDATE_INTERVAL)
       {
         last_subscription_update = start_time;
-
       }
 
       // wait remaining uncritical time
-      int64 wait_for = may_wait - (util::tTime::GetPrecise() - start_time);
-      if (wait_for > 0)
+      rrlib::time::tDuration wait_for = may_wait - (rrlib::time::Now() - start_time);
+      if (wait_for > rrlib::time::tDuration::zero())
       {
-        ::finroc::util::tThread::Sleep(wait_for);
+        Sleep(wait_for, false);
       }
-
     }
     catch (const std::exception& e)
     {

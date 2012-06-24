@@ -27,9 +27,9 @@ namespace finroc
 namespace tcp
 {
 tTCPSettings* tTCPSettings::inst = NULL;
-const int tTCPSettings::cCONNECTOR_THREAD_LOOP_INTERVAL;
-const int tTCPSettings::cCONNECTOR_THREAD_SUBSCRIPTION_UPDATE_INTERVAL;
-const int tTCPSettings::cMIN_PORTS_UPDATE_INTERVAL;
+constexpr rrlib::time::tDuration tTCPSettings::cCONNECTOR_THREAD_LOOP_INTERVAL;
+constexpr rrlib::time::tDuration tTCPSettings::cCONNECTOR_THREAD_SUBSCRIPTION_UPDATE_INTERVAL;
+constexpr rrlib::time::tDuration tTCPSettings::cMIN_PORTS_UPDATE_INTERVAL;
 const int tTCPSettings::cDEQUEUE_QUEUE_SIZE;
 const int tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS;
 const int tTCPSettings::cAVG_PING_PACKETS;
@@ -40,9 +40,9 @@ tTCPSettings::tTCPSettings() :
   core::tFrameworkElement(core::tRuntimeSettings::GetInstance(), "TCP"),
   max_not_acknowledged_packets_express("Maximum not acknowledged express packets", this, 4, core::tBounds<int>(1, 40, true)),
   max_not_acknowledged_packets_bulk("Maximum not acknowledged bulk packets", this, 2, core::tBounds<int>(1, 40, true)),
-  min_update_interval_express("Minimum Express Update Interval", this, 25, core::tBounds<int>(1, 2000, core::tConstant::cNO_MIN_TIME_LIMIT->Value<int>()), &(core::tUnit::ms)),
-  min_update_interval_bulk("Minimum Bulk Update Interval", this, 50, core::tBounds<int>(1, 2000, core::tConstant::cNO_MIN_TIME_LIMIT->Value<int>()), &(core::tUnit::ms)),
-  critical_ping_threshold("Critical Ping Threshold", this, 1500, core::tBounds<int>(50, 20000, core::tConstant::cNO_MAX_TIME_LIMIT->Value<int>()), &(core::tUnit::ms))
+  min_update_interval_express("Minimum Express Update Interval", this, std::chrono::milliseconds(25), core::tBounds<rrlib::time::tDuration>(std::chrono::milliseconds(1), std::chrono::seconds(2))),
+  min_update_interval_bulk("Minimum Bulk Update Interval", this, std::chrono::milliseconds(50), core::tBounds<rrlib::time::tDuration>(std::chrono::milliseconds(1), std::chrono::seconds(2))),
+  critical_ping_threshold("Critical Ping Threshold", this, std::chrono::milliseconds(1500), core::tBounds<rrlib::time::tDuration>(std::chrono::milliseconds(50), std::chrono::seconds(20)))
 {
 }
 

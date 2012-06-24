@@ -44,7 +44,7 @@ tPeerList::tPeerList(int server_port_, int lock_order) :
 void tPeerList::AddPeer(util::tIPSocketAddress isa, bool notify_on_change)
 {
   {
-    util::tLock lock2(this);
+    util::tLock lock2(*this);
     if (peers.Contains(isa))
     {
       return;
@@ -55,7 +55,7 @@ void tPeerList::AddPeer(util::tIPSocketAddress isa, bool notify_on_change)
     util::tLock lock2(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());
     bool add = false;
     {
-      util::tLock lock3(this);
+      util::tLock lock3(*this);
       add = !peers.Contains(isa);
       if (add)
       {
@@ -68,7 +68,7 @@ void tPeerList::AddPeer(util::tIPSocketAddress isa, bool notify_on_change)
     {
       if (notify_on_change)
       {
-        NotifyDiscovered(&(isa), isa.ToString());
+        NotifyDiscovered(isa, isa.ToString());
       }
       revision++;
     }
@@ -107,23 +107,20 @@ void tPeerList::RemovePeer(util::tIPSocketAddress isa)
   util::tSimpleList< ::finroc::util::tObject*> post_process_obj;
   {
     util::tLock lock2(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());
+    util::tLock lock3(*this);
+    if (peers.Contains(isa))
     {
-      util::tLock lock3(this);
-      if (peers.Contains(isa))
+      peers.RemoveElem(isa);
+      for (size_t i = 0u, n = listeners_copy.size(); i < n; i++)
       {
-        peers.RemoveElem(isa);
-        for (size_t i = 0u, n = listeners_copy.size(); i < n; i++)
+        ::finroc::util::tObject* o = listeners_copy[i]->NodeRemoved(isa, isa.ToString());
+        if (o != NULL)
         {
-          ::finroc::util::tObject* o = listeners_copy[i]->NodeRemoved(isa, isa.ToString());
-          if (o != NULL)
-          {
-            post_process.Add(listeners_copy[i]);
-
-            post_process_obj.Add(o);
-          }
+          post_process.Add(listeners_copy[i]);
+          post_process_obj.Add(o);
         }
-        revision++;
       }
+      revision++;
     }
   }
 
@@ -135,7 +132,7 @@ void tPeerList::RemovePeer(util::tIPSocketAddress isa)
 
 void tPeerList::SerializeAddresses(rrlib::serialization::tOutputStream* co)
 {
-  util::tLock lock1(this);
+  util::tLock lock1(*this);
   int size = peers.Size();
   co->WriteInt(size);
   for (int i = 0; i < size; i++)
