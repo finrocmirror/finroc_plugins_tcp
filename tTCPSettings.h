@@ -51,6 +51,7 @@ private:
 
 public:
 
+#if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))
   /*! Loop Interval for Connector Thread... currently only 1ms since waiting is done depending on critical ping times instead */
   static constexpr rrlib::time::tDuration cCONNECTOR_THREAD_LOOP_INTERVAL = std::chrono::milliseconds(1);
 
@@ -59,6 +60,11 @@ public:
 
   /*! Minimum Update Time for remote Ports */
   static constexpr rrlib::time::tDuration cMIN_PORTS_UPDATE_INTERVAL = std::chrono::milliseconds(200);
+#else
+  static rrlib::time::tDuration cCONNECTOR_THREAD_LOOP_INTERVAL;
+  static rrlib::time::tDuration cCONNECTOR_THREAD_SUBSCRIPTION_UPDATE_INTERVAL;
+  static rrlib::time::tDuration cMIN_PORTS_UPDATE_INTERVAL;
+#endif
 
   /*! Size of dequeue queue in TCP Port */
   static const int cDEQUEUE_QUEUE_SIZE = 50;

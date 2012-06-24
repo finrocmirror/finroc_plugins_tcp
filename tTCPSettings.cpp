@@ -27,9 +27,15 @@ namespace finroc
 namespace tcp
 {
 tTCPSettings* tTCPSettings::inst = NULL;
+#if (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 6))
 constexpr rrlib::time::tDuration tTCPSettings::cCONNECTOR_THREAD_LOOP_INTERVAL;
 constexpr rrlib::time::tDuration tTCPSettings::cCONNECTOR_THREAD_SUBSCRIPTION_UPDATE_INTERVAL;
 constexpr rrlib::time::tDuration tTCPSettings::cMIN_PORTS_UPDATE_INTERVAL;
+#else
+rrlib::time::tDuration tTCPSettings::cCONNECTOR_THREAD_LOOP_INTERVAL = std::chrono::milliseconds(1);
+rrlib::time::tDuration tTCPSettings::cCONNECTOR_THREAD_SUBSCRIPTION_UPDATE_INTERVAL = std::chrono::seconds(2);
+rrlib::time::tDuration tTCPSettings::cMIN_PORTS_UPDATE_INTERVAL = std::chrono::milliseconds(200);
+#endif
 const int tTCPSettings::cDEQUEUE_QUEUE_SIZE;
 const int tTCPSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS;
 const int tTCPSettings::cAVG_PING_PACKETS;

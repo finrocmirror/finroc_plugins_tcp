@@ -281,7 +281,8 @@ util::tString tRemoteServer::GetPingString()
     }
   }
   char buf[200];
-  sprintf(buf, "%ldms/%ldms/", std::chrono::duration_cast<std::chrono::milliseconds>(ping_avg).count(), std::chrono::duration_cast<std::chrono::milliseconds>(ping_max).count());
+  sprintf(buf, "%lldms/%lldms/", static_cast<long long int>(std::chrono::duration_cast<std::chrono::milliseconds>(ping_avg).count()),
+          static_cast<long long int>(std::chrono::duration_cast<std::chrono::milliseconds>(ping_max).count()));
   return s + buf + FormatRate(data_rate);
 }
 
