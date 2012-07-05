@@ -85,10 +85,10 @@ void tTCPPeer::Connect()
 
 void tTCPPeer::ConnectImpl(const util::tString& address, bool same_address)
 {
-  util::tLock lock1(*this);
+  tLock lock1(*this);
 
   {
-    util::tLock lock2(*tracker);
+    tLock lock2(*tracker);
 
     assert((IsReady()));
     tracker->AddListener(*this);
@@ -103,7 +103,7 @@ void tTCPPeer::ConnectImpl(const util::tString& address, bool same_address)
         {
           tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
           {
-            util::tLock lock6(*rs);
+            tLock lock6(*rs);
             if (rs->IsReady() && (!rs->DeletedSoon()))
             {
               rs->Reconnect();
@@ -157,10 +157,10 @@ void tTCPPeer::ConnectImpl(const util::tString& address, bool same_address)
 
 void tTCPPeer::DisconnectImpl()
 {
-  util::tLock lock1(*this);
+  tLock lock1(*this);
   if (tracker != NULL)
   {
-    util::tLock lock3(*tracker);
+    tLock lock3(*tracker);
     tracker->RemoveListener(*this);
     // now we can be sure that no new nodes will be added
   }
@@ -173,7 +173,7 @@ void tTCPPeer::DisconnectImpl()
     if (fe->IsReady() && (typeid(*fe) == typeid(tRemoteServer)))
     {
       tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
-      util::tLock lock4(*rs);
+      tLock lock4(*rs);
       if (rs->IsReady() && (!rs->DeletedSoon()))
       {
         rs->TemporaryDisconnect();
@@ -245,7 +245,7 @@ util::tString tTCPPeer::GetStatus(bool detailed)
 void tTCPPeer::NodeDiscovered(const util::tIPSocketAddress& isa, const util::tString& name_)
 {
   {
-    util::tLock lock2(*tracker);
+    tLock lock2(*tracker);
     if (GetFlag(core::tCoreFlags::cDELETED))
     {
       return;
@@ -260,7 +260,7 @@ void tTCPPeer::NodeDiscovered(const util::tIPSocketAddress& isa, const util::tSt
 ::finroc::util::tObject* tTCPPeer::NodeRemoved(const util::tIPSocketAddress& isa, const util::tString& name_)
 {
   {
-    util::tLock lock2(*tracker);
+    tLock lock2(*tracker);
     if (GetFlag(core::tCoreFlags::cDELETED))
     {
       return NULL;
@@ -315,7 +315,7 @@ void tTCPPeer::PostChildInit()
 
 void tTCPPeer::PrepareDelete()
 {
-  util::tLock lock1(*this);
+  tLock lock1(*this);
   if (IsServer() && tracker != NULL)
   {
     tracker->UnregisterServer(network_name, name);

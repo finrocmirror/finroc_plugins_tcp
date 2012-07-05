@@ -21,7 +21,6 @@
  */
 #include "rrlib/finroc_core_utils/net/tIPAddress.h"
 #include "rrlib/finroc_core_utils/net/tIPSocketAddress.h"
-#include "rrlib/finroc_core_utils/thread/tLoopThread.h"
 #include "rrlib/finroc_core_utils/container/tAbstractReusable.h"
 #include <boost/lexical_cast.hpp>
 
@@ -49,7 +48,7 @@ namespace finroc
 namespace tcp
 {
 tTCPConnection::tTCPConnection(int8 type_, tTCPPeer* peer_, bool send_peer_info_to_partner_) :
-  util::tMutexLockOrder(core::tLockOrderLevels::cREMOTE + 1), /*! Needs to be locked after framework elements, but before runtime registry */
+  tRecursiveMutex("TCP Connection", core::tLockOrderLevels::cREMOTE + 1), /*! Needs to be locked after framework elements, but before runtime registry */
   min_update_interval((type_ == tTCP::cTCP_P2P_ID_BULK) ? tTCPSettings::GetInstance()->min_update_interval_bulk : tTCPSettings::GetInstance()->min_update_interval_express),
   max_not_acknowledged_packets((type_ == tTCP::cTCP_P2P_ID_BULK) ? tTCPSettings::GetInstance()->max_not_acknowledged_packets_bulk : tTCPSettings::GetInstance()->max_not_acknowledged_packets_express),
   last_acknowledged_packet(0),
@@ -111,7 +110,7 @@ rrlib::time::tDuration tTCPConnection::CheckPingForDisconnect()
 
 void tTCPConnection::Disconnect()
 {
-  util::tLock lock1(*this);
+  rrlib::thread::tLock lock1(*this);
   disconnect_signal = true;
   core::tNetworkSettings::GetInstance().RemoveUpdateTimeChangeListener(*this);
   if (peer != NULL)
@@ -133,13 +132,13 @@ void tTCPConnection::Disconnect()
 
   // join threads for thread safety
   std::shared_ptr<tWriter> locked_writer = writer.lock();
-  if (locked_writer.get() != NULL && util::tThread::CurrentThread() != locked_writer)
+  if (locked_writer.get() != NULL && rrlib::thread::tThread::CurrentThread() != locked_writer)
   {
     locked_writer->Join();
     writer.reset();
   }
   std::shared_ptr<tReader> locked_reader = reader.lock();
-  if (locked_reader.get() != NULL && util::tThread::CurrentThread() != locked_reader)
+  if (locked_reader.get() != NULL && rrlib::thread::tThread::CurrentThread() != locked_reader)
   {
     locked_reader->Join();
     reader.reset();
@@ -198,7 +197,7 @@ void tTCPConnection::HandleMethodCall()
 
   // make sure, "our" port is not deleted while we use it
   {
-    util::tLock lock2(*port->GetPort());
+    rrlib::thread::tLock lock2(*port->GetPort());
 
     bool skip_call = (!port->GetPort()->IsReady());
     core::tMethodCall::tPtr mc = core::tThreadLocalRPCData::Get().GetUnusedMethodCall();
@@ -252,7 +251,7 @@ void tTCPConnection::HandleMethodCallReturn()
 
   // make sure, "our" port is not deleted while we use it
   {
-    util::tLock lock2(*port->GetPort());
+    rrlib::thread::tLock lock2(*port->GetPort());
 
     if (!port->GetPort()->IsReady())
     {
@@ -341,7 +340,7 @@ void tTCPConnection::HandleReturningPullCall()
 
   // make sure, "our" port is not deleted while we use it
   {
-    util::tLock lock2(*port->GetPort());
+    rrlib::thread::tLock lock2(*port->GetPort());
 
     // check ready again...
     if (!port->GetPort()->IsReady())
@@ -589,7 +588,7 @@ void tTCPConnection::tReader::Run()
         pl = outer_class.peer->GetPeerList();
         notify_writers = false;
         {
-          util::tLock lock5(*pl);
+          rrlib::thread::tLock lock5(*pl);
           index = pl->GetRevision();
           util::tIPAddress ia = util::tIPAddress::Deserialize(cis.get());
           outer_class.peer->GetPeerList()->DeserializeAddresses(cis.get(), ia, outer_class.socket->GetRemoteIPSocketAddress().GetAddress());
@@ -636,7 +635,7 @@ void tTCPConnection::tReader::Run()
 
 void tTCPConnection::tReader::StopThread()
 {
-  util::tLock lock2(outer_class);
+  rrlib::thread::tLock lock2(outer_class);
   outer_class.disconnect_signal = true;
   outer_class.socket->ShutdownReceive();
 }
@@ -690,10 +689,10 @@ void tTCPConnection::tWriter::NotifyWriter()
       if (CanSend())
       {
         {
-          util::tLock lock5(*this);
+          rrlib::thread::tLock lock5(*this);
           if (writer_synch.CompareAndSet(raw, 0u, counter))
           {
-            monitor.Notify(lock5);
+            GetMonitor().Notify(lock5);
             return;
           }
         }
@@ -747,10 +746,10 @@ void tTCPConnection::tWriter::Run()
 
         // okay... seems nothing has changed... set synch variable to sleeping
         {
-          util::tLock lock5(*this);
+          rrlib::thread::tLock lock5(*this);
           if (writer_synch.CompareAndSet(raw, 1u, change_count))
           {
-            monitor.Wait(lock5, std::chrono::seconds(10), false);  // 10 seconds to avoid unlucky dead locks while disconnecting
+            GetMonitor().Wait(lock5, std::chrono::seconds(10), false);  // 10 seconds to avoid unlucky dead locks while disconnecting
           }
           // if compare and set failed... there was a change => continue
 
@@ -899,11 +898,11 @@ void tTCPConnection::tWriter::SendCall(core::tSerializableReusable::tPtr& call)
 
 void tTCPConnection::tWriter::StopThread()
 {
-  util::tLock lock1(*this);
+  rrlib::thread::tLock lock1(*this);
   outer_class.disconnect_signal = true;
   if (writer_synch.GetVal1() != 0)    // if thread is waiting... wake up
   {
-    monitor.Notify(lock1);
+    GetMonitor().Notify(lock1);
   }
 }
 

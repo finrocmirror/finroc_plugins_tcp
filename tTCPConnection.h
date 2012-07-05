@@ -55,7 +55,7 @@ class tTCPPeer;
  *
  * (writer and listener members need to be initialized by subclass)
  */
-class tTCPConnection : public util::tLogUser, public core::tUpdateTimeChangeListener, public util::tMutexLockOrder
+class tTCPConnection : public util::tLogUser, public core::tUpdateTimeChangeListener, public rrlib::thread::tRecursiveMutex
 {
 public:
 
@@ -210,7 +210,7 @@ protected:
   int8 type;
 
   /*! Ports that are monitored for changes by this connection and should be checked for modifications */
-  util::tSafeConcurrentlyIterableList<tTCPPort*, util::tMutexLockOrder> monitored_ports;
+  util::tSafeConcurrentlyIterableList<tTCPPort*, rrlib::thread::tOrderedMutex> monitored_ports;
 
   /*! TCPPeer that this connection belongs to (null if it does not belong to a peer) */
   tTCPPeer* peer;

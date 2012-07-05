@@ -20,7 +20,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "rrlib/finroc_core_utils/tGarbageDeleter.h"
-#include "rrlib/finroc_core_utils/thread/sThreadUtil.h"
 #include "rrlib/serialization/serialization.h"
 #include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
 #include <boost/lexical_cast.hpp>
@@ -52,7 +51,7 @@ tRemoteServer::tRemoteServer(util::tIPSocketAddress isa, const util::tString& na
   address(isa),
   bulk(),
   express(),
-  connector_thread(util::sThreadUtil::GetThreadSharedPtr(new tConnectorThread(this))),
+  connector_thread(std::static_pointer_cast<tConnectorThread>((new tConnectorThread(this))->GetSharedPtr())),
   tmp_info(),
   filter(filter_),
   remote_port_register(),
@@ -68,11 +67,12 @@ tRemoteServer::tRemoteServer(util::tIPSocketAddress isa, const util::tString& na
 {
   core::tRuntimeEnvironment::GetInstance()->AddListener(*this);
   connector_thread->Start();
+  connector_thread->SetAutoDelete();
 }
 
 void tRemoteServer::Connect()
 {
-  util::tLock lock1(*this);
+  tLock lock1(*this);
   status_string = cCONNECTING;
 
   // reset disconnect count
@@ -134,7 +134,7 @@ void tRemoteServer::Disconnect()
   }
 
   {
-    util::tLock lock2(*this);
+    tLock lock2(*this);
     status_string = cDISCONNECTING;
     if (bulk.get() != NULL)
     {
@@ -288,7 +288,7 @@ util::tString tRemoteServer::GetPingString()
 
 void tRemoteServer::PrepareDelete()
 {
-  util::tLock lock1(*this);
+  tLock lock1(*this);
   core::tRuntimeEnvironment::GetInstance()->RemoveListener(*this);
   FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_1, "RemoteServer: Stopping ConnectorThread");
   connector_thread->StopThread();
@@ -351,7 +351,7 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
       {
         printf("refound network port %p %s\n", port, port->GetPort()->GetCName());
         {
-          util::tLock lock5(*port->GetPort());
+          tLock lock5(*port->GetPort());
           port->refound = true;
           port->connection = (info.GetFlags() & core::tPortFlags::cIS_EXPRESS_PORT) > 0 ? express.get() : bulk.get();
           assert(((port->Matches(info))) && "Structure in server changed - that shouldn't happen");
@@ -376,7 +376,7 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
       else if (fe != NULL)    // refound
       {
         {
-          util::tLock lock5(*fe);
+          tLock lock5(*fe);
           printf("refound network framework element %p %s\n", fe, fe->GetCName());
           fe->refound = true;
           assert(((fe->Matches(info))) && "Structure in server changed - that shouldn't happen");
@@ -508,7 +508,7 @@ void tRemoteServer::RuntimeChange(int8 change_type, core::tFrameworkElement& ele
 
 void tRemoteServer::TemporaryDisconnect()
 {
-  util::tLock lock1(*this);
+  tLock lock1(*this);
 
   connector_thread->PauseThread();
   Disconnect();
@@ -526,7 +526,7 @@ tRemoteServer::tProxyFrameworkElement::tProxyFrameworkElement(tRemoteServer* con
 
 bool tRemoteServer::tProxyFrameworkElement::Matches(const core::tFrameworkElementInfo& info)
 {
-  util::tLock lock1(*this);
+  tLock lock1(*this);
   if (remote_handle != info.GetHandle() || info.GetLinkCount() != GetLinkCount())
   {
     return false;
@@ -544,7 +544,7 @@ bool tRemoteServer::tProxyFrameworkElement::Matches(const core::tFrameworkElemen
 
 void tRemoteServer::tProxyFrameworkElement::UpdateFromPortInfo(const core::tFrameworkElementInfo& info)
 {
-  util::tLock lock1(*this);
+  tLock lock1(*this);
   if (!IsReady())
   {
     assert(((info.op_code == core::tRuntimeListener::cADD)) && "only add operation may change framework element before initialization");
@@ -579,7 +579,7 @@ tRemoteServer::tProxyPort::tProxyPort(tRemoteServer* const outer_class_ptr_, con
 void tRemoteServer::tProxyPort::CheckSubscription()
 {
   {
-    util::tLock lock2(GetPort()->GetRegistryLock());
+    tLock lock2(GetPort()->GetRegistryLock());
     core::tAbstractPort* p = GetPort();
     bool rev_push = p->IsInputPort() && p->IsConnectedToReversePushSources();
     int16 time = GetUpdateIntervalForNet();
@@ -621,7 +621,7 @@ void tRemoteServer::tProxyPort::CheckSubscription()
 bool tRemoteServer::tProxyPort::Matches(const core::tFrameworkElementInfo& info)
 {
   {
-    util::tLock lock2(*GetPort());
+    tLock lock2(*GetPort());
     if (this->remote_handle != info.GetHandle() || info.GetLinkCount() != GetPort()->GetLinkCount())
     {
       return false;
@@ -673,7 +673,7 @@ void tRemoteServer::tProxyPort::Reset()
 void tRemoteServer::tProxyPort::UpdateFromPortInfo(const core::tFrameworkElementInfo& port_info)
 {
   {
-    util::tLock lock2(GetPort()->GetRegistryLock());
+    tLock lock2(GetPort()->GetRegistryLock());
     UpdateFlags(port_info.GetFlags());
     GetPort()->SetMinNetUpdateInterval(port_info.GetMinNetUpdateInterval());
     this->update_interval_partner = port_info.GetMinNetUpdateInterval();  // TODO redundant?
@@ -740,10 +740,12 @@ void tRemoteServer::tConnection::Connect(std::shared_ptr<util::tNetSocket>& sock
   assert((dt == core::tNumber::cTYPE));
   this->cis->SetTimeout(rrlib::time::tDuration::zero());
 
-  std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(*this, std::string("TCP Client ") + type_string + "-Listener for " + outer_class.GetName()));
+  std::shared_ptr<tTCPConnection::tReader> listener = std::static_pointer_cast<tTCPConnection::tReader>((new tTCPConnection::tReader(*this, std::string("TCP Client ") + type_string + "-Listener for " + outer_class.GetName()))->GetSharedPtr());
   this->reader = listener;
-  std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(*this, std::string("TCP Client ") + type_string + "-Writer for " + outer_class.GetName()));
+  listener->SetAutoDelete();
+  std::shared_ptr<tTCPConnection::tWriter> writer = std::static_pointer_cast<tTCPConnection::tWriter>((new tTCPConnection::tWriter(*this, std::string("TCP Client ") + type_string + "-Writer for " + outer_class.GetName()))->GetSharedPtr());
   this->writer = writer;
+  writer->SetAutoDelete();
 
   if (bulk)
   {
@@ -802,7 +804,7 @@ void tRemoteServer::tConnection::ProcessRequest(tOpCode op_code)
     {
       // make sure, "our" port is not deleted while we use it
       {
-        util::tLock lock4(*ap);
+        tLock lock4(*ap);
         if (!ap->IsReady())
         {
           this->cis->ToSkipTarget();

@@ -44,7 +44,7 @@ tPeerList::tPeerList(int server_port_, int lock_order) :
 void tPeerList::AddPeer(util::tIPSocketAddress isa, bool notify_on_change)
 {
   {
-    util::tLock lock2(*this);
+    rrlib::thread::tLock lock2(*this);
     if (peers.Contains(isa))
     {
       return;
@@ -52,10 +52,10 @@ void tPeerList::AddPeer(util::tIPSocketAddress isa, bool notify_on_change)
   }
 
   {
-    util::tLock lock2(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());
+    rrlib::thread::tLock lock2(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());
     bool add = false;
     {
-      util::tLock lock3(*this);
+      rrlib::thread::tLock lock3(*this);
       add = !peers.Contains(isa);
       if (add)
       {
@@ -106,8 +106,8 @@ void tPeerList::RemovePeer(util::tIPSocketAddress isa)
   util::tSimpleList<core::tAbstractPeerTracker::tListener*> post_process;
   util::tSimpleList< ::finroc::util::tObject*> post_process_obj;
   {
-    util::tLock lock2(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());
-    util::tLock lock3(*this);
+    rrlib::thread::tLock lock2(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());
+    rrlib::thread::tLock lock3(*this);
     if (peers.Contains(isa))
     {
       peers.RemoveElem(isa);
@@ -132,7 +132,7 @@ void tPeerList::RemovePeer(util::tIPSocketAddress isa)
 
 void tPeerList::SerializeAddresses(rrlib::serialization::tOutputStream* co)
 {
-  util::tLock lock1(*this);
+  rrlib::thread::tLock lock1(*this);
   int size = peers.Size();
   co->WriteInt(size);
   for (int i = 0; i < size; i++)

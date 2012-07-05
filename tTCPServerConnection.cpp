@@ -20,7 +20,6 @@
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
 #include "rrlib/finroc_core_utils/log/tLogUser.h"
-#include "rrlib/finroc_core_utils/thread/sThreadUtil.h"
 #include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
 #include "rrlib/rtti/tDataTypeBase.h"
 #include "rrlib/util/patterns/singleton.h"
@@ -91,8 +90,8 @@ public:
 
 }
 
-typedef rrlib::util::tSingletonHolder<util::tSafeConcurrentlyIterableList<tTCPServerConnection*, util::tMutexLockOrder>, rrlib::util::singleton::Longevity, internal::CreateServerConnectionList> tServerConnectionList;
-static inline unsigned int GetLongevity(util::tSafeConcurrentlyIterableList<tTCPServerConnection*, util::tMutexLockOrder>*)
+typedef rrlib::util::tSingletonHolder<util::tSafeConcurrentlyIterableList<tTCPServerConnection*, rrlib::thread::tOrderedMutex>, rrlib::util::singleton::Longevity, internal::CreateServerConnectionList> tServerConnectionList;
+static inline unsigned int GetLongevity(util::tSafeConcurrentlyIterableList<tTCPServerConnection*, rrlib::thread::tOrderedMutex>*)
 {
   return 100; // runtime will already be deleted
 }
@@ -113,7 +112,7 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
   this->socket = s;
   try
   {
-    util::tLock lock2(*this);
+    tLock lock2(*this);
 
     // initialize core streams (counter part to RemoteServer.Connection constructor)
     std::shared_ptr<util::tLargeIntermediateStreamBuffer> lm_buf(new util::tLargeIntermediateStreamBuffer(s->GetSink()));
@@ -143,7 +142,7 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
       element_filter.Deserialize(*this->cis);
       send_runtime_info = true;
       {
-        util::tLock lock4(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());  // lock runtime so that we do not miss a change
+        tLock lock4(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());  // lock runtime so that we do not miss a change
         core::tRuntimeEnvironment::GetInstance()->AddListener(*this);
 
         element_filter.TraverseElementTree(*core::tRuntimeEnvironment::GetInstance(), tmp, [&](core::tFrameworkElement & fe)
@@ -164,16 +163,18 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
     cis->SetTimeout(rrlib::time::tDuration::zero());
 
     // start incoming data listener thread
-    std::shared_ptr<tTCPConnection::tReader> listener = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tReader(*this, std::string("TCP Server ") + type_string + "-Listener for " + s->GetRemoteSocketAddress()));
+    std::shared_ptr<tTCPConnection::tReader> listener = std::static_pointer_cast<tTCPConnection::tReader>((new tTCPConnection::tReader(*this, std::string("TCP Server ") + type_string + "-Listener for " + s->GetRemoteSocketAddress()))->GetSharedPtr());
     this->reader = listener;
     listener->LockObject(port_set->connection_lock);
     listener->Start();
+    listener->SetAutoDelete();
 
     // start writer thread
-    std::shared_ptr<tTCPConnection::tWriter> writer = util::sThreadUtil::GetThreadSharedPtr(new tTCPConnection::tWriter(*this, std::string("TCP Server ") + type_string + "-Writer for " + s->GetRemoteSocketAddress()));
+    std::shared_ptr<tTCPConnection::tWriter> writer = std::static_pointer_cast<tTCPConnection::tWriter>((new tTCPConnection::tWriter(*this, std::string("TCP Server ") + type_string + "-Writer for " + s->GetRemoteSocketAddress()))->GetSharedPtr());
     this->writer = writer;
     writer->LockObject(port_set->connection_lock);
     writer->Start();
+    writer->SetAutoDelete();
 
     tServerConnectionList::Instance().Add(this, false);
     internal::tPingTimeMonitor::GetInstance();  // start ping time monitor
@@ -218,10 +219,10 @@ void tTCPServerConnection::HandleDisconnect()
   }
 
   {
-    util::tLock lock2(*port_set);
+    tLock lock2(*port_set);
     bool port_set_deleted = port_set->IsDeleted();
 
-    util::tLock lock3(*this);
+    tLock lock3(*this);
     Disconnect();
     if (!port_set_deleted)
     {
@@ -271,7 +272,7 @@ void tTCPServerConnection::ProcessRequest(tOpCode op_code)
     if (p != NULL)
     {
       {
-        util::tLock lock4(*p->GetPort());
+        tLock lock4(*p->GetPort());
         if (!p->GetPort()->IsReady())
         {
           this->cis->ToSkipTarget();
@@ -317,7 +318,7 @@ void tTCPServerConnection::ProcessRequest(tOpCode op_code)
     FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Subscribe ", (p != NULL ? p->local_port->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " ", strategy, " ", reverse_push, " ", update_interval, " ", remote_handle);
     if (p != NULL)
     {
-      util::tLock lock4(p->GetPort()->GetRegistryLock());
+      tLock lock4(p->GetPort()->GetRegistryLock());
       if (p->GetPort()->IsReady())
       {
         p->SetEncoding(enc);
@@ -454,9 +455,9 @@ static inline unsigned int GetLongevity(tPingTimeMonitor*)
 tPingTimeMonitor& tPingTimeMonitor::GetInstance()
 {
   /*! Locked before thread list (in C++) */
-  static util::tMutexLockOrder static_class_mutex(core::tLockOrderLevels::cINNER_MOST - 20);
+  static rrlib::thread::tOrderedMutex static_class_mutex("Ping Time Monitor Instance", core::tLockOrderLevels::cINNER_MOST - 20);
 
-  util::tLock lock1(static_class_mutex);
+  tLock lock1(static_class_mutex);
   return tPingTimeMonitorInstance::Instance();
 }
 

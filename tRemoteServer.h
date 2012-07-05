@@ -269,7 +269,7 @@ public:
    */
   inline void Reconnect()
   {
-    util::tLock lock2(*this);
+    tLock lock2(*this);
     connector_thread->ContinueThread();
   }
 

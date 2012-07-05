@@ -98,7 +98,7 @@ public:
   static core::tFrameworkElementTreeFilter cALL_AND_EDGE_FILTER;
 
   /*! All active connections connected to this peer */
-  util::tSafeConcurrentlyIterableList<tTCPConnection*, util::tMutexLockOrder> connections;
+  util::tSafeConcurrentlyIterableList<tTCPConnection*, rrlib::thread::tOrderedMutex> connections;
 
 protected:
 
