@@ -196,7 +196,7 @@ tTCPServerConnection::tServerPort* tTCPServerConnection::GetPort(int handle, boo
   {
     return NULL;
   }
-  if (org_port->IsChildOf(port_set))
+  if (org_port->IsChildOf(*port_set))
   {
     return static_cast<tServerPort*>(org_port->AsNetPort());
   }
@@ -204,7 +204,7 @@ tTCPServerConnection::tServerPort* tTCPServerConnection::GetPort(int handle, boo
   if (sp == NULL && possibly_create)
   {
     sp = new tServerPort(*this, org_port, port_set);
-    sp->GetPort()->Init();
+    sp->GetPort().Init();
   }
   return sp;
 }
@@ -272,8 +272,8 @@ void tTCPServerConnection::ProcessRequest(tOpCode op_code)
     if (p != NULL)
     {
       {
-        tLock lock4(*p->GetPort());
-        if (!p->GetPort()->IsReady())
+        tLock lock4(p->GetPort());
+        if (!p->GetPort().IsReady())
         {
           this->cis->ToSkipTarget();
         }
@@ -297,7 +297,7 @@ void tTCPServerConnection::ProcessRequest(tOpCode op_code)
     handle = this->cis->ReadInt();
     p = GetPort(handle, false);
     FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Unsubscribe ", (p != NULL ? p->local_port->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)));
-    if (p != NULL && p->GetPort()->IsReady())    // complete disconnect
+    if (p != NULL && p->GetPort().IsReady())    // complete disconnect
     {
       p->ManagedDelete();
     }
@@ -318,14 +318,14 @@ void tTCPServerConnection::ProcessRequest(tOpCode op_code)
     FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Subscribe ", (p != NULL ? p->local_port->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " ", strategy, " ", reverse_push, " ", update_interval, " ", remote_handle);
     if (p != NULL)
     {
-      tLock lock4(p->GetPort()->GetRegistryLock());
-      if (p->GetPort()->IsReady())
+      tLock lock4(p->GetPort().GetRegistryLock());
+      if (p->GetPort().IsReady())
       {
         p->SetEncoding(enc);
-        p->GetPort()->SetMinNetUpdateInterval(update_interval);
+        p->GetPort().SetMinNetUpdateInterval(update_interval);
         p->update_interval_partner = update_interval;
         p->SetRemoteHandle(remote_handle);
-        p->GetPort()->SetReversePushStrategy(reverse_push);
+        p->GetPort().SetReversePushStrategy(reverse_push);
         p->PropagateStrategyFromTheNet(strategy);
       }
     }
@@ -388,7 +388,7 @@ void tTCPServerConnection::SerializeRuntimeChange(int8 change_type, core::tFrame
 tTCPServerConnection::tPortSet::tPortSet(tTCPServerConnection& outer_class, tTCPServer* server, std::shared_ptr<tTCPServerConnection> connection_lock_) :
   core::tFrameworkElement(server, std::string("connection") + boost::lexical_cast<util::tString>(tTCPServerConnection::connection_id.GetAndIncrement()), core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT, core::tLockOrderLevels::cPORT - 1),
   outer_class(outer_class),
-  port_iterator(this),
+  port_iterator(*this),
   connection_lock(connection_lock_)
 {
 }
@@ -433,13 +433,13 @@ void tTCPServerConnection::tServerPort::PostChildInit()
   ::finroc::core::tNetPort::PostChildInit();
 
   // add edge
-  if (GetPort()->IsOutputPort())
+  if (GetPort().IsOutputPort())
   {
-    GetPort()->ConnectToTarget(local_port);
+    GetPort().ConnectToTarget(*local_port);
   }
   else
   {
-    GetPort()->ConnectToSource(local_port);
+    GetPort().ConnectToSource(*local_port);
   }
 }
 

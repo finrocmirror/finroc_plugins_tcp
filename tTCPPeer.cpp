@@ -42,7 +42,7 @@ tTCPPeer::tTCPPeer(const util::tString& network_name_, core::tFrameworkElementTr
   server(NULL),
   network_name(network_name_),
   name(""),
-  ci(this),
+  ci(*this),
   filter(filter_),
   tracker(NULL),
   delete_ports_on_disconnect(filter_.IsAcceptAllFilter()),
@@ -63,7 +63,7 @@ tTCPPeer::tTCPPeer(const util::tString& network_name_, const util::tString& uniq
   server(NULL),
   network_name(network_name_),
   name(unique_peer_name),
-  ci(this),
+  ci(*this),
   filter(filter_),
   tracker(NULL),
   delete_ports_on_disconnect(delete_ports_on_disconnect_),
@@ -185,7 +185,7 @@ void tTCPPeer::DisconnectImpl()
 float tTCPPeer::GetConnectionQuality()
 {
   float worst = 1.0f;
-  core::tFrameworkElement::tChildIterator ci(this);
+  core::tFrameworkElement::tChildIterator ci(*this);
   for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
   {
     if (fe == server || fe->IsPort())
@@ -211,7 +211,7 @@ util::tString tTCPPeer::GetStatus(bool detailed)
   else
   {
     util::tSimpleList<util::tString> add_stuff;
-    core::tFrameworkElement::tChildIterator ci(this);
+    core::tFrameworkElement::tChildIterator ci(*this);
     for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
     {
       if (fe == server || (!fe->IsReady()) || fe->IsPort())

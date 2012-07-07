@@ -97,7 +97,7 @@ core::tExternalConnection* tTCP::tCreateAction::CreateExternalConnection() const
 core::tFrameworkElement* tTCP::tCreateAction::CreateModule(core::tFrameworkElement* parent, const util::tString& name_, core::tConstructorParameters* params) const
 {
   core::tFrameworkElement* result = CreateExternalConnection();
-  parent->AddChild(result);
+  parent->AddChild(*result);
   return result;
 }
 

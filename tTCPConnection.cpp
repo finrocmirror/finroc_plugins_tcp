@@ -197,9 +197,9 @@ void tTCPConnection::HandleMethodCall()
 
   // make sure, "our" port is not deleted while we use it
   {
-    rrlib::thread::tLock lock2(*port->GetPort());
+    rrlib::thread::tLock lock2(port->GetPort());
 
-    bool skip_call = (!port->GetPort()->IsReady());
+    bool skip_call = (!port->GetPort().IsReady());
     core::tMethodCall::tPtr mc = core::tThreadLocalRPCData::Get().GetUnusedMethodCall();
     cis->SetFactory(skip_call ? NULL : port);
     try
@@ -214,7 +214,7 @@ void tTCPConnection::HandleMethodCall()
     cis->SetFactory(NULL);
 
     // process call
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Method call ", (port != NULL ? port->GetPort()->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " ", mc->GetMethod()->GetName());
+    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Method call ", (port != NULL ? port->GetPort().GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " ", mc->GetMethod()->GetName());
     if (skip_call)
     {
       mc->SetExceptionStatus(core::tMethodCallException::tType::NO_CONNECTION);
@@ -225,8 +225,8 @@ void tTCPConnection::HandleMethodCall()
     }
     else
     {
-      core::tNetPort::tInterfaceNetPortImpl* inp = static_cast<core::tNetPort::tInterfaceNetPortImpl*>(port->GetPort());
-      inp->ProcessCallFromNet(mc);
+      core::tNetPort::tInterfaceNetPortImpl& inp = static_cast<core::tNetPort::tInterfaceNetPortImpl&>(port->GetPort());
+      inp.ProcessCallFromNet(mc);
     }
   }
 }
@@ -251,9 +251,9 @@ void tTCPConnection::HandleMethodCallReturn()
 
   // make sure, "our" port is not deleted while we use it
   {
-    rrlib::thread::tLock lock2(*port->GetPort());
+    rrlib::thread::tLock lock2(port->GetPort());
 
-    if (!port->GetPort()->IsReady())
+    if (!port->GetPort().IsReady())
     {
       cis->ToSkipTarget();
       return;
@@ -276,7 +276,7 @@ void tTCPConnection::HandleMethodCallReturn()
     cis->SetFactory(NULL);
 
     // process call
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Method call return ", (port != NULL ? port->GetPort()->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)));
+    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Method call return ", (port != NULL ? port->GetPort().GetQualifiedName() : boost::lexical_cast<util::tString>(handle)));
 
     // process call
     core::tAbstractCall::tPtr tmp = std::move(mc);
@@ -305,9 +305,9 @@ void tTCPConnection::HandlePullCall()
   }
 
   // process call
-  FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command to port '", (port != NULL ? port->GetPort()->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), "': ", pc->ToString());
+  FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command to port '", (port != NULL ? port->GetPort().GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), "': ", pc->ToString());
 
-  if (port == NULL || (!port->GetPort()->IsReady()))
+  if (port == NULL || (!port->GetPort().IsReady()))
   {
     pc->SetExceptionStatus(core::tMethodCallException::tType::NO_CONNECTION);
     pc->SetRemotePortHandle(remote_handle);
@@ -318,7 +318,7 @@ void tTCPConnection::HandlePullCall()
   {
     // Execute pull in extra thread, since it can block
     //          pc.setRemotePortHandle(remoteHandle);
-    pc->PrepareForExecution(*port->GetPort(), *port);
+    pc->PrepareForExecution(port->GetPort(), *port);
     core::tRPCThreadPool::GetInstance().ExecuteTask(std::move(pc));
   }
 }
@@ -331,7 +331,7 @@ void tTCPConnection::HandleReturningPullCall()
   cis->ReadSkipOffset();
   tTCPPort* port = LookupPortForCallHandling(handle);
 
-  if (port == NULL || (!port->GetPort()->IsReady()))
+  if (port == NULL || (!port->GetPort().IsReady()))
   {
     // port does not exist anymore - discard call
     cis->ToSkipTarget();
@@ -340,10 +340,10 @@ void tTCPConnection::HandleReturningPullCall()
 
   // make sure, "our" port is not deleted while we use it
   {
-    rrlib::thread::tLock lock2(*port->GetPort());
+    rrlib::thread::tLock lock2(port->GetPort());
 
     // check ready again...
-    if (!port->GetPort()->IsReady())
+    if (!port->GetPort().IsReady())
     {
       // port is deleted - discard call
       cis->ToSkipTarget();
@@ -359,7 +359,7 @@ void tTCPConnection::HandleReturningPullCall()
       cis->SetFactory(NULL);
 
       // debug output
-      FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Pull return call ", (port != NULL ? port->GetPort()->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " status: ", pc->GetStatusString());
+      FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Pull return call ", (port != NULL ? port->GetPort().GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " status: ", pc->GetStatusString());
 
     }
     catch (const util::tException& e)
@@ -421,7 +421,7 @@ bool tTCPConnection::SendDataPrototype(const rrlib::time::tTimestamp& start_time
   for (size_t i = 0u, n = it->Size(); i < n; i++)
   {
     tTCPPort* pp = it->Get(i);
-    if (pp != NULL && pp->GetPort()->IsReady())
+    if (pp != NULL && pp->GetPort().IsReady())
     {
       if (pp->GetLastUpdate() + std::chrono::milliseconds(pp->GetUpdateIntervalForNet()) > start_time)
       {
@@ -429,9 +429,9 @@ bool tTCPConnection::SendDataPrototype(const rrlib::time::tTimestamp& start_time
         NotifyWriter();
 
       }
-      else if ((changed_flag = pp->GetPort()->GetChanged()) > core::tAbstractPort::cNO_CHANGE)
+      else if ((changed_flag = pp->GetPort().GetChanged()) > core::tAbstractPort::cNO_CHANGE)
       {
-        pp->GetPort()->ResetChanged();
+        pp->GetPort().ResetChanged();
         request_acknowledgement = true;
         pp->SetLastUpdate(start_time);
 

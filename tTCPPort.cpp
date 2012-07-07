@@ -55,19 +55,19 @@ int16 tTCPPort::GetUpdateIntervalForNet()
 
     // 2. any local suggestions?
   }
-  else if ((t = GetPort()->GetMinNetworkUpdateIntervalForSubscription()) >= 0)
+  else if ((t = GetPort().GetMinNetworkUpdateIntervalForSubscription()) >= 0)
   {
     return t;
 
     // 3. data type default
   }
-  else if ((t = core::tFinrocTypeInfo::Get(GetPort()->GetDataType()).GetUpdateTime()) >= 0)
+  else if ((t = core::tFinrocTypeInfo::Get(GetPort().GetDataType()).GetUpdateTime()) >= 0)
   {
     return t;
 
     // 4. server data type default
   }
-  else if (c != NULL && (t = c->update_times->GetTime(GetPort()->GetDataType())) >= 0)
+  else if (c && (t = c->update_times->GetTime(GetPort().GetDataType())) >= 0)
   {
     return t;
   }
@@ -101,7 +101,7 @@ void tTCPPort::SendCall(core::tAbstractCall::tPtr& mc)
     // we received a method/pull call that we will forward over the net
     //mc.pushCaller(getPort());
     mc->SetRemotePortHandle(this->remote_handle);
-    mc->SetLocalPortHandle(GetPort()->GetHandle());
+    mc->SetLocalPortHandle(GetPort().GetHandle());
     c->SendCall(std::move(mc));
   }
   else
@@ -122,7 +122,7 @@ void tTCPPort::SendCallReturn(core::tAbstractCall::tPtr& mc)
     // we received a method/pull call that we will forward over the net
     //mc.pushCaller(getPort());
     mc->SetRemotePortHandle(this->remote_handle);
-    mc->SetLocalPortHandle(GetPort()->GetHandle());
+    mc->SetLocalPortHandle(GetPort().GetHandle());
     c->SendCall(std::move(mc));
   }
   else

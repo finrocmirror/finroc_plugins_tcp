@@ -64,7 +64,7 @@ private:
    */
   inline bool PublishPortDataOverTheNetForward()
   {
-    return GetPort()->IsInputPort() && GetPort()->GetStrategy() > 0;
+    return GetPort().IsInputPort() && GetPort().GetStrategy() > 0;
   }
 
   /*!
@@ -72,7 +72,7 @@ private:
    */
   inline bool PublishPortDataOverTheNetReverse()
   {
-    return GetPort()->IsOutputPort() && GetPort()->GetFlag(core::tPortFlags::cPUSH_STRATEGY_REVERSE);
+    return GetPort().IsOutputPort() && GetPort().GetFlag(core::tPortFlags::cPUSH_STRATEGY_REVERSE);
   }
 
 protected:

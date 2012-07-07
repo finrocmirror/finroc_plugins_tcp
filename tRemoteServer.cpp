@@ -239,13 +239,13 @@ float tRemoteServer::GetConnectionQuality()
   {
     if (port_parent)
     {
-      pxe = new tProxyFrameworkElement(this, handle, extra_flags, core::tLockOrderLevels::cREMOTE_PORT - 10);
+      pxe = new tProxyFrameworkElement(*this, handle, extra_flags, core::tLockOrderLevels::cREMOTE_PORT - 10);
     }
     else
     {
       ::finroc::core::tFrameworkElement* parent = (parent_handle == core::tRuntimeEnvironment::GetInstance()->GetHandle()) ? static_cast< ::finroc::core::tFrameworkElement*>(this) : static_cast< ::finroc::core::tFrameworkElement*>(remote_element_register.Get(-parent_handle));
       assert(((parent != NULL)) && "Framework elements published in the wrong order - server's fault (programming error)");
-      pxe = new tProxyFrameworkElement(this, handle, extra_flags, parent->GetLockOrder() + 1);
+      pxe = new tProxyFrameworkElement(*this, handle, extra_flags, parent->GetLockOrder() + 1);
     }
   }
   return pxe;
@@ -345,13 +345,13 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
       }
       if (port == NULL)    // normal case
       {
-        port = new tProxyPort(this, info);
+        port = new tProxyPort(*this, info);
       }
       else    // refound port
       {
-        printf("refound network port %p %s\n", port, port->GetPort()->GetCName());
+        printf("refound network port %p %s\n", port, port->GetPort().GetCName());
         {
-          tLock lock5(*port->GetPort());
+          tLock lock5(port->GetPort());
           port->refound = true;
           port->connection = (info.GetFlags() & core::tPortFlags::cIS_EXPRESS_PORT) > 0 ? express.get() : bulk.get();
           assert(((port->Matches(info))) && "Structure in server changed - that shouldn't happen");
@@ -514,14 +514,14 @@ void tRemoteServer::TemporaryDisconnect()
   Disconnect();
 }
 
-tRemoteServer::tProxyFrameworkElement::tProxyFrameworkElement(tRemoteServer* const outer_class_ptr_, int handle, int extra_flags, int lock_order) :
+tRemoteServer::tProxyFrameworkElement::tProxyFrameworkElement(tRemoteServer& outer_class, int handle, int extra_flags, int lock_order) :
   core::tFrameworkElement(NULL, "(yet unknown)", core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tFrameworkElementInfo::FilterParentFlags(extra_flags), lock_order),
-  outer_class_ptr(outer_class_ptr_),
+  outer_class(outer_class),
   refound(true),
   remote_handle(handle),
   yet_unknown(true)
 {
-  outer_class_ptr->remote_element_register.Put(-remote_handle, this);
+  outer_class.remote_element_register.Put(-remote_handle, this);
 }
 
 bool tRemoteServer::tProxyFrameworkElement::Matches(const core::tFrameworkElementInfo& info)
@@ -550,7 +550,7 @@ void tRemoteServer::tProxyFrameworkElement::UpdateFromPortInfo(const core::tFram
     assert(((info.op_code == core::tRuntimeListener::cADD)) && "only add operation may change framework element before initialization");
     assert(((info.GetLinkCount() == 1)) && "Framework elements currently may not be linked");
     SetName(info.GetLink(0)->name);
-    outer_class_ptr->GetFrameworkElement(info.GetLink(0)->parent, info.GetLink(0)->extra_flags, false, info.GetLink(0)->parent)->AddChild(this);
+    outer_class.GetFrameworkElement(info.GetLink(0)->parent, info.GetLink(0)->extra_flags, false, info.GetLink(0)->parent)->AddChild(*this);
   }
   if ((info.GetFlags() & core::tCoreFlags::cFINSTRUCTED) > 0)
   {
@@ -563,28 +563,28 @@ void tRemoteServer::tProxyFrameworkElement::UpdateFromPortInfo(const core::tFram
   yet_unknown = false;
 }
 
-tRemoteServer::tProxyPort::tProxyPort(tRemoteServer* const outer_class_ptr_, const core::tFrameworkElementInfo& port_info) :
-  tTCPPort(tRemoteServer::CreatePCI(port_info), (port_info.GetFlags() & core::tPortFlags::cIS_EXPRESS_PORT) > 0 ? outer_class_ptr_->express.get() : outer_class_ptr_->bulk.get()),
-  outer_class_ptr(outer_class_ptr_),
+tRemoteServer::tProxyPort::tProxyPort(tRemoteServer& outer_class, const core::tFrameworkElementInfo& port_info) :
+  tTCPPort(tRemoteServer::CreatePCI(port_info), (port_info.GetFlags() & core::tPortFlags::cIS_EXPRESS_PORT) > 0 ? outer_class.express.get() : outer_class.bulk.get()),
+  outer_class(outer_class),
   refound(true),
   subscription_strategy(-1),
   subscription_rev_push(false),
   subscription_update_time(-1)
 {
   this->remote_handle = port_info.GetHandle();
-  outer_class_ptr->remote_port_register.Put(this->remote_handle, this);
+  outer_class.remote_port_register.Put(this->remote_handle, this);
   UpdateFromPortInfo(port_info);
 }
 
 void tRemoteServer::tProxyPort::CheckSubscription()
 {
   {
-    tLock lock2(GetPort()->GetRegistryLock());
-    core::tAbstractPort* p = GetPort();
-    bool rev_push = p->IsInputPort() && p->IsConnectedToReversePushSources();
+    tLock lock2(GetPort().GetRegistryLock());
+    core::tAbstractPort& p = GetPort();
+    bool rev_push = p.IsInputPort() && p.IsConnectedToReversePushSources();
     int16 time = GetUpdateIntervalForNet();
-    int16 strategy = p->IsInputPort() ? 0 : p->GetStrategy();
-    if (!p->IsConnected())
+    int16 strategy = p.IsInputPort() ? 0 : p.GetStrategy();
+    if (!p.IsConnected())
     {
       strategy = -1;
     }
@@ -610,7 +610,7 @@ void tRemoteServer::tProxyPort::CheckSubscription()
     }
     else if (strategy != subscription_strategy || time != subscription_update_time || rev_push != subscription_rev_push)
     {
-      c->Subscribe(this->remote_handle, strategy, rev_push, time, p->GetHandle(), GetEncoding());
+      c->Subscribe(this->remote_handle, strategy, rev_push, time, p.GetHandle(), GetEncoding());
       subscription_strategy = strategy;
       subscription_rev_push = rev_push;
       subscription_update_time = time;
@@ -621,27 +621,27 @@ void tRemoteServer::tProxyPort::CheckSubscription()
 bool tRemoteServer::tProxyPort::Matches(const core::tFrameworkElementInfo& info)
 {
   {
-    tLock lock2(*GetPort());
-    if (this->remote_handle != info.GetHandle() || info.GetLinkCount() != GetPort()->GetLinkCount())
+    tLock lock2(GetPort());
+    if (this->remote_handle != info.GetHandle() || info.GetLinkCount() != GetPort().GetLinkCount())
     {
       return false;
     }
-    if ((GetPort()->GetAllFlags() & core::tCoreFlags::cCONSTANT_FLAGS) != (info.GetFlags() & core::tCoreFlags::cCONSTANT_FLAGS))
+    if ((GetPort().GetAllFlags() & core::tCoreFlags::cCONSTANT_FLAGS) != (info.GetFlags() & core::tCoreFlags::cCONSTANT_FLAGS))
     {
       return false;
     }
     for (size_t i = 0u; i < info.GetLinkCount(); i++)
     {
-      if (outer_class_ptr->filter.IsPortOnlyFilter())
+      if (outer_class.filter.IsPortOnlyFilter())
       {
-        GetPort()->GetQualifiedLink(outer_class_ptr->tmp_match_buffer, i);
+        GetPort().GetQualifiedLink(outer_class.tmp_match_buffer, i);
       }
       else
       {
-        outer_class_ptr->tmp_match_buffer.clear();
-        outer_class_ptr->tmp_match_buffer.append(GetPort()->GetLink(i)->GetName());
+        outer_class.tmp_match_buffer.clear();
+        outer_class.tmp_match_buffer.append(GetPort().GetLink(i)->GetName());
       }
-      if (!boost::equals(outer_class_ptr->tmp_match_buffer, info.GetLink(i)->name))
+      if (!boost::equals(outer_class.tmp_match_buffer, info.GetLink(i)->name))
       {
         return false;
       }
@@ -653,8 +653,8 @@ bool tRemoteServer::tProxyPort::Matches(const core::tFrameworkElementInfo& info)
 
 void tRemoteServer::tProxyPort::PrepareDelete()
 {
-  outer_class_ptr->remote_port_register.Remove(this->remote_handle);
-  GetPort()->DisconnectAll();
+  outer_class.remote_port_register.Remove(this->remote_handle);
+  GetPort().DisconnectAll();
   CheckSubscription();
   ::finroc::tcp::tTCPPort::PrepareDelete();
 }
@@ -673,36 +673,36 @@ void tRemoteServer::tProxyPort::Reset()
 void tRemoteServer::tProxyPort::UpdateFromPortInfo(const core::tFrameworkElementInfo& port_info)
 {
   {
-    tLock lock2(GetPort()->GetRegistryLock());
+    tLock lock2(GetPort().GetRegistryLock());
     UpdateFlags(port_info.GetFlags());
-    GetPort()->SetMinNetUpdateInterval(port_info.GetMinNetUpdateInterval());
+    GetPort().SetMinNetUpdateInterval(port_info.GetMinNetUpdateInterval());
     this->update_interval_partner = port_info.GetMinNetUpdateInterval();  // TODO redundant?
     PropagateStrategyFromTheNet(port_info.GetStrategy());
 
     FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Updating port info: ", port_info.ToString());
     if (port_info.op_code == core::tRuntimeListener::cADD)
     {
-      assert((!GetPort()->IsReady()));
-      if (outer_class_ptr->filter.IsPortOnlyFilter())
+      assert(!GetPort().IsReady());
+      if (outer_class.filter.IsPortOnlyFilter())
       {
         for (int i = 1, n = port_info.GetLinkCount(); i < n; i++)
         {
-          core::tFrameworkElement* parent = (port_info.GetLink(i)->extra_flags & core::tCoreFlags::cGLOBALLY_UNIQUE_LINK) > 0 ? outer_class_ptr->global_links : static_cast<core::tFrameworkElement*>(outer_class_ptr);
-          GetPort()->Link(parent, port_info.GetLink(i)->name);
+          core::tFrameworkElement* parent = (port_info.GetLink(i)->extra_flags & core::tCoreFlags::cGLOBALLY_UNIQUE_LINK) > 0 ? outer_class.global_links : static_cast<core::tFrameworkElement*>(&outer_class);
+          GetPort().Link(*parent, port_info.GetLink(i)->name);
         }
-        core::tFrameworkElement* parent = (port_info.GetLink(0)->extra_flags & core::tCoreFlags::cGLOBALLY_UNIQUE_LINK) > 0 ? outer_class_ptr->global_links : static_cast<core::tFrameworkElement*>(outer_class_ptr);
-        GetPort()->SetName(port_info.GetLink(0)->name);
+        core::tFrameworkElement* parent = (port_info.GetLink(0)->extra_flags & core::tCoreFlags::cGLOBALLY_UNIQUE_LINK) > 0 ? outer_class.global_links : static_cast<core::tFrameworkElement*>(&outer_class);
+        GetPort().SetName(port_info.GetLink(0)->name);
         parent->AddChild(GetPort());
       }
       else
       {
         for (size_t i = 1u; i < port_info.GetLinkCount(); i++)
         {
-          core::tFrameworkElement* parent = outer_class_ptr->GetFrameworkElement(port_info.GetLink(i)->parent, port_info.GetLink(i)->extra_flags, true, 0);
-          GetPort()->Link(parent, port_info.GetLink(i)->name);
+          core::tFrameworkElement* parent = outer_class.GetFrameworkElement(port_info.GetLink(i)->parent, port_info.GetLink(i)->extra_flags, true, 0);
+          GetPort().Link(*parent, port_info.GetLink(i)->name);
         }
-        GetPort()->SetName(port_info.GetLink(0)->name);
-        outer_class_ptr->GetFrameworkElement(port_info.GetLink(0)->parent, port_info.GetLink(0)->extra_flags, true, 0)->AddChild(GetPort());
+        GetPort().SetName(port_info.GetLink(0)->name);
+        outer_class.GetFrameworkElement(port_info.GetLink(0)->parent, port_info.GetLink(0)->extra_flags, true, 0)->AddChild(GetPort());
       }
     }
     CheckSubscription();

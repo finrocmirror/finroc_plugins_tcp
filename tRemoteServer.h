@@ -299,7 +299,7 @@ public:
   private:
 
     // Outer class RemoteServer
-    tRemoteServer* const outer_class_ptr;
+    tRemoteServer& outer_class;
 
     /*! Has port been found again after reconnect? */
     bool refound;
@@ -314,14 +314,14 @@ public:
 
     virtual void PrepareDelete()
     {
-      outer_class_ptr->remote_element_register.Remove(-remote_handle);
-      ::finroc::core::tFrameworkElement::PrepareDelete();
+      outer_class.remote_element_register.Remove(-remote_handle);
+      tFrameworkElement::PrepareDelete();
     }
 
   public:
 
     /*! Constructor for yet anonymous element */
-    tProxyFrameworkElement(tRemoteServer* const outer_class_ptr_, int handle, int extra_flags, int lock_order);
+    tProxyFrameworkElement(tRemoteServer& outer_class, int handle, int extra_flags, int lock_order);
 
     bool Matches(const core::tFrameworkElementInfo& info);
 
@@ -345,7 +345,7 @@ public:
   private:
 
     // Outer class RemoteServer
-    tRemoteServer* const outer_class_ptr;
+    tRemoteServer& outer_class;
 
     /*! Has port been found again after reconnect? */
     bool refound;
@@ -392,7 +392,7 @@ public:
     /*!
      * \param port_info Port information
      */
-    tProxyPort(tRemoteServer* const outer_class_ptr_, const core::tFrameworkElementInfo& port_info);
+    tProxyPort(tRemoteServer& outer_class, const core::tFrameworkElementInfo& port_info);
 
     /*!
      * Is port the one that is described by this information?
