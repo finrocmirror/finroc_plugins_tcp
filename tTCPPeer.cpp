@@ -95,7 +95,7 @@ void tTCPPeer::ConnectImpl(const util::tString& address, bool same_address)
 
     if (same_address)
     {
-      ci.Reset();
+      ci.Reset(*this);
       ::finroc::core::tFrameworkElement* fe = NULL;
       while ((fe = ci.Next()) != NULL)
       {
@@ -166,7 +166,7 @@ void tTCPPeer::DisconnectImpl()
   }
   //tracker.delete();
 
-  ci.Reset();
+  ci.Reset(*this);
   ::finroc::core::tFrameworkElement* fe = NULL;
   while ((fe = ci.Next()) != NULL)
   {
@@ -267,7 +267,7 @@ void tTCPPeer::NodeDiscovered(const util::tIPSocketAddress& isa, const util::tSt
     }
 
     // remove port & disconnect
-    ci.Reset();
+    ci.Reset(*this, false);
     for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
     {
       if (fe == server || fe->IsPort())
