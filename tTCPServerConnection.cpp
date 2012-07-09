@@ -233,7 +233,7 @@ void tTCPServerConnection::HandleDisconnect()
 
 core::tPortCreationInfoBase tTCPServerConnection::InitPci(core::tAbstractPort* counter_part)
 {
-  core::tPortCreationInfoBase pci(0u);
+  core::tPortCreationInfoBase pci("Port", 0u);
   pci.max_queue_size = 0;
   pci.parent = port_set;
   int flags = 0;
@@ -386,7 +386,7 @@ void tTCPServerConnection::SerializeRuntimeChange(int8 change_type, core::tFrame
 }
 
 tTCPServerConnection::tPortSet::tPortSet(tTCPServerConnection& outer_class, tTCPServer* server, std::shared_ptr<tTCPServerConnection> connection_lock_) :
-  core::tFrameworkElement(server, std::string("connection") + boost::lexical_cast<util::tString>(tTCPServerConnection::connection_id.GetAndIncrement()), core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT, core::tLockOrderLevels::cPORT - 1),
+  core::tFrameworkElement(server, std::string("connection") + boost::lexical_cast<util::tString>(tTCPServerConnection::connection_id.GetAndIncrement()), core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cAUTO_RENAME, core::tLockOrderLevels::cPORT - 1),
   outer_class(outer_class),
   port_iterator(*this),
   connection_lock(connection_lock_)
