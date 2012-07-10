@@ -19,7 +19,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
  */
-#include "rrlib/util/patterns/singleton.h"
+#include "rrlib/design_patterns/singleton.h"
 #include "core/plugin/tPlugins.h"
 #include "core/tFrameworkElement.h"
 
@@ -30,7 +30,7 @@ namespace finroc
 {
 namespace tcp
 {
-typedef rrlib::util::tSingletonHolder<tTCP, rrlib::util::singleton::Longevity> tTCPPlugin;
+typedef rrlib::design_patterns::tSingletonHolder<tTCP, rrlib::design_patterns::singleton::Longevity> tTCPPlugin;
 static inline unsigned int GetLongevity(tTCP*)
 {
   return 0xDDDDDDDD; // should be deallocated before tAllocationRegister singleton

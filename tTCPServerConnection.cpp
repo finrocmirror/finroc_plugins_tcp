@@ -22,7 +22,7 @@
 #include "rrlib/finroc_core_utils/log/tLogUser.h"
 #include "rrlib/finroc_core_utils/stream/tLargeIntermediateStreamBuffer.h"
 #include "rrlib/rtti/tDataTypeBase.h"
-#include "rrlib/util/patterns/singleton.h"
+#include "rrlib/design_patterns/singleton.h"
 #include <boost/lexical_cast.hpp>
 
 #include "core/tRuntimeEnvironment.h"
@@ -90,7 +90,7 @@ public:
 
 }
 
-typedef rrlib::util::tSingletonHolder<util::tSafeConcurrentlyIterableList<tTCPServerConnection*, rrlib::thread::tOrderedMutex>, rrlib::util::singleton::Longevity, internal::CreateServerConnectionList> tServerConnectionList;
+typedef rrlib::design_patterns::tSingletonHolder<util::tSafeConcurrentlyIterableList<tTCPServerConnection*, rrlib::thread::tOrderedMutex>, rrlib::design_patterns::singleton::Longevity, internal::CreateServerConnectionList> tServerConnectionList;
 static inline unsigned int GetLongevity(util::tSafeConcurrentlyIterableList<tTCPServerConnection*, rrlib::thread::tOrderedMutex>*)
 {
   return 100; // runtime will already be deleted
@@ -446,7 +446,7 @@ void tTCPServerConnection::tServerPort::PostChildInit()
 namespace internal
 {
 
-typedef rrlib::util::tSingletonHolder<tPingTimeMonitor, rrlib::util::singleton::Longevity> tPingTimeMonitorInstance;
+typedef rrlib::design_patterns::tSingletonHolder<tPingTimeMonitor, rrlib::design_patterns::singleton::Longevity> tPingTimeMonitorInstance;
 static inline unsigned int GetLongevity(tPingTimeMonitor*)
 {
   return 0; // delete before runtime
