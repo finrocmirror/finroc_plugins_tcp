@@ -188,10 +188,13 @@ void tTCPConnection::HandleMethodCall()
       return;
     }
 
-    mc->SetExceptionStatus(core::tMethodCallException::tType::NO_CONNECTION);
-    mc->SetRemotePortHandle(remote_handle);
-    mc->SetLocalPortHandle(handle);
-    SendCall(std::move(mc));
+    if (mc->GetStatus() == core::tAbstractCall::tStatus::SYNCH_CALL)
+    {
+      mc->SetExceptionStatus(core::tMethodCallException::tType::NO_CONNECTION);
+      mc->SetRemotePortHandle(remote_handle);
+      mc->SetLocalPortHandle(handle);
+      SendCall(std::move(mc));
+    }
     cis->ToSkipTarget();
   }
 
@@ -217,10 +220,13 @@ void tTCPConnection::HandleMethodCall()
     FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Method call ", (port != NULL ? port->GetPort().GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " ", mc->GetMethod()->GetName());
     if (skip_call)
     {
-      mc->SetExceptionStatus(core::tMethodCallException::tType::NO_CONNECTION);
-      mc->SetRemotePortHandle(remote_handle);
-      mc->SetLocalPortHandle(handle);
-      SendCall(std::move(mc));
+      if (mc->GetStatus() == core::tAbstractCall::tStatus::SYNCH_CALL)
+      {
+        mc->SetExceptionStatus(core::tMethodCallException::tType::NO_CONNECTION);
+        mc->SetRemotePortHandle(remote_handle);
+        mc->SetLocalPortHandle(handle);
+        SendCall(std::move(mc));
+      }
       cis->ToSkipTarget();
     }
     else
