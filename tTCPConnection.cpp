@@ -217,7 +217,7 @@ void tTCPConnection::HandleMethodCall()
     cis->SetFactory(NULL);
 
     // process call
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Method call ", (port != NULL ? port->GetPort().GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " ", mc->GetMethod()->GetName());
+    FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Incoming Server Command: Method call ", (port != NULL ? port->GetPort().GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " ", mc->GetMethod()->GetName());
     if (skip_call)
     {
       if (mc->GetStatus() == core::tAbstractCall::tStatus::SYNCH_CALL)
@@ -282,7 +282,7 @@ void tTCPConnection::HandleMethodCallReturn()
     cis->SetFactory(NULL);
 
     // process call
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Method call return ", (port != NULL ? port->GetPort().GetQualifiedName() : boost::lexical_cast<util::tString>(handle)));
+    FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Incoming Server Command: Method call return ", (port != NULL ? port->GetPort().GetQualifiedName() : boost::lexical_cast<util::tString>(handle)));
 
     // process call
     core::tAbstractCall::tPtr tmp = std::move(mc);
@@ -311,7 +311,7 @@ void tTCPConnection::HandlePullCall()
   }
 
   // process call
-  FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command to port '", (port != NULL ? port->GetPort().GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), "': ", pc->ToString());
+  FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Incoming Server Command to port '", (port != NULL ? port->GetPort().GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), "': ", pc->ToString());
 
   if (port == NULL || (!port->GetPort().IsReady()))
   {
@@ -365,12 +365,12 @@ void tTCPConnection::HandleReturningPullCall()
       cis->SetFactory(NULL);
 
       // debug output
-      FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Pull return call ", (port != NULL ? port->GetPort().GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " status: ", pc->GetStatusString());
+      FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Incoming Server Command: Pull return call ", (port != NULL ? port->GetPort().GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " status: ", pc->GetStatusString());
 
     }
     catch (const util::tException& e)
     {
-      FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, e);
+      FINROC_LOG_PRINT(DEBUG_WARNING, e);
       return;
     }
 
@@ -617,7 +617,7 @@ void tTCPConnection::tReader::Run()
   {
     if (typeid(e) != typeid(finroc::util::tEOFException) && typeid(e) != typeid(finroc::util::tIOException))
     {
-      FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, e);
+      FINROC_LOG_PRINT(DEBUG_WARNING, e);
     }
 
   }
@@ -627,7 +627,7 @@ void tTCPConnection::tReader::Run()
   }
   catch (const util::tException& e)
   {
-    FINROC_LOG_PRINT(rrlib::logging::eLL_WARNING, e);
+    FINROC_LOG_PRINT(WARNING, e);
   }
 
   try
@@ -734,7 +734,7 @@ void tTCPConnection::tWriter::Run()
           }
           catch (const util::tException& e)
           {
-            FINROC_LOG_PRINT(rrlib::logging::eLL_WARNING, e);
+            FINROC_LOG_PRINT(WARNING, e);
           }
           //cleanShutdown();
           return;
@@ -814,7 +814,7 @@ void tTCPConnection::tWriter::Run()
   }
   catch (const std::exception& e)
   {
-    FINROC_LOG_PRINT(rrlib::logging::eLL_WARNING, e);
+    FINROC_LOG_PRINT(WARNING, e);
 
     try
     {
@@ -822,7 +822,7 @@ void tTCPConnection::tWriter::Run()
     }
     catch (const util::tException& e2)
     {
-      FINROC_LOG_PRINT(rrlib::logging::eLL_WARNING, e2);
+      FINROC_LOG_PRINT(WARNING, e2);
     }
   }
 

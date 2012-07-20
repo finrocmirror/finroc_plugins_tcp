@@ -181,7 +181,7 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
   }
   catch (const std::exception& e)
   {
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, e);
+    FINROC_LOG_PRINT(DEBUG_WARNING, e);
     if (port_set)
     {
       port_set->ManagedDelete();
@@ -268,7 +268,7 @@ void tTCPServerConnection::ProcessRequest(tOpCode op_code)
 
     //long timestamp = readTimestamp();
     p = GetPort(handle, true);
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Set ", (p != NULL ? p->local_port->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)));
+    FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Incoming Server Command: Set ", (p != NULL ? p->local_port->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)));
     if (p != NULL)
     {
       {
@@ -296,7 +296,7 @@ void tTCPServerConnection::ProcessRequest(tOpCode op_code)
 
     handle = this->cis->ReadInt();
     p = GetPort(handle, false);
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Unsubscribe ", (p != NULL ? p->local_port->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)));
+    FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Incoming Server Command: Unsubscribe ", (p != NULL ? p->local_port->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)));
     if (p != NULL && p->GetPort().IsReady())    // complete disconnect
     {
       p->ManagedDelete();
@@ -315,7 +315,7 @@ void tTCPServerConnection::ProcessRequest(tOpCode op_code)
     int remote_handle = this->cis->ReadInt();
     rrlib::serialization::tDataEncoding enc = this->cis->ReadEnum<rrlib::serialization::tDataEncoding>();
     p = GetPort(handle, true);
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Incoming Server Command: Subscribe ", (p != NULL ? p->local_port->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " ", strategy, " ", reverse_push, " ", update_interval, " ", remote_handle);
+    FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Incoming Server Command: Subscribe ", (p != NULL ? p->local_port->GetQualifiedName() : boost::lexical_cast<util::tString>(handle)), " ", strategy, " ", reverse_push, " ", update_interval, " ", remote_handle);
     if (p != NULL)
     {
       tLock lock4(p->GetPort().GetRegistryLock());

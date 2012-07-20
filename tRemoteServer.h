@@ -448,7 +448,7 @@ public:
 
     virtual void HandlePingTimeExceed()
     {
-      FINROC_LOG_PRINT(rrlib::logging::eLL_WARNING, "TCPClient warning: critical ping time exceeded");
+      FINROC_LOG_PRINT(WARNING, "TCPClient warning: critical ping time exceeded");
     }
 
     virtual void ProcessRequest(tOpCode op_code);

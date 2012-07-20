@@ -290,11 +290,11 @@ void tRemoteServer::PrepareDelete()
 {
   tLock lock1(*this);
   core::tRuntimeEnvironment::GetInstance()->RemoveListener(*this);
-  FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_1, "RemoteServer: Stopping ConnectorThread");
+  FINROC_LOG_PRINT(DEBUG_VERBOSE_1, "RemoteServer: Stopping ConnectorThread");
   connector_thread->StopThread();
   connector_thread->Join();
 
-  FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG, "RemoteServer: Disconnecting");
+  FINROC_LOG_PRINT(DEBUG, "RemoteServer: Disconnecting");
   Disconnect();
 
   // delete all elements created by this remote server (should be done automatically, actually)
@@ -312,7 +312,7 @@ void tRemoteServer::PrepareDelete()
 
 void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
 {
-  FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Received updated FrameworkElementInfo: ", info.ToString());
+  FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Received updated FrameworkElementInfo: ", info.ToString());
 
   // these variables will store element to update
   tProxyFrameworkElement* fe = NULL;
@@ -679,7 +679,7 @@ void tRemoteServer::tProxyPort::UpdateFromPortInfo(const core::tFrameworkElement
     this->update_interval_partner = port_info.GetMinNetUpdateInterval();  // TODO redundant?
     PropagateStrategyFromTheNet(port_info.GetStrategy());
 
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_2, "Updating port info: ", port_info.ToString());
+    FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Updating port info: ", port_info.ToString());
     if (port_info.op_code == core::tRuntimeListener::cADD)
     {
       assert(!GetPort().IsReady());
@@ -750,7 +750,7 @@ void tRemoteServer::tConnection::Connect(std::shared_ptr<util::tNetSocket>& sock
   if (bulk)
   {
     bool new_server = (outer_class.server_creation_time == rrlib::time::cNO_TIME) || (outer_class.server_creation_time != this->time_base);
-    FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG, (new_server ? "Connecting" : "Reconnecting"), " to server ", socket_->GetRemoteSocketAddress(), "...");
+    FINROC_LOG_PRINT(DEBUG, (new_server ? "Connecting" : "Reconnecting"), " to server ", socket_->GetRemoteSocketAddress(), "...");
     outer_class.RetrieveRemotePorts(this->cis.get(), this->cos.get(), this->update_times.get(), new_server);
   }
 
@@ -873,7 +873,7 @@ tRemoteServer::tConnectorThread::tConnectorThread(tRemoteServer* const outer_cla
   ct_express()
 {
   SetName(std::string("TCP Connector Thread for ") + outer_class_ptr->GetCName());
-  FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_VERBOSE_1, "Creating ", GetName());
+  FINROC_LOG_PRINT(DEBUG_VERBOSE_1, "Creating ", GetName());
   //this.setPriority(1); // low priority
 }
 
@@ -909,7 +909,7 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
     }
     catch (const std::exception& e)
     {
-      FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, e);
+      FINROC_LOG_PRINT(DEBUG_WARNING, e);
       Sleep(std::chrono::seconds(2), false);
       if (outer_class_ptr->bulk.get() == NULL)
       {
@@ -946,7 +946,7 @@ void tRemoteServer::tConnectorThread::MainLoopCallback()
     }
     catch (const std::exception& e)
     {
-      FINROC_LOG_PRINT(rrlib::logging::eLL_DEBUG_WARNING, e);
+      FINROC_LOG_PRINT(DEBUG_WARNING, e);
     }
   }
 }

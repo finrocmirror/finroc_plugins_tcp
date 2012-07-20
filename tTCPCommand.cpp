@@ -48,7 +48,7 @@ void tTCPCommand::Serialize(rrlib::serialization::tOutputStream& os) const
     os.WriteShort(update_interval);
     break;
   default:
-    FINROC_LOG_PRINTF(rrlib::logging::eLL_ERROR, "Invalid opcode");
+    FINROC_LOG_PRINTF(ERROR, "Invalid opcode");
     break;
   }
 }
