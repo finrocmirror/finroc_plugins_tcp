@@ -126,19 +126,19 @@ void tTCPConnection::Disconnect()
       socket->Close();  // stops reader
     }
   }
-  catch (const util::tException& e)
+  catch (const std::exception& e)
   {
   }
 
   // join threads for thread safety
   std::shared_ptr<tWriter> locked_writer = writer.lock();
-  if (locked_writer.get() != NULL && rrlib::thread::tThread::CurrentThread() != locked_writer)
+  if (locked_writer && &rrlib::thread::tThread::CurrentThread() != locked_writer.get())
   {
     locked_writer->Join();
     writer.reset();
   }
   std::shared_ptr<tReader> locked_reader = reader.lock();
-  if (locked_reader.get() != NULL && rrlib::thread::tThread::CurrentThread() != locked_reader)
+  if (locked_reader && &rrlib::thread::tThread::CurrentThread() != locked_reader.get())
   {
     locked_reader->Join();
     reader.reset();
