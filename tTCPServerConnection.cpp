@@ -430,17 +430,11 @@ void tTCPServerConnection::tServerPort::NotifyDisconnect()
 
 void tTCPServerConnection::tServerPort::PostChildInit()
 {
-  ::finroc::core::tNetPort::PostChildInit();
+  core::tNetPort::PostChildInit();
 
   // add edge
-  if (GetPort().IsOutputPort())
-  {
-    GetPort().ConnectToTarget(*local_port);
-  }
-  else
-  {
-    GetPort().ConnectToSource(*local_port);
-  }
+  typedef core::tAbstractPort::tConnectDirection tDirection;
+  GetPort().ConnectTo(*local_port, GetPort().IsOutputPort() ? tDirection::TO_TARGET : tDirection::TO_SOURCE);
 }
 
 namespace internal

@@ -335,6 +335,7 @@ void tRemoteServer::ProcessPortUpdate(core::tFrameworkElementInfo& info)
     {
       if (info.GetDataType() == NULL)    // Unknown type... skip
       {
+        FINROC_LOG_PRINT(DEBUG, "Remote shared port '", info.GetLink(0)->name, "' has unknown type. Ignoring.");
         return;
       }
 
