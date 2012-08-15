@@ -512,6 +512,7 @@ void tTCPConnection::tReader::Run()
   InitThreadLocalCache();
   // only for c++ automatic deallocation
   std::shared_ptr<rrlib::serialization::tInputStream> cis = outer_class.cis;
+  core::tThreadLocalRPCData::Get().SetSuitableThreadForSynchronousCalls(false);
 
   try
   {
