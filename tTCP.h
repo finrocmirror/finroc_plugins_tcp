@@ -27,7 +27,7 @@
 #include "rrlib/finroc_core_utils/container/tReusablesPoolCR.h"
 
 #include "core/plugin/tPlugin.h"
-#include "core/tFrameworkElementTreeFilter.h"
+#include "core/port/net/tFrameworkElementFilter.h"
 #include "core/plugin/tCreateExternalConnectionAction.h"
 
 #include "plugins/tcp/tTCPCommand.h"
@@ -53,7 +53,7 @@ class tTCP : public core::tPlugin
   private:
 
     /*! Filter to used for this connection type */
-    core::tFrameworkElementTreeFilter filter;
+    core::tFrameworkElementFilter filter;
 
     /*! Name of connection type */
     util::tString name;
@@ -66,13 +66,13 @@ class tTCP : public core::tPlugin
 
   public:
 
-    tCreateAction(core::tFrameworkElementTreeFilter filter_, const util::tString& name_, int flags_);
+    tCreateAction(core::tFrameworkElementFilter filter, const util::tString& name, int flags);
 
     virtual core::tExternalConnection* CreateExternalConnection() const;
 
     static void Dummy() {}
 
-    virtual core::tFrameworkElement* CreateModule(core::tFrameworkElement* parent, const util::tString& name_, core::tConstructorParameters* params) const;
+    virtual core::tFrameworkElement* CreateModule(core::tFrameworkElement* parent, const util::tString& name, core::tConstructorParameters* params) const;
 
     virtual int GetFlags() const
     {

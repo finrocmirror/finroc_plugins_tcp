@@ -27,7 +27,7 @@
 
 #include "rrlib/finroc_core_utils/net/tIPSocketAddress.h"
 #include "core/datatype/tFrameworkElementInfo.h"
-#include "core/tFrameworkElementTreeFilter.h"
+#include "core/port/net/tFrameworkElementFilter.h"
 #include "core/port/net/tRemoteCoreRegister.h"
 #include "core/port/tPortCreationInfoBase.h"
 #include "core/tFrameworkElement.h"
@@ -115,7 +115,7 @@ private:
   core::tFrameworkElementInfo tmp_info;
 
   /*! Filter that specifies which framework element we're interested in */
-  core::tFrameworkElementTreeFilter filter;
+  core::tFrameworkElementFilter filter;
 
   /*! Lookup for remote framework elements (currently not ports) - similar to remote CoreRegister */
   core::tRemoteCoreRegister<tProxyPort*> remote_port_register;
@@ -215,7 +215,7 @@ public:
    * \param filter Filter that specifies which framework element we're interested in
    * \param peer Peer that this server belongs to
    */
-  tRemoteServer(util::tIPSocketAddress isa, const util::tString& name, core::tFrameworkElement* parent, const core::tFrameworkElementTreeFilter& filter_, tTCPPeer* peer_);
+  tRemoteServer(util::tIPSocketAddress isa, const util::tString& name, core::tFrameworkElement* parent, const core::tFrameworkElementFilter& filter_, tTCPPeer* peer_);
 
   /*!
    * \return true when server will soon be deleted

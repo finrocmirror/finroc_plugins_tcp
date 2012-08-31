@@ -32,17 +32,16 @@ namespace finroc
 {
 namespace tcp
 {
-core::tFrameworkElementTreeFilter tTCPPeer::cGUI_FILTER(core::tCoreFlags::cSTATUS_FLAGS | core::tCoreFlags::cNETWORK_ELEMENT, core::tCoreFlags::cREADY | core::tCoreFlags::cPUBLISHED);
-core::tFrameworkElementTreeFilter tTCPPeer::cDEFAULT_FILTER(core::tCoreFlags::cSTATUS_FLAGS | core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cSHARED | core::tCoreFlags::cIS_PORT, core::tCoreFlags::cREADY | core::tCoreFlags::cPUBLISHED | core::tCoreFlags::cSHARED | core::tCoreFlags::cIS_PORT);
-core::tFrameworkElementTreeFilter tTCPPeer::cALL_AND_EDGE_FILTER(core::tCoreFlags::cSTATUS_FLAGS, core::tCoreFlags::cREADY | core::tCoreFlags::cPUBLISHED);
+core::tFrameworkElementFilter tTCPPeer::cGUI_FILTER(core::tCoreFlags::cSTATUS_FLAGS | core::tCoreFlags::cNETWORK_ELEMENT, core::tCoreFlags::cREADY | core::tCoreFlags::cPUBLISHED, false);
+core::tFrameworkElementFilter tTCPPeer::cDEFAULT_FILTER(core::tCoreFlags::cSTATUS_FLAGS | core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cSHARED | core::tCoreFlags::cIS_PORT, core::tCoreFlags::cREADY | core::tCoreFlags::cPUBLISHED | core::tCoreFlags::cSHARED | core::tCoreFlags::cIS_PORT, false);
+core::tFrameworkElementFilter tTCPPeer::cALL_AND_EDGE_FILTER(core::tCoreFlags::cSTATUS_FLAGS, core::tCoreFlags::cREADY | core::tCoreFlags::cPUBLISHED, true);
 
-tTCPPeer::tTCPPeer(const util::tString& network_name_, core::tFrameworkElementTreeFilter filter_) :
+tTCPPeer::tTCPPeer(const util::tString& network_name_, core::tFrameworkElementFilter filter_) :
   core::tExternalConnection("TCP", network_name_),
   mode(eCLIENT),
   server(NULL),
   network_name(network_name_),
   name(""),
-  ci(*this),
   filter(filter_),
   tracker(NULL),
   delete_ports_on_disconnect(filter_.IsAcceptAllFilter()),
@@ -57,13 +56,12 @@ tTCPPeer::tTCPPeer(const util::tString& network_name_, core::tFrameworkElementTr
 
 }
 
-tTCPPeer::tTCPPeer(const util::tString& network_name_, const util::tString& unique_peer_name, tTCPPeer::tMode mode_, int preferred_server_port, core::tFrameworkElementTreeFilter filter_, bool delete_ports_on_disconnect_) :
+tTCPPeer::tTCPPeer(const util::tString& network_name_, const util::tString& unique_peer_name, tTCPPeer::tMode mode_, int preferred_server_port, core::tFrameworkElementFilter filter_, bool delete_ports_on_disconnect_) :
   core::tExternalConnection("TCP", network_name_),
   mode(mode_),
   server(NULL),
   network_name(network_name_),
   name(unique_peer_name),
-  ci(*this),
   filter(filter_),
   tracker(NULL),
   delete_ports_on_disconnect(delete_ports_on_disconnect_),
@@ -95,19 +93,15 @@ void tTCPPeer::ConnectImpl(const util::tString& address, bool same_address)
 
     if (same_address)
     {
-      ci.Reset(*this);
-      ::finroc::core::tFrameworkElement* fe = NULL;
-      while ((fe = ci.Next()) != NULL)
+      for (auto it = ChildrenBegin(); it != ChildrenEnd(); ++it)
       {
-        if (typeid(*fe) == typeid(tRemoteServer))
+        if (it->IsReady() && typeid(*it) == typeid(tRemoteServer))
         {
-          tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
+          tRemoteServer& rs = static_cast<tRemoteServer&>(*it);
+          tLock lock6(rs);
+          if (rs.IsReady() && (!rs.DeletedSoon()))
           {
-            tLock lock6(*rs);
-            if (rs->IsReady() && (!rs->DeletedSoon()))
-            {
-              rs->Reconnect();
-            }
+            rs.Reconnect();
           }
         }
       }
@@ -166,17 +160,15 @@ void tTCPPeer::DisconnectImpl()
   }
   //tracker.delete();
 
-  ci.Reset(*this);
-  ::finroc::core::tFrameworkElement* fe = NULL;
-  while ((fe = ci.Next()) != NULL)
+  for (auto it = ChildrenBegin(); it != ChildrenEnd(); ++it)
   {
-    if (fe->IsReady() && (typeid(*fe) == typeid(tRemoteServer)))
+    if (it->IsReady() && (typeid(*it) == typeid(tRemoteServer)))
     {
-      tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
-      tLock lock4(*rs);
-      if (rs->IsReady() && (!rs->DeletedSoon()))
+      tRemoteServer& rs = static_cast<tRemoteServer&>(*it);
+      tLock lock4(rs);
+      if (rs.IsReady() && (!rs.DeletedSoon()))
       {
-        rs->TemporaryDisconnect();
+        rs.TemporaryDisconnect();
       }
     }
   }
@@ -185,17 +177,16 @@ void tTCPPeer::DisconnectImpl()
 float tTCPPeer::GetConnectionQuality()
 {
   float worst = 1.0f;
-  core::tFrameworkElement::tChildIterator ci(*this);
-  for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
+  for (auto it = ChildrenBegin(); it != ChildrenEnd(); ++it)
   {
-    if (fe == server || fe->IsPort())
+    if (&(*it) == server || it->IsPort())
     {
       continue;
     }
-    tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
-    if (rs->IsReady() && (!rs->DeletedSoon()))
+    tRemoteServer& rs = static_cast<tRemoteServer&>(*it);
+    if (rs.IsReady() && (!rs.DeletedSoon()))
     {
-      worst = std::min(worst, rs->GetConnectionQuality());
+      worst = std::min(worst, rs.GetConnectionQuality());
     }
   }
   return worst;
@@ -211,26 +202,25 @@ util::tString tTCPPeer::GetStatus(bool detailed)
   else
   {
     util::tSimpleList<util::tString> add_stuff;
-    core::tFrameworkElement::tChildIterator ci(*this);
-    for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
+    for (auto it = ChildrenBegin(); it != ChildrenEnd(); ++it)
     {
-      if (fe == server || (!fe->IsReady()) || fe->IsPort())
+      if (&(*it) == server || (!it->IsReady()) || it->IsPort())
       {
         continue;
       }
-      tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
-      if (rs->DeletedSoon())
+      tRemoteServer& rs = static_cast<tRemoteServer&>(*it);
+      if (rs.DeletedSoon())
       {
         continue;
       }
-      util::tString tmp = rs->GetPartnerAddress().ToString();
+      util::tString tmp = rs.GetPartnerAddress().ToString();
       if (boost::equals(tmp, s))
       {
-        add_stuff.Insert(0u, rs->GetPingString());
+        add_stuff.Insert(0u, rs.GetPingString());
       }
       else
       {
-        add_stuff.Add(rs->GetPartnerAddress().ToString() + " " + rs->GetPingString());
+        add_stuff.Add(rs.GetPartnerAddress().ToString() + " " + rs.GetPingString());
       }
     }
     for (size_t i = 0u; i < add_stuff.Size(); i++)
@@ -267,18 +257,17 @@ void tTCPPeer::NodeDiscovered(const util::tIPSocketAddress& isa, const util::tSt
     }
 
     // remove port & disconnect
-    ci.Reset(*this, false);
-    for (::finroc::core::tFrameworkElement* fe = ci.Next(); fe != NULL; fe = ci.Next())
+    for (auto it = ChildrenBegin(); it != ChildrenEnd(); ++it)
     {
-      if (fe == server || fe->IsPort())
+      if (&(*it) == server || it->IsPort())
       {
         continue;
       }
-      tRemoteServer* rs = static_cast<tRemoteServer*>(fe);
-      if (rs->GetPartnerAddress().Equals(isa) && (!rs->DeletedSoon()) && (!rs->IsDeleted()))
+      tRemoteServer& rs = static_cast<tRemoteServer&>(*it);
+      if (rs.GetPartnerAddress().Equals(isa) && (!rs.DeletedSoon()) && (!rs.IsDeleted()))
       {
-        rs->EarlyDeletingPreparations();
-        return rs;
+        rs.EarlyDeletingPreparations();
+        return &rs;
       }
     }
     FINROC_LOG_PRINT(WARNING, "TCPClient warning: Node ", name_, " not found");

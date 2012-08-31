@@ -46,7 +46,7 @@ namespace tcp
 const char* tRemoteServer::cCONNECTING = "connecting";
 const char* tRemoteServer::cDISCONNECTING = "disconnecting";
 
-tRemoteServer::tRemoteServer(util::tIPSocketAddress isa, const util::tString& name, core::tFrameworkElement* parent, const core::tFrameworkElementTreeFilter& filter_, tTCPPeer* peer_) :
+tRemoteServer::tRemoteServer(util::tIPSocketAddress isa, const util::tString& name, core::tFrameworkElement* parent, const core::tFrameworkElementFilter& filter_, tTCPPeer* peer_) :
   core::tFrameworkElement(parent, name, core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cALLOWS_CHILDREN | (filter_.IsPortOnlyFilter() ? 0 : core::tCoreFlags::cALTERNATE_LINK_ROOT), core::tLockOrderLevels::cREMOTE),
   address(isa),
   bulk(),
@@ -458,7 +458,7 @@ void tRemoteServer::RetrieveRemotePorts(rrlib::serialization::tInputStream* cis,
 
   // send opcode & filter information
   //cos.writeByte(TCP.REQUEST_PORT_UPDATE);
-  filter.Serialize(*cos);
+  (*cos) << filter;
   //if (TCPSettings.DEBUG_TCP) {
   //  cos.writeInt(TCPSettings.DEBUG_TCP_NUMBER);
   //}

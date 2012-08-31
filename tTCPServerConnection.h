@@ -27,7 +27,7 @@
 
 #include "rrlib/finroc_core_utils/stream/tChunkedBuffer.h"
 #include "rrlib/serialization/serialization.h"
-#include "core/tFrameworkElementTreeFilter.h"
+#include "core/port/net/tFrameworkElementFilter.h"
 #include "rrlib/finroc_core_utils/net/tNetSocket.h"
 #include "core/port/tPortCreationInfoBase.h"
 #include "plugins/tcp/tTCPConnection.h"
@@ -91,7 +91,7 @@ private:
   rrlib::serialization::tInputStream runtime_info_reader;
 
   /*! Framework element filter to decide which data is interesting for client */
-  core::tFrameworkElementTreeFilter element_filter;
+  core::tFrameworkElementFilter element_filter;
 
   /*! Temporary string builder - only used by reader thread */
   std::string tmp;
@@ -163,9 +163,6 @@ public:
 
     // Outer class TCPServerConnection
     tTCPServerConnection& outer_class;
-
-    /*! For iterating over portSet's ports */
-    core::tFrameworkElement::tChildIterator port_iterator;
 
     /*! Ensures that connection object exists as long as port set does */
     std::shared_ptr<tTCPServerConnection> connection_lock;

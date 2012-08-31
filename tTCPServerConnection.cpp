@@ -139,23 +139,24 @@ tTCPServerConnection::tTCPServerConnection(std::shared_ptr<util::tNetSocket>& s,
     // send runtime information?
     if (this->cis->ReadBoolean())
     {
-      element_filter.Deserialize(*this->cis);
+      (*this->cis) >> element_filter;
       send_runtime_info = true;
       {
         tLock lock4(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());  // lock runtime so that we do not miss a change
         core::tRuntimeEnvironment::GetInstance()->AddListener(*this);
 
-        element_filter.TraverseElementTree(*core::tRuntimeEnvironment::GetInstance(), tmp, [&](core::tFrameworkElement & fe)
+        core::tRuntimeEnvironment& runtime = *core::tRuntimeEnvironment::GetInstance();
+        for (auto it = runtime.SubElementsBegin(); it != runtime.SubElementsEnd(); ++it)
         {
-          if (&fe != core::tRuntimeEnvironment::GetInstance())
+          if (element_filter.Accept(*it))
           {
-            if (!fe.IsDeleted())
+            if (!it->IsDeleted())
             {
               this->cos->WriteEnum(tOpCode::STRUCTURE_UPDATE);
-              core::tFrameworkElementInfo::SerializeFrameworkElement(fe, core::tRuntimeListener::cADD, *this->cos, element_filter, tmp);
+              core::tFrameworkElementInfo::SerializeFrameworkElement(*it, core::tRuntimeListener::cADD, *this->cos, !element_filter.IsPortOnlyFilter(), element_filter.IsAcceptAllFilter(), element_filter.SendTags(), tmp, element_filter.AcceptFunction());
             }
           }
-        });
+        }
       }
       this->cos->WriteByte(0);  // terminator
       this->cos->Flush();
@@ -335,7 +336,7 @@ void tTCPServerConnection::ProcessRequest(tOpCode op_code)
 
 void tTCPServerConnection::RuntimeChange(int8 change_type, core::tFrameworkElement& element)
 {
-  if (&element != core::tRuntimeEnvironment::GetInstance() && element_filter.Accept(element, tmp, change_type == tRuntimeListener::cREMOVE ? (core::tCoreFlags::cREADY | core::tCoreFlags::cDELETED) : 0) && change_type != ::finroc::core::tRuntimeListener::cPRE_INIT)
+  if (&element != core::tRuntimeEnvironment::GetInstance() && element_filter.Accept(element, change_type == tRuntimeListener::cREMOVE ? (core::tCoreFlags::cREADY | core::tCoreFlags::cDELETED) : 0) && change_type != ::finroc::core::tRuntimeListener::cPRE_INIT)
   {
     SerializeRuntimeChange(change_type, element);
   }
@@ -343,7 +344,7 @@ void tTCPServerConnection::RuntimeChange(int8 change_type, core::tFrameworkEleme
 
 void tTCPServerConnection::RuntimeEdgeChange(int8 change_type, core::tAbstractPort& source, core::tAbstractPort& target)
 {
-  if (element_filter.Accept(source, tmp) && element_filter.IsAcceptAllFilter())
+  if (element_filter.Accept(source) && element_filter.IsAcceptAllFilter())
   {
     SerializeRuntimeChange(core::tFrameworkElementInfo::cEDGE_CHANGE, source);
   }
@@ -376,7 +377,7 @@ bool tTCPServerConnection::SendData(const rrlib::time::tTimestamp& start_time)
 void tTCPServerConnection::SerializeRuntimeChange(int8 change_type, core::tFrameworkElement& element)
 {
   runtime_info_writer.WriteEnum(tOpCode::STRUCTURE_UPDATE);
-  core::tFrameworkElementInfo::SerializeFrameworkElement(element, change_type, runtime_info_writer, element_filter, tmp);
+  core::tFrameworkElementInfo::SerializeFrameworkElement(element, change_type, runtime_info_writer, !element_filter.IsPortOnlyFilter(), element_filter.IsAcceptAllFilter(), element_filter.SendTags(), tmp, element_filter.AcceptFunction());
   if (tTCPSettings::cDEBUG_TCP)
   {
     runtime_info_writer.WriteInt(tTCPSettings::cDEBUG_TCP_NUMBER);
@@ -388,17 +389,18 @@ void tTCPServerConnection::SerializeRuntimeChange(int8 change_type, core::tFrame
 tTCPServerConnection::tPortSet::tPortSet(tTCPServerConnection& outer_class, tTCPServer* server, std::shared_ptr<tTCPServerConnection> connection_lock_) :
   core::tFrameworkElement(server, std::string("connection") + boost::lexical_cast<util::tString>(tTCPServerConnection::connection_id.GetAndIncrement()), core::tCoreFlags::cALLOWS_CHILDREN | core::tCoreFlags::cNETWORK_ELEMENT | core::tCoreFlags::cAUTO_RENAME, core::tLockOrderLevels::cPORT - 1),
   outer_class(outer_class),
-  port_iterator(*this),
   connection_lock(connection_lock_)
 {
 }
 
 void tTCPServerConnection::tPortSet::NotifyPortsOfDisconnect()
 {
-  port_iterator.Reset();
-  for (::finroc::core::tFrameworkElement* port = port_iterator.Next(); port != NULL; port = port_iterator.Next())
+  for (auto it = ChildPortsBegin(); it != ChildPortsEnd(); ++it)
   {
-    (static_cast<core::tAbstractPort*>(port))->NotifyDisconnect();
+    if (it->IsReady())
+    {
+      (static_cast<core::tAbstractPort&>(*it)).NotifyDisconnect();
+    }
   }
 }
 

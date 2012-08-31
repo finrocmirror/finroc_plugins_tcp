@@ -80,7 +80,7 @@ void tTCP::Init()
 {
 }
 
-tTCP::tCreateAction::tCreateAction(core::tFrameworkElementTreeFilter filter_, const util::tString& name_, int flags_) :
+tTCP::tCreateAction::tCreateAction(core::tFrameworkElementFilter filter_, const util::tString& name_, int flags_) :
   filter(filter_),
   name(name_),
   flags(flags_),

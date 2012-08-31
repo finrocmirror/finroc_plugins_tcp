@@ -27,7 +27,7 @@
 
 #include "plugins/tcp/tTCPConnection.h"
 #include "core/tFrameworkElement.h"
-#include "core/tFrameworkElementTreeFilter.h"
+#include "core/port/net/tFrameworkElementFilter.h"
 #include "core/plugin/tExternalConnection.h"
 #include "core/port/net/tAbstractPeerTracker.h"
 
@@ -76,11 +76,8 @@ private:
   /*! Unique Name of peer in network (empty string, if it has no unique name) */
   util::tString name;
 
-  /*! Child iterator for internal purposes */
-  core::tFrameworkElement::tChildIterator ci;
-
   /*! Filter that specifies which elements in remote runtime environment we're interested in */
-  core::tFrameworkElementTreeFilter filter;
+  core::tFrameworkElementFilter filter;
 
   /*! Peer tracker that we use for discovering network nodes */
   tPeerList* tracker;
@@ -91,11 +88,11 @@ private:
 public:
 
   /*! TreeFilter for different applications */
-  static core::tFrameworkElementTreeFilter cGUI_FILTER;
+  static core::tFrameworkElementFilter cGUI_FILTER;
 
-  static core::tFrameworkElementTreeFilter cDEFAULT_FILTER;
+  static core::tFrameworkElementFilter cDEFAULT_FILTER;
 
-  static core::tFrameworkElementTreeFilter cALL_AND_EDGE_FILTER;
+  static core::tFrameworkElementFilter cALL_AND_EDGE_FILTER;
 
   /*! All active connections connected to this peer */
   util::tSafeConcurrentlyIterableList<tTCPConnection*, rrlib::thread::tOrderedMutex> connections;
@@ -116,7 +113,7 @@ public:
    * \param network_name Name of network that peer belongs to OR network address of one peer that belongs to P2P network
    * \param filter Filter that specifies which elements in remote runtime environment we're interested in. (CLIENT and FULL only)
    */
-  tTCPPeer(const util::tString& network_name_, core::tFrameworkElementTreeFilter filter_);
+  tTCPPeer(const util::tString& network_name, core::tFrameworkElementFilter filter_);
 
   /*!
    * \param network_name Name of network that peer belongs to OR network address of one peer that belongs to P2P network
@@ -126,7 +123,7 @@ public:
    * \param filter Filter that specifies which elements in remote runtime environment we're interested in. (CLIENT and FULL only)
    * \param delete_ports_on_disconnect Delete all ports when client disconnects?
    */
-  tTCPPeer(const util::tString& network_name_, const util::tString& unique_peer_name, tTCPPeer::tMode mode_, int preferred_server_port, core::tFrameworkElementTreeFilter filter_, bool delete_ports_on_disconnect_);
+  tTCPPeer(const util::tString& network_name, const util::tString& unique_peer_name, tTCPPeer::tMode mode, int preferred_server_port, core::tFrameworkElementFilter filter, bool delete_ports_on_disconnect);
 
   /*!
    * \param connection Active connection
