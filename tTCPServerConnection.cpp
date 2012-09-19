@@ -242,12 +242,15 @@ core::tPortCreationInfoBase tTCPServerConnection::InitPci(core::tAbstractPort* c
   {
     // create input port
     flags |= core::tPortFlags::cHAS_QUEUE | core::tPortFlags::cACCEPTS_DATA | core::tPortFlags::cUSES_QUEUE;
-
   }
   else
   {
     // create output io port
     flags |= core::tPortFlags::cIS_OUTPUT_PORT | core::tPortFlags::cMAY_ACCEPT_REVERSE_DATA | core::tPortFlags::cEMITS_DATA;
+  }
+  if (!element_filter.IsPortOnlyFilter())
+  {
+    flags |= core::tPortFlags::cTOOL_PORT;
   }
   pci.flags = flags;
   pci.data_type = counter_part->GetDataType();
