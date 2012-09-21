@@ -25,7 +25,6 @@
 
 #include "rrlib/finroc_core_utils/definitions.h"
 
-#include "rrlib/finroc_core_utils/container/tSimpleList.h"
 #include "rrlib/finroc_core_utils/net/tIPSocketAddress.h"
 #include "rrlib/finroc_core_utils/net/tIPAddress.h"
 #include "core/port/net/tAbstractPeerTracker.h"
@@ -49,7 +48,7 @@ class tPeerList : public core::tAbstractPeerTracker
 private:
 
   /*! List of peers */
-  util::tSimpleList<util::tIPSocketAddress> peers;
+  std::vector<util::tIPSocketAddress> peers;
 
   /*! Current version of list */
   volatile int revision;

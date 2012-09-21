@@ -36,7 +36,7 @@ tPeerList::tPeerList(int server_port_, int lock_order) :
 {
   if (server_port_ > 0)
   {
-    peers.Add(util::tIPSocketAddress("localhost", server_port_));
+    peers.push_back(util::tIPSocketAddress("localhost", server_port_));
     revision++;
   }
 }
@@ -45,7 +45,7 @@ void tPeerList::AddPeer(util::tIPSocketAddress isa, bool notify_on_change)
 {
   {
     rrlib::thread::tLock lock2(*this);
-    if (peers.Contains(isa))
+    if (std::find(peers.begin(), peers.end(), isa) != peers.end())
     {
       return;
     }
@@ -56,11 +56,11 @@ void tPeerList::AddPeer(util::tIPSocketAddress isa, bool notify_on_change)
     bool add = false;
     {
       rrlib::thread::tLock lock3(*this);
-      add = !peers.Contains(isa);
+      add = std::find(peers.begin(), peers.end(), isa) == peers.end();
       if (add)
       {
         FINROC_LOG_PRINT(DEBUG, "received new peer: ", isa.ToString());
-        peers.Add(isa);
+        peers.push_back(isa);
       }
     }
 
@@ -103,41 +103,41 @@ void tPeerList::RemovePeer(util::tIPSocketAddress isa)
   // make sure: peer can only be removed, while there aren't any other connection events being processed
   std::vector<core::tAbstractPeerTracker::tListener*> listeners_copy;
   this->listeners.GetListenersCopy(listeners_copy);
-  util::tSimpleList<core::tAbstractPeerTracker::tListener*> post_process;
-  util::tSimpleList< ::finroc::util::tObject*> post_process_obj;
+  std::vector<core::tAbstractPeerTracker::tListener*> post_process;
+  std::vector<util::tObject*> post_process_obj;
   {
     rrlib::thread::tLock lock2(core::tRuntimeEnvironment::GetInstance()->GetRegistryLock());
     rrlib::thread::tLock lock3(*this);
-    if (peers.Contains(isa))
+    if (std::find(peers.begin(), peers.end(), isa) != peers.end())
     {
-      peers.RemoveElem(isa);
+      peers.erase(std::remove(peers.begin(), peers.end(), isa), peers.end());
       for (size_t i = 0u, n = listeners_copy.size(); i < n; i++)
       {
         ::finroc::util::tObject* o = listeners_copy[i]->NodeRemoved(isa, isa.ToString());
         if (o != NULL)
         {
-          post_process.Add(listeners_copy[i]);
-          post_process_obj.Add(o);
+          post_process.push_back(listeners_copy[i]);
+          post_process_obj.push_back(o);
         }
       }
       revision++;
     }
   }
 
-  for (size_t i = 0u, n = post_process.Size(); i < n; i++)
+  for (size_t i = 0u, n = post_process.size(); i < n; i++)
   {
-    post_process.Get(i)->NodeRemovedPostLockProcess(post_process_obj.Get(i));
+    post_process[i]->NodeRemovedPostLockProcess(post_process_obj[i]);
   }
 }
 
 void tPeerList::SerializeAddresses(rrlib::serialization::tOutputStream* co)
 {
   rrlib::thread::tLock lock1(*this);
-  int size = peers.Size();
+  int size = peers.size();
   co->WriteInt(size);
   for (int i = 0; i < size; i++)
   {
-    peers.Get(i).Serialize(co);
+    peers[i].Serialize(co);
   }
 }
 

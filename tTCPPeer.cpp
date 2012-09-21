@@ -25,7 +25,6 @@
 #include "plugins/tcp/tPeerList.h"
 #include "plugins/tcp/tRemoteServer.h"
 #include "rrlib/finroc_core_utils/net/tIPSocketAddress.h"
-#include "rrlib/finroc_core_utils/container/tSimpleList.h"
 #include "rrlib/finroc_core_utils/log/tLogUser.h"
 
 namespace finroc
@@ -201,7 +200,7 @@ util::tString tTCPPeer::GetStatus(bool detailed)
   }
   else
   {
-    util::tSimpleList<util::tString> add_stuff;
+    std::vector<util::tString> add_stuff;
     for (auto it = ChildrenBegin(); it != ChildrenEnd(); ++it)
     {
       if (&(*it) == server || (!it->IsReady()) || it->IsPort())
@@ -216,17 +215,17 @@ util::tString tTCPPeer::GetStatus(bool detailed)
       util::tString tmp = rs.GetPartnerAddress().ToString();
       if (boost::equals(tmp, s))
       {
-        add_stuff.Insert(0u, rs.GetPingString());
+        add_stuff.insert(add_stuff.begin(), rs.GetPingString());
       }
       else
       {
-        add_stuff.Add(rs.GetPartnerAddress().ToString() + " " + rs.GetPingString());
+        add_stuff.push_back(rs.GetPartnerAddress().ToString() + " " + rs.GetPingString());
       }
     }
-    for (size_t i = 0u; i < add_stuff.Size(); i++)
+    for (size_t i = 0u; i < add_stuff.size(); i++)
     {
       s += (i == 0) ? " (" : "; ";
-      s += add_stuff.Get(i);
+      s += add_stuff[i];
     }
     return s + ")";
   }
