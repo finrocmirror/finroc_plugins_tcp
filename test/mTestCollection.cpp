@@ -32,6 +32,8 @@
 //----------------------------------------------------------------------
 // External includes (system with <>, local with "")
 //----------------------------------------------------------------------
+//#include "core/tRuntimeEnvironment.h"
+#include <csignal>
 
 //----------------------------------------------------------------------
 // Internal includes with ""
@@ -95,93 +97,97 @@ void mTestCollection::Update()
 {
   if (in_initial_pushing.Get() == cINITIAL_VALUE)
   {
-//    if (counter < 50)
-//    {
-//      if (counter == 0)
-//      {
-//        FINROC_LOG_PRINT(USER, "Received value from initial pushing. Testing simple publishing:");
-//        FINROC_LOG_PRINT(USER, "  Initial pushing: ", in_initial_pushing.Get(), "  Initial pushing reverse: ", out_initial_pushing_reverse.Get());
-//      }
-//      out_simple_publishing.Publish(counter);
-//      FINROC_LOG_PRINT(USER, "  Received ", in_simple_publishing.Get());
-//    }
-//    else if (counter < 100)
-//    {
-//      if (counter == 50)
-//      {
-//        FINROC_LOG_PRINT(USER, "Testing burst publishing (10 values at once) with input queue of 5 values:");
-//      }
-//
-//      for (size_t i = 0; i < 10; i++)
-//      {
-//        out_burst_publishing.Publish(counter * 10 + i);
-//      }
-//      std::ostringstream result_stream;
-//      data_ports::tPortBuffers<int> dequeued = in_burst_publishing.DequeueAll();
-//      while (!dequeued.Empty())
-//      {
-//        result_stream << dequeued.PopFront() << " ";
-//      }
-//      FINROC_LOG_PRINT(USER, "  Received port value burst: ", result_stream.str());
-//    }
-//    else if (counter < 150)
-//    {
-//      if (counter == 100)
-//      {
-//        FINROC_LOG_PRINT(USER, "Testing RPC calls:");
-//
-//        test_interface_client.Call(&tTestInterface::Message, "Hello Siegfried");
-//        try
-//        {
-//          double result = test_interface_client.CallSynchronous(std::chrono::seconds(1), &tTestInterface::Function, 38);
-//          FINROC_LOG_PRINT(USER, "  Called RPC function with 38. Result is ", result, ".");
-//        }
-//        catch (const rpc_ports::tRPCException& exception)
-//        {
-//          FINROC_LOG_PRINT(ERROR, "  Calling RPC function failed: ", exception);
-//        }
-//        try
-//        {
-//          rpc_ports::tFuture<int> result = test_interface_client.NativeFutureCall(&tTestInterface::FutureFunction);
-//          FINROC_LOG_PRINT(USER, "  Called RPC future function. Result is ", result.Get(std::chrono::seconds(1)), ".");
-//        }
-//        catch (const rpc_ports::tRPCException& exception)
-//        {
-//          FINROC_LOG_PRINT(ERROR, "  Calling RPC future function failed: ", exception);
-//        }
-//
-//        FINROC_LOG_PRINT(USER, "Testing blackboards:");
-//      }
-//
-//      try
-//      {
-//        blackboard::tBlackboardWriteAccess<float> write_access(float_blackboard_client);
-//        write_access[0] = counter - 100;
-//      }
-//      catch (const blackboard::tLockException& ex)
-//      {
-//        FINROC_LOG_PRINT(WARNING, "Could not lock remote blackboard for writing");
-//      }
-//
-//      try
-//      {
-//        blackboard::tBlackboardWriteAccess<float> read_access(float_blackboard);
-//        FINROC_LOG_PRINT(USER, "  First blackboard value in remote part: ", read_access[0]);
-//      }
-//      catch (const blackboard::tLockException& ex)
-//      {
-//        FINROC_LOG_PRINT(WARNING, "Could not lock remote blackboard for reading");
-//      }
-//    }
-
     if (counter < 50)
     {
       if (counter == 0)
       {
+        FINROC_LOG_PRINT(USER, "Received value from initial pushing. Testing simple publishing:");
+        FINROC_LOG_PRINT(USER, "  Initial pushing: ", in_initial_pushing.Get(), "  Initial pushing reverse: ", out_initial_pushing_reverse.Get());
+      }
+      out_simple_publishing.Publish(counter);
+      FINROC_LOG_PRINT(USER, "  Received ", in_simple_publishing.Get());
+    }
+    else if (counter < 100)
+    {
+      if (counter == 50)
+      {
+        FINROC_LOG_PRINT(USER, "Testing burst publishing (10 values at once) with input queue of 5 values:");
+      }
+
+      for (size_t i = 0; i < 10; i++)
+      {
+        out_burst_publishing.Publish(counter * 10 + i);
+      }
+      std::ostringstream result_stream;
+      data_ports::tPortBuffers<int> dequeued = in_burst_publishing.DequeueAll();
+      while (!dequeued.Empty())
+      {
+        result_stream << dequeued.PopFront() << " ";
+      }
+      FINROC_LOG_PRINT(USER, "  Received port value burst: ", result_stream.str());
+    }
+    else if (counter < 150)
+    {
+      if (counter == 100)
+      {
+        FINROC_LOG_PRINT(USER, "Testing RPC calls:");
+
+        test_interface_client.Call(&tTestInterface::Message, "Hello Siegfried");
+        try
+        {
+          double result = test_interface_client.CallSynchronous(std::chrono::seconds(1), &tTestInterface::Function, 38);
+          FINROC_LOG_PRINT(USER, "  Called RPC function with 38. Result is ", result, ".");
+        }
+        catch (const rpc_ports::tRPCException& exception)
+        {
+          FINROC_LOG_PRINT(ERROR, "  Calling RPC function failed: ", exception);
+        }
+        try
+        {
+          rpc_ports::tFuture<int> result = test_interface_client.NativeFutureCall(&tTestInterface::FutureFunction);
+          FINROC_LOG_PRINT(USER, "  Called RPC future function. Result is ", result.Get(std::chrono::seconds(1)), ".");
+        }
+        catch (const rpc_ports::tRPCException& exception)
+        {
+          FINROC_LOG_PRINT(ERROR, "  Calling RPC future function failed: ", exception);
+        }
+
+        FINROC_LOG_PRINT(USER, "Testing blackboards:");
+      }
+
+      try
+      {
+        blackboard::tBlackboardWriteAccess<float> write_access(float_blackboard_client);
+        write_access[0] = counter - 100;
+      }
+      catch (const blackboard::tLockException& ex)
+      {
+        FINROC_LOG_PRINT(WARNING, "Could not lock remote blackboard for writing");
+      }
+
+      try
+      {
+        blackboard::tBlackboardWriteAccess<float> read_access(float_blackboard);
+        FINROC_LOG_PRINT(USER, "  First blackboard value in remote part: ", read_access[0]);
+      }
+      catch (const blackboard::tLockException& ex)
+      {
+        FINROC_LOG_PRINT(WARNING, "Could not lock remote blackboard for reading");
+      }
+    }
+    else if (counter < 200)
+    {
+      if (counter == 150)
+      {
         FINROC_LOG_PRINT(USER, "Testing port value pulling:");
       }
-      out_pull_testing.Publish(counter);
+      out_pull_testing.Publish(counter - 150);
       FINROC_LOG_PRINT(USER, "  Received ", in_pull_testing.Get());
+    }
+    else if (counter == 200)
+    {
+      //core::tRuntimeEnvironment::GetInstance().Shutdown();
+      raise(SIGINT);
     }
 
     counter++;
