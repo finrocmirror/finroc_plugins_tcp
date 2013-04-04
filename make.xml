@@ -1,6 +1,18 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <targets>
-  <finrocplugin name="tcp">
-    <sources>*.cpp</sources>
+  <finrocplugin name="tcp" libs="boost_system">
+    <sources>
+      tPeer.cpp
+      tSettings.cpp
+      common/**
+      internal/**
+    </sources>
   </finrocplugin>
+  
+  <testprogram name="collection">
+    <sources>
+      test/mTestCollection.cpp
+      test/pTestCollection.cpp
+    </sources>
+  </testprogram>
 </targets>
