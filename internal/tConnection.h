@@ -248,6 +248,13 @@ private:
   size_t ProcessMessageBatch(size_t start_at = 0);
 
   /*!
+   * Called by TCP Thread whenever rpc ports were deleted
+   *
+   * \param deleted_ports List with handles of deleted RPC ports
+   */
+  void RpcPortsDeleted(std::vector<core::tFrameworkElement::tHandle>& deleted_ports);
+
+  /*!
    * Send pending messages.
    * Swaps front buffer and back buffer. Reinitializes current write stream.
    */

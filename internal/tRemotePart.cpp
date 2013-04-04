@@ -594,6 +594,22 @@ void tRemotePart::RemoveConnection(tConnection& connection)
   peer_info.connected = false;
 }
 
+void tRemotePart::RpcPortsDeleted(std::vector<core::tFrameworkElement::tHandle>& deleted_ports)
+{
+  if (management_connection)
+  {
+    management_connection->RpcPortsDeleted(deleted_ports);
+  }
+  if (express_connection.get() && express_connection.get() != management_connection.get())
+  {
+    express_connection->RpcPortsDeleted(deleted_ports);
+  }
+  if (bulk_connection.get() && bulk_connection.get() != express_connection.get() && bulk_connection.get() != management_connection.get())
+  {
+    bulk_connection->RpcPortsDeleted(deleted_ports);
+  }
+}
+
 void tRemotePart::SendCall(tCallPointer& call_to_send, const rrlib::time::tTimestamp& time_now)
 {
   if (!call_to_send->ReadyForSending())

@@ -300,6 +300,12 @@ private:
   /*! Buffer pool with port value change event buffers */
   tPortBufferChangeEventPool port_buffer_change_event_buffers;
 
+  /*! List with deleted RPC ports - so that buffer pools created in connection for these ports can be deleted */
+  std::vector<core::tFrameworkElement::tHandle> deleted_rpc_ports;
+
+  /*! Mutex for 'deleted_rpc_ports' access */
+  rrlib::thread::tMutex deleted_rpc_ports_mutex;
+
 
   /*! Is provided element a shared port (to be announced to other peers)? */
   static bool IsSharedPort(core::tFrameworkElement& framework_element);

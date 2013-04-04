@@ -718,6 +718,14 @@ size_t tConnection::ProcessMessageBatch(size_t start_at)
   return 0;
 }
 
+void tConnection::RpcPortsDeleted(std::vector<core::tFrameworkElement::tHandle>& deleted_ports)
+{
+  for (auto it = deleted_ports.begin(); it != deleted_ports.end(); ++it)
+  {
+    rpc_call_buffer_pools.erase(*it);
+  }
+}
+
 void tConnection::SendPendingMessages(const rrlib::time::tTimestamp& time_now)
 {
   if (writing_back_buffer_to_stream) // back buffer is still written - we cannot write anything else during this time

@@ -251,7 +251,9 @@ tPeerImplementation::tPeerImplementation(core::tFrameworkElement& framework_elem
   pending_subscription_checks_copy(),
   event_loop_running(false),
   incoming_port_buffer_changes(),
-  port_buffer_change_event_buffers()
+  port_buffer_change_event_buffers(),
+  deleted_rpc_ports(),
+  deleted_rpc_ports_mutex()
 {
   // Retrieve host name
   char buffer[258];
@@ -417,6 +419,26 @@ void tPeerImplementation::ProcessEvents()
 
 void tPeerImplementation::ProcessLowPriorityTasks()
 {
+  // delete buffer pools created for RPC ports
+  std::vector<core::tFrameworkElement::tHandle> deleted_ports;
+  {
+    rrlib::thread::tLock lock(deleted_rpc_ports_mutex);
+    if (!deleted_rpc_ports.empty())
+    {
+      std::swap(deleted_ports, deleted_rpc_ports); // Move deleted ports to local variable and unlock
+    }
+  }
+  if (!deleted_ports.empty())
+  {
+    for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
+    {
+      tPeerInfo& peer = **it;
+      if (peer.remote_part)
+      {
+        peer.remote_part->RpcPortsDeleted(deleted_ports);
+      }
+    }
+  }
 
   // connect to other peers
   if (actively_connect)
@@ -501,6 +523,14 @@ void tPeerImplementation::RuntimeChange(core::tRuntimeListener::tEvent change_ty
       network_port_info->CheckSubscription(pending_subscription_checks, pending_subscription_checks_mutex);
     }
   }
+
+  // RPC port deletion?
+  if (change_type == core::tRuntimeListener::tEvent::REMOVE && element.IsPort() &&
+      rpc_ports::IsRPCType(static_cast<core::tAbstractPort&>(element).GetDataType()))
+  {
+    rrlib::thread::tLock lock(deleted_rpc_ports_mutex);
+    deleted_rpc_ports.push_back(element.GetHandle());
+  }
 }
 
 void tPeerImplementation::RuntimeEdgeChange(core::tRuntimeListener::tEvent change_type, core::tAbstractPort& source, core::tAbstractPort& target)
@@ -527,7 +557,6 @@ void tPeerImplementation::RuntimeEdgeChange(core::tRuntimeListener::tEvent chang
       network_port_info->CheckSubscription(pending_subscription_checks, pending_subscription_checks_mutex);
     }
   }
-
 }
 
 rrlib::serialization::tMemoryBuffer tPeerImplementation::SerializeSharedPorts(common::tRemoteTypes& connection_type_encoder)

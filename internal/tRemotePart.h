@@ -205,6 +205,13 @@ public:
   void RemoveConnection(tConnection& connection);
 
   /*!
+   * Called by TCP Thread whenever rpc ports were deleted
+   *
+   * \param deleted_ports List with handles of deleted RPC ports
+   */
+  void RpcPortsDeleted(std::vector<core::tFrameworkElement::tHandle>& deleted_ports);
+
+  /*!
    * Sends specified RPC call to connection partner
    */
   void SendCall(tCallPointer& call_to_send, const rrlib::time::tTimestamp& time_now);
