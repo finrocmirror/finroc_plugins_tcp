@@ -303,6 +303,9 @@ private:
   /*! Maps local port handle => server port */
   std::map<tFrameworkElementHandle, data_ports::tGenericPort> server_port_map;
 
+  /*! Maps remote port handler => replicated port */
+  std::map<tFrameworkElementHandle, core::tAbstractPort*> remote_port_map;
+
   /*! Ports that currently have express and bulk data to send */
   std::vector<tNetworkPortInfo*> ports_with_express_data_to_send, ports_with_bulk_data_to_send;
 

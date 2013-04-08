@@ -100,6 +100,13 @@ public:
   }
 
   /*!
+   * Changes strategy of this (remote) port
+   *
+   * \param new_strategy New Strategy to set
+   */
+  void ChangeStrategy(int16_t new_strategy);
+
+  /*!
    * Performs subscription check. Called by TCP thread.
    */
   void DoSubscriptionCheck();

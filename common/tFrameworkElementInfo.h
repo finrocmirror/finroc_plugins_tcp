@@ -65,10 +65,10 @@ namespace common
  */
 enum class tStructureExchange : int
 {
-  NONE, //<! No structure info on structure is sent
-  SHARED_PORTS, //<! Send info on shared ports to connection partner
+  NONE,               //<! No structure info on structure is sent
+  SHARED_PORTS,       //<! Send info on shared ports to connection partner
   COMPLETE_STRUCTURE, //<! Send info on complete structure to connection partner (e.g. for fingui)
-  FINSTRUCT, //<! Send info on complete structure including port connections to partner (as required by finstruct)
+  FINSTRUCT,          //<! Send info on complete structure including port connections to partner (as required by finstruct)
 };
 
 //----------------------------------------------------------------------

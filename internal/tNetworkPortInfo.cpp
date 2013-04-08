@@ -104,6 +104,11 @@ void tNetworkPortInfo::AnnotatedObjectToBeDeleted()
   remote_part.PortDeleted(this);
 }
 
+void tNetworkPortInfo::ChangeStrategy(int16_t new_strategy)
+{
+  strategy = new_strategy;
+}
+
 void tNetworkPortInfo::DoSubscriptionCheck()
 {
   data_ports::common::tAbstractDataPort* port = GetAnnotated<data_ports::common::tAbstractDataPort>();

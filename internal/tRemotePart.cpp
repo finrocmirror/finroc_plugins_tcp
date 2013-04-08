@@ -114,6 +114,7 @@ tRemotePart::tRemotePart(tPeerInfo& peer_info, core::tFrameworkElement& parent, 
   global_links(NULL /*new core::tFrameworkElement(this, "global", tFlag::NETWORK_ELEMENT | tFlag::GLOBALLY_UNIQUE_LINK | tFlag::ALTERNATIVE_LINK_ROOT)*/),
   server_ports(NULL),
   server_port_map(),
+  remote_port_map(),
   ports_with_express_data_to_send(),
   ports_with_bulk_data_to_send(),
   not_ready_calls(),
@@ -209,6 +210,7 @@ void tRemotePart::AddRemotePort(common::tFrameworkElementInfo& info)
     {
       created_port.GetWrapped()->Link(info.links[i].unique ? *GetGlobalLinksElement() : *this, info.links[i].name);
     }
+    remote_port_map.insert(std::pair<tFrameworkElementHandle, core::tAbstractPort*>(info.handle, created_port.GetWrapped()));
     created_port.Init();
     FINROC_LOG_PRINT(DEBUG, "Created remote port ", created_port.GetWrapped()->GetQualifiedName());
   }
@@ -514,7 +516,90 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
       return false;
     }
   }
+  else if (opcode == tOpCode::STRUCTURE_CREATE)
+  {
+    rrlib::thread::tLock lock(GetStructureMutex(), false);
+    if (lock.TryLock())
+    {
+      tStructureCreateMessage message;
+      message.Deserialize(stream, false);
+      common::tFrameworkElementInfo framework_element_info;
+      framework_element_info.handle = message.Get<0>();
+      stream >> framework_element_info;
+      message.FinishDeserialize(stream);
+      AddRemotePort(framework_element_info);
+    }
+    else
+    {
+      return true; // We could not obtain lock - try again later
+    }
+  }
+  else if (opcode == tOpCode::STRUCTURE_CHANGE)
+  {
+    rrlib::thread::tLock lock(GetStructureMutex(), false);
+    if (lock.TryLock())
+    {
+      tStructureChangeMessage message;
+      message.Deserialize(stream, false);
+      common::tChangeablePortInfo changeable_port_info;
+      stream >> changeable_port_info;
+      message.FinishDeserialize(stream);
 
+      core::tAbstractPort* port_to_change = remote_port_map[message.Get<0>()];
+      if (port_to_change)
+      {
+        if (data_ports::IsDataFlowType(port_to_change->GetDataType()))
+        {
+          data_ports::common::tAbstractDataPort& data_port = static_cast<data_ports::common::tAbstractDataPort&>(*port_to_change);
+          data_port.SetPushStrategy(changeable_port_info.flags.Get(tFlag::PUSH_STRATEGY));
+          data_port.SetReversePushStrategy(changeable_port_info.flags.Get(tFlag::PUSH_STRATEGY_REVERSE));
+          data_port.SetMinNetUpdateIntervalRaw(changeable_port_info.min_net_update_time);
+          tNetworkPortInfo* network_port_info = data_port.GetAnnotation<tNetworkPortInfo>();
+          if (network_port_info)
+          {
+            network_port_info->ChangeStrategy(changeable_port_info.strategy);
+          }
+        }
+        else
+        {
+          FINROC_LOG_PRINT(WARNING, "Port to change does not have data flow type: ", port_to_change->GetQualifiedName());
+        }
+      }
+      else
+      {
+        FINROC_LOG_PRINT(WARNING, "There is port to change with handle ", message.Get<0>());
+      }
+    }
+    else
+    {
+      return true; // We could not obtain lock - try again later
+    }
+  }
+  else if (opcode == tOpCode::STRUCTURE_DELETE)
+  {
+    rrlib::thread::tLock lock(GetStructureMutex(), false);
+    if (lock.TryLock())
+    {
+      tStructureDeleteMessage message;
+      message.Deserialize(stream);
+
+      core::tAbstractPort* port_to_delete = remote_port_map[message.Get<0>()];
+      if (port_to_delete)
+      {
+        tFrameworkElementHandle handle = message.Get<0>();
+        remote_port_map.erase(handle);
+        port_to_delete->ManagedDelete();
+      }
+      else
+      {
+        FINROC_LOG_PRINT(WARNING, "There is port to delete with handle ", message.Get<0>());
+      }
+    }
+    else
+    {
+      return true; // We could not obtain lock - try again later
+    }
+  }
 
   return false;
 }

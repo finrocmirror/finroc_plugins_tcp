@@ -113,7 +113,12 @@ void tFrameworkElementInfo::Serialize(rrlib::serialization::tOutputStream& strea
   // serialize links
   int link_count = framework_element.GetLinkCount();
   assert(link_count < 128); // is guaranteed by tFrameworkElement
-  stream.WriteByte(link_count);
+  int port_flag = 0;
+  if ((structure_exchange_level != tStructureExchange::SHARED_PORTS) && framework_element.IsPort())
+  {
+    port_flag = 0x80; // flag ports
+  }
+  stream.WriteByte(link_count | port_flag);
   for (int i = 0; i < link_count; i++)
   {
     if (structure_exchange_level == tStructureExchange::SHARED_PORTS)
