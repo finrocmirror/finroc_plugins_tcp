@@ -104,7 +104,7 @@ private:
 
 
 tRemotePart::tRemotePart(tPeerInfo& peer_info, core::tFrameworkElement& parent, tPeerImplementation& peer_implementation) :
-  tFrameworkElement(&parent, peer_info.uuid.ToString()),
+  tFrameworkElement(&parent, peer_info.ToString(), tFlag::NETWORK_ELEMENT),
   peer_info(peer_info),
   peer_implementation(peer_implementation),
   express_connection(),
@@ -159,7 +159,7 @@ bool tRemotePart::AddConnection(std::shared_ptr<tConnection> connection)
   if (management_connection && express_connection && bulk_connection)
   {
     peer_info.connected = true;
-    FINROC_LOG_PRINT(DEBUG, "Connected to " + peer_info.uuid.ToString());
+    FINROC_LOG_PRINT(DEBUG, "Connected to " + peer_info.ToString());
     connection->peer.RunEventLoop();
     // TODO: possibly increase peer list revision
   }
@@ -242,6 +242,14 @@ void tRemotePart::PortDeleted(tNetworkPortInfo* deleted_port)
                                         deleted_port), ports_with_express_data_to_send.end());
   ports_with_bulk_data_to_send.erase(std::remove(ports_with_bulk_data_to_send.begin(), ports_with_bulk_data_to_send.end(),
                                      deleted_port), ports_with_bulk_data_to_send.end());
+  if (deleted_port->IsServerPort())
+  {
+    size_t erased = server_port_map.erase(deleted_port->GetServedPortHandle());
+    if (!erased)
+    {
+      FINROC_LOG_PRINT(ERROR, "Deleted server port was not im map (This is a programming error)");
+    }
+  }
 }
 
 bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBuffer& buffer, common::tRemoteTypes& remote_types, tConnection& connection)
@@ -257,6 +265,19 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
     core::tAbstractPort* port = core::tRuntimeEnvironment::GetInstance().GetPort(message.Get<0>());
     if (port && port->IsReady() && data_ports::IsDataFlowType(port->GetDataType()))
     {
+      if (!port->GetAnnotation<tNetworkPortInfo>())
+      {
+        auto it = server_port_map.find(message.Get<0>());
+        if (it != server_port_map.end())
+        {
+          port = it->second.GetWrapped();
+        }
+        else
+        {
+          return false; // received value for neither remote proxy port nor server port for local port
+        }
+      }
+
       data_ports::tGenericPort generic_port = data_ports::tGenericPort::Wrap(*port);
       bool another_value = false;
       do
@@ -357,7 +378,7 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
       data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject> pulled_buffer =
         data_port.GetPointer(data_ports::tStrategy::PULL_IGNORING_HANDLER_ON_THIS_PORT);
       write_stream << pulled_buffer->GetType() << pulled_buffer.GetTimestamp();
-      pulled_buffer->Serialize(write_stream);
+      pulled_buffer->Serialize(write_stream, message.Get<2>());
       tPullCallReturn::FinishMessage(write_stream);
     }
     else
@@ -478,13 +499,13 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
         }
 
         data_ports::tGenericPort created_port(port->GetQualifiedName().substr(1), GetServerPortsElement(), port->GetDataType(), flags, message.Get<3>());
-        tNetworkPortInfo* network_port_info = new tNetworkPortInfo(*this, message.Get<4>(), message.Get<1>(), true, *created_port.GetWrapped());
+        tNetworkPortInfo* network_port_info = new tNetworkPortInfo(*this, message.Get<4>(), message.Get<1>(), true, *created_port.GetWrapped(), message.Get<0>());
         network_port_info->SetServerSideSubscriptionData(message.Get<1>(), message.Get<2>(), message.Get<3>(), message.Get<5>());
         created_port.AddPortListenerForPointer(*network_port_info);
         created_port.Init();
         created_port.ConnectTo(port);
         server_port_map.insert(std::pair<tFrameworkElementHandle, data_ports::tGenericPort>(message.Get<0>(), created_port));
-        FINROC_LOG_PRINT(DEBUG, "Created server port ", created_port.GetWrapped()->GetQualifiedName());
+        FINROC_LOG_PRINT(DEBUG_VERBOSE_1, "Created server port ", created_port.GetWrapped()->GetQualifiedName());
       }
       else
       {
@@ -503,7 +524,6 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
       if (lock.TryLock())
       {
         it->second.GetWrapped()->ManagedDelete();
-        server_port_map.erase(message.Get<0>());
       }
       else
       {
@@ -663,6 +683,7 @@ void tRemotePart::RemoveConnection(tConnection& connection)
       it->ManagedDelete();
     }
     global_links = NULL;
+    server_ports = NULL;
   }
   if (express_connection.get() == &connection)
   {
@@ -675,6 +696,10 @@ void tRemotePart::RemoveConnection(tConnection& connection)
   if (peer_info.connected)
   {
     peer_info.last_connection = rrlib::time::Now(false);
+  }
+  if (peer_info.connected)
+  {
+    FINROC_LOG_PRINT(DEBUG, "Disconnected from ", this->GetName());
   }
   peer_info.connected = false;
 }
@@ -699,7 +724,7 @@ void tRemotePart::SendCall(tCallPointer& call_to_send, const rrlib::time::tTimes
 {
   if (!call_to_send->ReadyForSending())
   {
-    FINROC_LOG_PRINT(ERROR, "Emplacing ", call_to_send.get());
+    //FINROC_LOG_PRINT(ERROR, "Emplacing ", call_to_send.get());
     not_ready_calls.emplace_back(std::move(call_to_send));
   }
   else

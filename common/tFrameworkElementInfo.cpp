@@ -128,18 +128,16 @@ void tFrameworkElementInfo::Serialize(rrlib::serialization::tOutputStream& strea
     }
     else
     {
+      bool unique = framework_element.GetFlag(tFlag::GLOBALLY_UNIQUE_LINK) || framework_element.GetParentWithFlags(tFlag::GLOBALLY_UNIQUE_LINK);
       core::tFrameworkElement* parent = framework_element.GetParent(i);
-      if (!parent->GetFlag(tFlag::NETWORK_ELEMENT)) // we only serialize parents that target is interested in
-      {
-        stream << framework_element.GetLink(i)->GetName() << parent->GetHandle();
-      }
+      stream << framework_element.GetLink(i)->GetName() << unique << parent->GetHandle();
     }
   }
 
   // send additional info - depending on whether we have a port
   if (!framework_element.IsPort())
   {
-    stream << static_cast<uint8_t>(framework_element.GetAllFlags().Raw()); // first 8 bits are sufficient for ordinary framework elements
+    stream << framework_element.GetAllFlags().Raw(); // TODO: We could save 2 bytes - as not all flags are relevant (first + last 8 bits are sufficient for ordinary framework elements)
   }
   else
   {

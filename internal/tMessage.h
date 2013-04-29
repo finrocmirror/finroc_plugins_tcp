@@ -66,7 +66,7 @@ enum class tMessageSize
 {
   FIXED,                   // fixed size message (calculated from TArgs)
   VARIABLE_UP_TO_255_BYTE, // variable message size up to 255 bytes
-  VARIABLE_UP_TO_4GB,      // variable message size up to 4GB
+  VARIABLE_UP_TO_4GB       // variable message size up to 4GB
 };
 
 //----------------------------------------------------------------------
@@ -172,6 +172,7 @@ struct tMessage : boost::noncopyable
    */
   static inline void Serialize(bool finish_message, rrlib::serialization::tOutputStream& stream, const TArgs& ... args)
   {
+    FINROC_LOG_PRINT(DEBUG_VERBOSE_1, "Sending message ", make_builder::GetEnumString(OPCODE));
     if (OPCODE != tOpCode::OTHER)
     {
       stream << OPCODE;

@@ -69,7 +69,7 @@ namespace internal
 // Implementation
 //----------------------------------------------------------------------
 
-tNetworkPortInfo::tNetworkPortInfo(tRemotePart& remote_part, tHandle remote_handle, int16_t strategy, bool server_port, core::tAbstractPort& port) :
+tNetworkPortInfo::tNetworkPortInfo(tRemotePart& remote_part, tHandle remote_handle, int16_t strategy, bool server_port, core::tAbstractPort& port, tHandle served_port_handle) :
   remote_handle(remote_handle),
   server_port(server_port),
   strategy(strategy),
@@ -81,8 +81,11 @@ tNetworkPortInfo::tNetworkPortInfo(tRemotePart& remote_part, tHandle remote_hand
   values_to_send(),
   deleted(false),
   last_update(rrlib::time::cNO_TIME),
-  desired_encoding(rrlib::serialization::tDataEncoding::BINARY)
+  desired_encoding(rrlib::serialization::tDataEncoding::BINARY),
+  served_port_handle(served_port_handle)
 {
+  assert(((!server_port) || served_port_handle) && "Server ports require served_port_handle to be set");
+
   port.AddAnnotation(*this);
   if (data_ports::IsDataFlowType(port.GetDataType()))
   {

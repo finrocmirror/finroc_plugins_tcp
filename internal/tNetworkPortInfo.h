@@ -78,7 +78,7 @@ class tNetworkPortInfo : public core::tAnnotation
 //----------------------------------------------------------------------
 public:
 
-  tNetworkPortInfo(tRemotePart& remote_part, tHandle remote_handle, int16_t strategy, bool server_port, core::tAbstractPort& port);
+  tNetworkPortInfo(tRemotePart& remote_part, tHandle remote_handle, int16_t strategy, bool server_port, core::tAbstractPort& port, tHandle served_port_handle = 0);
 
   virtual void AnnotatedObjectToBeDeleted();
 
@@ -93,6 +93,7 @@ public:
     core::tAbstractPort* port = GetAnnotated<core::tAbstractPort>();
     if ((!server_port) && data_ports::IsDataFlowType(port->GetDataType()) && (!subscription_check_pending.load()))
     {
+      FINROC_LOG_PRINT(DEBUG, "Checking subscription of ", port->GetQualifiedName());
       subscription_check_pending.store(true);
       rrlib::thread::tLock lock(pending_subscription_checks_mutex);
       pending_subscription_checks.push_back(port->GetHandle());
@@ -136,11 +137,27 @@ public:
   }
 
   /*!
+   * \return In case this is a server port: Local handle of served port - otherwise 0
+   */
+  tHandle GetServedPortHandle() const
+  {
+    return served_port_handle;
+  }
+
+  /*!
    * \return Minimum update interval for this port
    */
   rrlib::time::tDuration GetUpdateInterval()
   {
     return std::chrono::milliseconds(40); // TODO
+  }
+
+  /*!
+   * \return Is this a server port?
+   */
+  bool IsServerPort() const
+  {
+    return server_port;
   }
 
   void PortChanged(data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject>& value, data_ports::tChangeContext& change_context)
@@ -270,6 +287,9 @@ private:
 
   /*! Desired encoding of network partner */
   rrlib::serialization::tDataEncoding desired_encoding;
+
+  /*! In case this is a server port: Local handle of served port - otherwise 0 */
+  const tHandle served_port_handle;
 };
 
 //----------------------------------------------------------------------

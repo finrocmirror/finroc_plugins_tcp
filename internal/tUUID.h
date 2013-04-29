@@ -74,7 +74,7 @@ struct tUUID
   /*! Host name */
   std::string host_name;
 
-  /*! Port */
+  /** Server Port (positive numbers) or process id (negative number; for clients) */
   int port;
 
   tUUID() : host_name(), port(-1) {}
@@ -90,7 +90,11 @@ struct tUUID
 
   std::string ToString() const
   {
-    return host_name + ":" + boost::lexical_cast<std::string>(port);
+    if (port >= 0)
+    {
+      return host_name + ":" + boost::lexical_cast<std::string>(port);
+    }
+    return host_name + "<" + boost::lexical_cast<std::string>(-port) + ">";
   }
 };
 

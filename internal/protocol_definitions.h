@@ -173,7 +173,7 @@ typedef tMessage<tOpCode::UNSUBSCRIBE, tMessageSize::FIXED, tFrameworkElementHan
 // Parameters: [remote port handle][call uid][desired encoding]
 typedef tMessage<tOpCode::PULLCALL, tMessageSize::FIXED, tFrameworkElementHandle, tCallId, rrlib::serialization::tDataEncoding> tPullCall;
 
-// Parameters: [call uid][failed?] after message: [type][serialized data]
+// Parameters: [call uid][failed?] after message: [type][timestamp][serialized data]
 typedef tMessage<tOpCode::PULLCALL_RETURN, tMessageSize::VARIABLE_UP_TO_4GB, tCallId, bool> tPullCallReturn;
 
 // Parameters: [remote port handle][call type] after message: [pass stream to DeserializeCallFunction of tMessage]
@@ -207,8 +207,9 @@ typedef tMessage < tOpCode::SMALL_PORT_VALUE_CHANGE, tMessageSize::VARIABLE_UP_T
 typedef tMessage < tOpCode::SMALL_PORT_VALUE_CHANGE_WITHOUT_TIMESTAMP, tMessageSize::VARIABLE_UP_TO_255_BYTE, int32_t,
         rrlib::serialization::tDataEncoding > tSmallPortValueChangeWithoutTimestamp;
 
-// Initializes connection between two peers: [my UUID][peer type][structure exchange][connection flags][your address]
-typedef tMessage<tOpCode::OTHER, tMessageSize::VARIABLE_UP_TO_4GB, tUUID, tPeerType, common::tStructureExchange, int32_t, boost::asio::ip::address> tConnectionInitMessage;
+// Initializes connection between two peers: [my UUID][peer type][peer name][structure exchange][connection flags][your address]
+typedef tMessage < tOpCode::OTHER, tMessageSize::VARIABLE_UP_TO_4GB, tUUID, tPeerType, std::string, common::tStructureExchange,
+        int32_t, boost::asio::ip::address > tConnectionInitMessage;
 
 //----------------------------------------------------------------------
 // Function declarations

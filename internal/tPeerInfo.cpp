@@ -80,6 +80,18 @@ tPeerInfo::tPeerInfo(tPeerType peer_type) :
 {
 }
 
+void tPeerInfo::AddAddress(const boost::asio::ip::address& address)
+{
+  for (auto it = addresses.begin(); it != addresses.end(); ++it)
+  {
+    if (*it == address)
+    {
+      return;
+    }
+  }
+  addresses.push_back(address);
+}
+
 tPeerInfo::tActiveConnect::tActiveConnect(tPeerInfo& peer_info) :
   peer_info(peer_info)
 {
@@ -89,6 +101,11 @@ tPeerInfo::tActiveConnect::tActiveConnect(tPeerInfo& peer_info) :
 tPeerInfo::tActiveConnect::~tActiveConnect()
 {
   peer_info.connecting--;
+}
+
+std::string tPeerInfo::ToString() const
+{
+  return (name.length() > 0) ? (name + " (" + uuid.ToString() + ")") : uuid.ToString();
 }
 
 //----------------------------------------------------------------------

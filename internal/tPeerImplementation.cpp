@@ -228,7 +228,7 @@ private:
 };
 
 
-tPeerImplementation::tPeerImplementation(core::tFrameworkElement& framework_element, tPeerType peer_type, const std::string& network_connection,
+tPeerImplementation::tPeerImplementation(core::tFrameworkElement& framework_element, const std::string& peer_name, tPeerType peer_type, const std::string& network_connection,
     int preferred_server_port, bool try_next_ports_if_occupied, bool auto_connect_to_all_peers, const std::string& server_listen_address) :
   framework_element(framework_element),
   network_connection(network_connection),
@@ -255,6 +255,9 @@ tPeerImplementation::tPeerImplementation(core::tFrameworkElement& framework_elem
   deleted_rpc_ports(),
   deleted_rpc_ports_mutex()
 {
+  tSettings::GetInstance(); // initialize TCP settings
+  this_peer.name = peer_name;
+
   // Retrieve host name
   char buffer[258];
   if (gethostname(buffer, 257))
@@ -319,12 +322,12 @@ void tPeerImplementation::Connect()
   low_priority_tasks_timer.async_wait(tProcessLowPriorityTasksCaller<false>(*this)); // immediately trigger connecting
 }
 
-tRemotePart* tPeerImplementation::GetRemotePart(const tUUID& uuid, tPeerType peer_type, const boost::asio::ip::address& address, bool never_forget)
+tRemotePart* tPeerImplementation::GetRemotePart(const tUUID& uuid, tPeerType peer_type, const std::string& peer_name, const boost::asio::ip::address& address, bool never_forget)
 {
   if (uuid == this->this_peer.uuid)
   {
     FINROC_LOG_PRINT(ERROR, "Remote part has the same UUID as this one: " + uuid.ToString());
-    throw new std::runtime_error("Remote part has the same UUID as this one: " + uuid.ToString());
+    throw std::runtime_error("Remote part has the same UUID as this one: " + uuid.ToString());
   }
 
   for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
@@ -336,6 +339,9 @@ tRemotePart* tPeerImplementation::GetRemotePart(const tUUID& uuid, tPeerType pee
         (*it)->remote_part = new tRemotePart(**it, framework_element, *this);
         (*it)->remote_part->Init();
       }
+
+      (*it)->AddAddress(address);
+      (*it)->name = peer_name;
       (*it)->never_forget |= never_forget;
       return (*it)->remote_part;
     }
@@ -345,6 +351,7 @@ tRemotePart* tPeerImplementation::GetRemotePart(const tUUID& uuid, tPeerType pee
   tPeerInfo& info = **(other_peers.end() - 1);
   info.addresses.push_back(address);
   info.uuid = uuid;
+  info.name = peer_name;
   info.never_forget = never_forget;
   info.remote_part = new tRemotePart(info, framework_element, *this);
   info.remote_part->Init();
@@ -364,21 +371,7 @@ void tPeerImplementation::ProcessEvents()
   //FINROC_LOG_PRINT(DEBUG, "Called");
 
   // Process incoming structure changes
-  rrlib::concurrent_containers::tQueueFragment<std::unique_ptr<tSerializedStructureChange>> incoming_structure_changes_fragment = incoming_structure_changes.DequeueAll();
-  while (!incoming_structure_changes_fragment.Empty())
-  {
-    std::unique_ptr<tSerializedStructureChange> incoming_structure_change = incoming_structure_changes_fragment.PopFront();
-    for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
-    {
-      if ((*it)->remote_part)
-      {
-        if (static_cast<size_t>((*it)->remote_part->GetDesiredStructureInfo()) >= static_cast<size_t>(incoming_structure_change->MinimumRelevantLevel()))
-        {
-          (*it)->remote_part->SendStructureChange(*incoming_structure_change);
-        }
-      }
-    }
-  }
+  ProcessRuntimeChangeEvents();
 
   // Process pending subscription checks
   {
@@ -419,6 +412,8 @@ void tPeerImplementation::ProcessEvents()
 
 void tPeerImplementation::ProcessLowPriorityTasks()
 {
+  FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Alive ", rrlib::time::Now().time_since_epoch().count());
+
   // delete buffer pools created for RPC ports
   std::vector<core::tFrameworkElement::tHandle> deleted_ports;
   {
@@ -453,7 +448,7 @@ void tPeerImplementation::ProcessLowPriorityTasks()
     for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
     {
       tPeerInfo& peer = **it;
-      if ((!peer.connected) && (!peer.connecting))
+      if ((!peer.connected) && (!peer.connecting) && (peer.peer_type != tPeerType::CLIENT_ONLY))
       {
         tConnectorTask connector_task(*this, peer);
       }
@@ -495,7 +490,28 @@ void tPeerImplementation::ProcessRuntimeChange(core::tRuntimeListener::tEvent ch
     }
     else
     {
+      //FINROC_LOG_PRINT(DEBUG, "Enqueuing ", change.get(), " ", element.GetQualifiedName());
       incoming_structure_changes.Enqueue(std::move(change));
+    }
+  }
+}
+
+void tPeerImplementation::ProcessRuntimeChangeEvents()
+{
+  rrlib::concurrent_containers::tQueueFragment<std::unique_ptr<tSerializedStructureChange>> incoming_structure_changes_fragment = incoming_structure_changes.DequeueAll();
+  while (!incoming_structure_changes_fragment.Empty())
+  {
+    std::unique_ptr<tSerializedStructureChange> incoming_structure_change = incoming_structure_changes_fragment.PopFront();
+    //FINROC_LOG_PRINT(DEBUG, "Dequeuing ", incoming_structure_change.get());
+    for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
+    {
+      if ((*it)->remote_part)
+      {
+        if (static_cast<size_t>((*it)->remote_part->GetDesiredStructureInfo()) >= static_cast<size_t>(incoming_structure_change->MinimumRelevantLevel()))
+        {
+          (*it)->remote_part->SendStructureChange(*incoming_structure_change);
+        }
+      }
     }
   }
 }
@@ -562,6 +578,7 @@ void tPeerImplementation::RuntimeEdgeChange(core::tRuntimeListener::tEvent chang
 rrlib::serialization::tMemoryBuffer tPeerImplementation::SerializeSharedPorts(common::tRemoteTypes& connection_type_encoder)
 {
   rrlib::thread::tLock lock(shared_ports_mutex);
+  ProcessRuntimeChangeEvents();  // to make sure we don't get any shared port events twice
   rrlib::serialization::tMemoryBuffer buffer(shared_ports.size() * 200);
   rrlib::serialization::tOutputStream stream(buffer, connection_type_encoder);
   stream.WriteInt(0); // Placeholder for size

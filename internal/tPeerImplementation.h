@@ -94,6 +94,7 @@ public:
 
   /*!
    * \param framework_element Framework element associated with peer
+   * \param peer_name Name of peer. Will be displayed in tooling and status messages. Does not need to be unique. Typically the program/process name.
    * \param peer_type Type of peer to be created
    * \param network_connection Name of network that peer belongs to OR network address of one peer that belongs to P2P network
    * \param preferred_server_port Port that we will try to open for server. Will try the next ones if not available (SERVER and FULL only)
@@ -101,8 +102,8 @@ public:
    * \param auto_connect_to_all_peers Auto-connect to all peers that become known?
    * \param server_listen_address The address that server is supposed to listen on ("::" will enable IPv6)
    */
-  tPeerImplementation(core::tFrameworkElement& framework_element, tPeerType peer_type, const std::string& network_connection, int preferred_server_port,
-                      bool try_next_ports_if_occupied, bool auto_connect_to_all_peers, const std::string& server_listen_address);
+  tPeerImplementation(core::tFrameworkElement& framework_element, const std::string& peer_name, tPeerType peer_type, const std::string& network_connection,
+                      int preferred_server_port, bool try_next_ports_if_occupied, bool auto_connect_to_all_peers, const std::string& server_listen_address);
 
   /*! Shuts peer down */
   ~tPeerImplementation();
@@ -129,11 +130,12 @@ public:
    *
    * \param uuid UUID of remote part
    * \param peer_type Peer type
+   * \param peer_name Name of peer. Will be displayed in tooling and status messages. Does not need to be unique. Typically the program/process name.
    * \param address IP address of remote part
    * \param never_forget Is this a remote peer to never forget?
    * \return Pointer to remote part
    */
-  tRemotePart* GetRemotePart(const tUUID& uuid, tPeerType peer_type, const boost::asio::ip::address& address, bool never_forget);
+  tRemotePart* GetRemotePart(const tUUID& uuid, tPeerType peer_type, const std::string& peer_name, const boost::asio::ip::address& address, bool never_forget);
 
   /*!
    * \return Thread id of TCP thread. Null, if TCP thread does not exist
@@ -174,6 +176,12 @@ public:
    * Called in a regular interval to do things like establishing new connections
    */
   void ProcessLowPriorityTasks();
+
+  /*!
+   * Processes all enqueued runtime change events in TCP thread
+   * and distributes them to all connections that are interested.
+   */
+  void ProcessRuntimeChangeEvents();
 
   /*!
    * Starts running event loop (the one that call ProcessEvents() every 5ms),

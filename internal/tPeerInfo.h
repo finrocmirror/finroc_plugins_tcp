@@ -116,14 +116,31 @@ struct tPeerInfo : boost::noncopyable
    */
   tRemotePart* remote_part;
 
+  /*!
+   * Name of peer. Will be displayed in tooling and status messages.
+   * Does not need to be unique. Typically the program/process name.
+   */
+  std::string name;
+
 
   tPeerInfo(tPeerType peer_type);
+
+
+  /*!
+   * Adds address to known addresses of this peer
+   */
+  void AddAddress(const boost::asio::ip::address& address);
 
   /*! Host name of peer */
   std::string Hostname()
   {
     return uuid.host_name;
   }
+
+  /*!
+   * \return String representation of peer info to use in command line output etc.
+   */
+  std::string ToString() const;
 
   /*!
    * RAII class to reliably keep 'connecting' variable up to date.

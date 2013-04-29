@@ -90,15 +90,16 @@ tSerializedStructureChange::tSerializedStructureChange(core::tRuntimeListener::t
       stream.Flush();
       full_structure_info_begin = buffer.GetSize();
     }
-    if (serve_structure)
-    {
-      common::tFrameworkElementInfo::Serialize(stream, element, common::tStructureExchange::COMPLETE_STRUCTURE, string_buffer);
-      stream.Flush();
-      finstruct_only_info_begin = buffer.GetSize();
-      common::tFrameworkElementInfo::SerializeFinstructOnlyInfo(stream, element);
-      stream.Flush();
-    }
+    //if (serve_structure)  if we start serving structure, while this is still in a queue... this is suboptimal
+    //{
+    common::tFrameworkElementInfo::Serialize(stream, element, common::tStructureExchange::COMPLETE_STRUCTURE, string_buffer);
+    stream.Flush();
+    finstruct_only_info_begin = buffer.GetSize();
+    common::tFrameworkElementInfo::SerializeFinstructOnlyInfo(stream, element);
+    stream.Flush();
+    //}
     storage = CopyToNewFixedBuffer(buffer);
+    //FINROC_LOG_PRINT(DEBUG, this, " ", full_structure_info_begin, " ", finstruct_only_info_begin);
   }
   else if (change_type == core::tRuntimeListener::tEvent::CHANGE)
   {
@@ -118,7 +119,7 @@ tSerializedStructureChange::tSerializedStructureChange(core::tRuntimeListener::t
     stream << info;
     stream.Flush();
     finstruct_only_info_begin = buffer.GetSize();
-    if (serve_structure)
+    if (element.IsPort() && serve_structure)
     {
       common::tFrameworkElementInfo::SerializeConnections(stream, port);
       stream.Flush();
@@ -129,6 +130,8 @@ tSerializedStructureChange::tSerializedStructureChange(core::tRuntimeListener::t
 
 void tSerializedStructureChange::WriteToStream(rrlib::serialization::tOutputStream& stream, common::tStructureExchange exchange_level) const
 {
+  //FINROC_LOG_PRINT(DEBUG, this, " ", full_structure_info_begin, " ", finstruct_only_info_begin);
+
   typedef std::pair<const void*, size_t> tBufferInfo;
   if (change_type == core::tRuntimeListener::tEvent::ADD)
   {

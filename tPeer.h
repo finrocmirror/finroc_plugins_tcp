@@ -77,30 +77,34 @@ public:
   /*!
    * Creates full peer with client and server
    *
+   * \param peer_name Name of peer. Will be displayed in tooling and status messages. Does not need to be unique. Typically the program/process name.
    * \param network_connection Name of network that peer belongs to OR network address of one peer that belongs to P2P network
    * \param preferred_server_port Port that we will try to open for server. Will try the next ones if not available (SERVER and FULL only)
    * \param try_next_ports_if_occupied Try the following ports, if specified port is already occupied?
    * \param auto_connect_to_all_peers Auto-connect to all peers that become known?
    * \param server_listen_address The address that server is supposed to listen on ("::" will enable IPv6)
    */
-  tPeer(const std::string& network_connection, int preferred_server_port, bool try_next_ports_if_occupied, bool auto_connect_to_all_peers, const std::string& server_listen_address = "0.0.0.0");
+  tPeer(const std::string& peer_name, const std::string& network_connection, int preferred_server_port, bool try_next_ports_if_occupied,
+        bool auto_connect_to_all_peers, const std::string& server_listen_address = "0.0.0.0");
 
   /*!
    * Creates server-only peer
    *
+   * \param peer_name Name of peer. Will be displayed in tooling and status messages. Does not need to be unique. Typically the program/process name.
    * \param preferred_server_port Port that we will try to open for server. Will try the next ones if not available (SERVER and FULL only)
    * \param try_next_ports_if_occupied Try the following ports, if specified port is already occupied?
    * \param server_listen_address The address that server is supposed to listen on ("::" will enable IPv6)
    */
-  tPeer(int preferred_server_port, bool try_next_ports_if_occupied, const std::string& server_listen_address = "0.0.0.0");
+  tPeer(const std::string& peer_name, int preferred_server_port, bool try_next_ports_if_occupied, const std::string& server_listen_address = "0.0.0.0");
 
   /*!
    * Creates client-only peer
    *
+   * \param peer_name Name of peer. Will be displayed in tooling and status messages. Does not need to be unique. Typically the program/process name.
    * \param network_connection Name of network that peer belongs to OR network address of one peer that belongs to P2P network
    * \param auto_connect_to_all_peers Auto-connect to all peers that become known?
    */
-  tPeer(const std::string& network_connection, bool auto_connect_to_all_peers);
+  tPeer(const std::string& peer_name, const std::string& network_connection, bool auto_connect_to_all_peers);
 
 
   /*! Starts actively connecting to the specified network */
