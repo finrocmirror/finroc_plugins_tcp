@@ -69,7 +69,8 @@ class tNetworkPortInfo;
  */
 struct tPortBufferChangeEvent :
   public rrlib::buffer_pools::tBufferManagementInfo,
-  public rrlib::concurrent_containers::tQueueable<rrlib::concurrent_containers::tQueueability::MOST_OPTIMIZED>
+  public rrlib::concurrent_containers::tQueueable<rrlib::concurrent_containers::tQueueability::MOST_OPTIMIZED>,
+  public rrlib::buffer_pools::tNotifyOnRecycle
 {
 
   /*! New value of port */
@@ -83,8 +84,15 @@ struct tPortBufferChangeEvent :
 
 
   tPortBufferChangeEvent() :
-    new_value()
+    new_value(),
+    network_port_info(NULL),
+    change_type(data_ports::tChangeStatus::NO_CHANGE)
   {}
+
+  void OnRecycle()
+  {
+    new_value.Reset();
+  }
 };
 
 //----------------------------------------------------------------------

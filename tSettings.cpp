@@ -87,6 +87,7 @@ tSettings::tSettings() :
   min_update_interval_bulk("Minimum Bulk Update Interval", this, std::chrono::milliseconds(50), data_ports::tBounds<rrlib::time::tDuration>(std::chrono::milliseconds(1), std::chrono::seconds(2))),
   critical_ping_threshold("Critical Ping Threshold", this, std::chrono::milliseconds(1500), data_ports::tBounds<rrlib::time::tDuration>(std::chrono::milliseconds(50), std::chrono::seconds(20)))
 {
+  assert(max_not_acknowledged_packets_bulk.Get() == 2);
 }
 
 tSettings::~tSettings()
