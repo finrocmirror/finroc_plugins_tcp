@@ -236,6 +236,23 @@ core::tFrameworkElement* tRemotePart::GetServerPortsElement()
   return server_ports;
 }
 
+data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject> tRemotePart::OnPullRequest(data_ports::tGenericPort& origin)
+{
+  FINROC_LOG_PRINT(DEBUG_VERBOSE_1, "Pull request received");
+  tPullCallInfo pull_call_info(*this, *origin.GetWrapped());
+  rpc_ports::tFuture<data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject>> pull_future(pull_call_info.promise->GetFuture());
+  GetPeerImplementation().IOService().post(pull_call_info);
+  try
+  {
+    return pull_future.Get(data_ports::cPULL_TIMEOUT);
+  }
+  catch (const std::exception& exception)
+  {
+  }
+  FINROC_LOG_PRINT(DEBUG_WARNING, "Pull call timed out (", origin.GetWrapped()->GetQualifiedName(), ")");
+  return data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject>();
+}
+
 void tRemotePart::PortDeleted(tNetworkPortInfo* deleted_port)
 {
   ports_with_express_data_to_send.erase(std::remove(ports_with_express_data_to_send.begin(), ports_with_express_data_to_send.end(),
@@ -648,23 +665,6 @@ void tRemotePart::ProcessStructurePacket(rrlib::serialization::tInputStream& str
   {
     FINROC_LOG_PRINT(ERROR, "Error processing structure packet:", e);
   }
-}
-
-data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject> tRemotePart::PullRequest(data_ports::common::tAbstractDataPort& origin)
-{
-  FINROC_LOG_PRINT(DEBUG_VERBOSE_1, "Pull request received");
-  tPullCallInfo pull_call_info(*this, origin);
-  rpc_ports::tFuture<data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject>> pull_future(pull_call_info.promise->GetFuture());
-  GetPeerImplementation().IOService().post(pull_call_info);
-  try
-  {
-    return pull_future.Get(data_ports::cPULL_TIMEOUT);
-  }
-  catch (const std::exception& exception)
-  {
-  }
-  FINROC_LOG_PRINT(DEBUG_WARNING, "Pull call timed out (", origin.GetQualifiedName(), ")");
-  return data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject>();
 }
 
 void tRemotePart::RemoveConnection(tConnection& connection)
