@@ -102,7 +102,7 @@ public:
   static int16_t GetMinNetUpdateInterval(rrlib::rtti::tType& type);
 
   /*! Port Listener callback */
-  void PortChanged(const int16_t& value, data_ports::tChangeContext& change_context);
+  void OnPortChange(const int16_t& value, data_ports::tChangeContext& change_context);
 
   /*!
    * \param listener Listener to remove

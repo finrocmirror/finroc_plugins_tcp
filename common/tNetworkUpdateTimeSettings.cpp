@@ -139,7 +139,7 @@ int16_t tNetworkUpdateTimeSettings::GetMinNetUpdateInterval(rrlib::rtti::tType& 
   return update_time ? update_time->update_time : -1;
 }
 
-void tNetworkUpdateTimeSettings::PortChanged(const int16_t& value, data_ports::tChangeContext& change_context)
+void tNetworkUpdateTimeSettings::OnPortChange(const int16_t& value, data_ports::tChangeContext& change_context)
 {
   if (&change_context.Origin() == default_minimum_network_update_time.GetWrapped())
   {

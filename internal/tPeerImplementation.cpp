@@ -365,6 +365,55 @@ bool tPeerImplementation::IsSharedPort(core::tFrameworkElement& framework_elemen
          (!framework_element.GetFlag(core::tFrameworkElement::tFlag::NETWORK_ELEMENT));
 }
 
+void tPeerImplementation::OnEdgeChange(core::tRuntimeListener::tEvent change_type, core::tAbstractPort& source, core::tAbstractPort& target)
+{
+  if (source.IsReady())
+  {
+    ProcessRuntimeChange(core::tRuntimeListener::tEvent::CHANGE, source, true);
+  }
+
+  // Check subscriptions?
+  if (source.IsReady())
+  {
+    tNetworkPortInfo* network_port_info = source.GetAnnotation<tNetworkPortInfo>();
+    if (network_port_info)
+    {
+      network_port_info->CheckSubscription(pending_subscription_checks, pending_subscription_checks_mutex);
+    }
+  }
+  if (target.IsReady())
+  {
+    tNetworkPortInfo* network_port_info = target.GetAnnotation<tNetworkPortInfo>();
+    if (network_port_info)
+    {
+      network_port_info->CheckSubscription(pending_subscription_checks, pending_subscription_checks_mutex);
+    }
+  }
+}
+
+void tPeerImplementation::OnFrameworkElementChange(core::tRuntimeListener::tEvent change_type, core::tFrameworkElement& element)
+{
+  ProcessRuntimeChange(change_type, element, false);
+
+  // Check subscriptions?
+  if (change_type == core::tRuntimeListener::tEvent::CHANGE)
+  {
+    tNetworkPortInfo* network_port_info = element.GetAnnotation<tNetworkPortInfo>();
+    if (network_port_info)
+    {
+      network_port_info->CheckSubscription(pending_subscription_checks, pending_subscription_checks_mutex);
+    }
+  }
+
+  // RPC port deletion?
+  if (change_type == core::tRuntimeListener::tEvent::REMOVE && element.IsPort() &&
+      rpc_ports::IsRPCType(static_cast<core::tAbstractPort&>(element).GetDataType()))
+  {
+    rrlib::thread::tLock lock(deleted_rpc_ports_mutex);
+    deleted_rpc_ports.push_back(element.GetHandle());
+  }
+}
+
 void tPeerImplementation::ProcessEvents()
 {
   rrlib::time::tTimestamp time_now = rrlib::time::Now();
@@ -523,55 +572,6 @@ void tPeerImplementation::RunEventLoop()
     event_loop_running = true;
     event_processing_timer.expires_from_now(boost::posix_time::milliseconds(cPROCESS_EVENTS_CALL_INTERVAL));
     event_processing_timer.async_wait(tProcessEventsCaller(*this));
-  }
-}
-
-void tPeerImplementation::RuntimeChange(core::tRuntimeListener::tEvent change_type, core::tFrameworkElement& element)
-{
-  ProcessRuntimeChange(change_type, element, false);
-
-  // Check subscriptions?
-  if (change_type == core::tRuntimeListener::tEvent::CHANGE)
-  {
-    tNetworkPortInfo* network_port_info = element.GetAnnotation<tNetworkPortInfo>();
-    if (network_port_info)
-    {
-      network_port_info->CheckSubscription(pending_subscription_checks, pending_subscription_checks_mutex);
-    }
-  }
-
-  // RPC port deletion?
-  if (change_type == core::tRuntimeListener::tEvent::REMOVE && element.IsPort() &&
-      rpc_ports::IsRPCType(static_cast<core::tAbstractPort&>(element).GetDataType()))
-  {
-    rrlib::thread::tLock lock(deleted_rpc_ports_mutex);
-    deleted_rpc_ports.push_back(element.GetHandle());
-  }
-}
-
-void tPeerImplementation::RuntimeEdgeChange(core::tRuntimeListener::tEvent change_type, core::tAbstractPort& source, core::tAbstractPort& target)
-{
-  if (source.IsReady())
-  {
-    ProcessRuntimeChange(core::tRuntimeListener::tEvent::CHANGE, source, true);
-  }
-
-  // Check subscriptions?
-  if (source.IsReady())
-  {
-    tNetworkPortInfo* network_port_info = source.GetAnnotation<tNetworkPortInfo>();
-    if (network_port_info)
-    {
-      network_port_info->CheckSubscription(pending_subscription_checks, pending_subscription_checks_mutex);
-    }
-  }
-  if (target.IsReady())
-  {
-    tNetworkPortInfo* network_port_info = target.GetAnnotation<tNetworkPortInfo>();
-    if (network_port_info)
-    {
-      network_port_info->CheckSubscription(pending_subscription_checks, pending_subscription_checks_mutex);
-    }
   }
 }
 

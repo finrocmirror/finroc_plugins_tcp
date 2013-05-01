@@ -318,11 +318,11 @@ private:
   /*! Is provided element a shared port (to be announced to other peers)? */
   static bool IsSharedPort(core::tFrameworkElement& framework_element);
 
+  virtual void OnEdgeChange(core::tRuntimeListener::tEvent change_type, core::tAbstractPort& source, core::tAbstractPort& target); // TODO: mark override with gcc 4.7
+  virtual void OnFrameworkElementChange(core::tRuntimeListener::tEvent change_type, core::tFrameworkElement& element); // TODO: mark override with gcc 4.7
+
   /*! Handles runtime changes from callbacks - and forwards info to 'incoming_structure_changes' queue */
   void ProcessRuntimeChange(core::tRuntimeListener::tEvent change_type, core::tFrameworkElement& element, bool edge_change);
-
-  virtual void RuntimeChange(core::tRuntimeListener::tEvent change_type, core::tFrameworkElement& element); // TODO: mark override with gcc 4.7
-  virtual void RuntimeEdgeChange(core::tRuntimeListener::tEvent change_type, core::tAbstractPort& source, core::tAbstractPort& target); // TODO: mark override with gcc 4.7
 
   /*! Starts TCP Thread */
   void StartThread();

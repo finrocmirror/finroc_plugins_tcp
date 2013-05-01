@@ -160,7 +160,7 @@ public:
     return server_port;
   }
 
-  void PortChanged(data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject>& value, data_ports::tChangeContext& change_context)
+  void OnPortChange(data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject>& value, data_ports::tChangeContext& change_context)
   {
     //FINROC_LOG_PRINT(DEBUG, "Port Changed ", port.GetWrapped()->GetQualifiedName(), " ", rrlib::serialization::Serialize(*value));
     remote_part.GetPeerImplementation().PortChanged(value, this, change_context);

@@ -83,7 +83,7 @@ public:
 private:
   bool connected;
 
-  virtual void RuntimeChange(tRuntimeListener::tEvent change_type, tFrameworkElement& element)
+  virtual void OnFrameworkElementChange(tRuntimeListener::tEvent change_type, tFrameworkElement& element)
   {
     if ((!connected) && element.IsPort() && element.GetFlag(tFrameworkElement::tFlag::NETWORK_ELEMENT))
     {
@@ -109,7 +109,7 @@ private:
     }
   }
 
-  virtual void RuntimeEdgeChange(tRuntimeListener::tEvent change_type, tAbstractPort& source, tAbstractPort& target)
+  virtual void OnEdgeChange(tRuntimeListener::tEvent change_type, tAbstractPort& source, tAbstractPort& target)
   {
   }
 };
