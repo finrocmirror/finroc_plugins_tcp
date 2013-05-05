@@ -38,6 +38,7 @@
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
+#include "plugins/tcp/common/tNetworkUpdateTimeSettings.h"
 #include "plugins/tcp/internal/tNetworkPortInfo.h"
 #include "plugins/tcp/internal/tPeerImplementation.h"
 #include "plugins/tcp/internal/tRemotePart.h"
@@ -579,8 +580,8 @@ tConnection::tConnection(tPeerImplementation& peer, std::shared_ptr<boost::asio:
   front_buffer(cINITIAL_WRITE_BUFFER_SIZE),
   back_buffer(cINITIAL_WRITE_BUFFER_SIZE),
   writing_back_buffer_to_stream(false),
-  current_write_stream(front_buffer),
   remote_types(),
+  current_write_stream(front_buffer, remote_types),
   active_connect_indicator(active_connect_indicator),
   never_forget(never_forget),
   defer_read_timer(peer.IOService()),
@@ -814,6 +815,7 @@ void tConnection::SendPendingMessages(const rrlib::time::tTimestamp& time_now)
     current_write_stream.WriteInt(0); // Placeholder for size
     current_write_stream.WriteShort(0); // Placeholder for ack requests
     current_write_stream.WriteShort(0); // Placeholder for acks
+    SerializeAnyNewTypes();
 
     // Obtain shared pointer on connection: TODO could be significantly less ugly
     std::shared_ptr<tConnection> connection;
@@ -873,8 +875,25 @@ void tConnection::SendStructureChange(const tSerializedStructureChange& structur
     if ((structure_exchange_level == common::tStructureExchange::SHARED_PORTS) || initial_structure_writing_complete ||
         structure_change.GetLocalHandle() < framework_elements_in_full_structure_exchange_sent_until_handle)
     {
+      if (initial_structure_writing_complete)
+      {
+        // check whether we need to serialize further types
+        SerializeAnyNewTypes();
+      }
       structure_change.WriteToStream(current_write_stream, structure_exchange_level);
     }
+  }
+}
+
+void tConnection::SerializeAnyNewTypes()
+{
+  if (remote_types.TypeUpdateNecessary())
+  {
+    tTypeUpdateMessage message;
+    message.Serialize(false, current_write_stream);
+    current_write_stream << rrlib::rtti::tType();
+    current_write_stream.WriteShort(common::tNetworkUpdateTimeSettings::GetInstance().default_minimum_network_update_time.Get());
+    message.FinishMessage(current_write_stream);
   }
 }
 

@@ -168,11 +168,11 @@ private:
   /*! True, while back buffer is written to stream. During this time, no further buffers can be written to stream */
   bool writing_back_buffer_to_stream;
 
-  /*! Current stream for writing data to (writes to front buffer) */
-  rrlib::serialization::tOutputStream current_write_stream;
-
   /*! Information on remote types */
   common::tRemoteTypes remote_types;
+
+  /*! Current stream for writing data to (writes to front buffer) */
+  rrlib::serialization::tOutputStream current_write_stream;
 
   /*! Active connect indicator, in case this is a client connection */
   std::shared_ptr<tPeerInfo::tActiveConnect> active_connect_indicator;
@@ -274,6 +274,11 @@ private:
    * \return True if any data was written
    */
   bool SendPortData(std::vector<tNetworkPortInfo*>& port_list, const rrlib::time::tTimestamp& time_now);
+
+  /*!
+   * Serializes any new local data types that might have been added to rrlib::rtti::tType
+   */
+  void SerializeAnyNewTypes();
 };
 
 //----------------------------------------------------------------------

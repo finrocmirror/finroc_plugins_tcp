@@ -160,6 +160,10 @@ rrlib::rtti::tType tRemoteTypes::ReadType(rrlib::serialization::tInputStream& is
     Deserialize(is);
     uid = is.ReadShort();
   }
+  if (uid == -1)
+  {
+    return rrlib::rtti::tType();
+  }
 
   if (!Initialized())
   {
@@ -187,8 +191,7 @@ void tRemoteTypes::SerializeLocalDataTypes(rrlib::serialization::tOutputStream& 
 {
   if (local_types_sent == 0)
   {
-    int t = tNetworkUpdateTimeSettings::GetInstance().default_minimum_network_update_time.Get();
-    co.WriteShort(static_cast<int16_t>(t));
+    co.WriteShort(tNetworkUpdateTimeSettings::GetInstance().default_minimum_network_update_time.Get());
   }
   int16_t type_count = rrlib::rtti::tType::GetTypeCount();
   for (int16_t i = local_types_sent, n = type_count; i < n; i++)

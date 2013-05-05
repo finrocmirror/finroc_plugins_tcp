@@ -82,7 +82,7 @@ const tMessageSizeReader message_size_for_opcodes[static_cast<int>(tOpCode::OTHE
   //CreateReader<tRPCMessageMessage>(),
   //CreateReader<tRPCRequestMessage>(),
   //CreateReader<tRPCResponseMessage>(),
-  CreateReader<tUpdateTimeMessage>(),
+  CreateReader<tTypeUpdateMessage>(),
   CreateReader<tStructureCreateMessage>(),
   CreateReader<tStructureChangeMessage>(),
   CreateReader<tStructureDeleteMessage>(),

@@ -553,6 +553,15 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
       return false;
     }
   }
+  else if (opcode == tOpCode::TYPE_UPDATE)
+  {
+    tTypeUpdateMessage message;
+    message.Deserialize(stream, false);
+    rrlib::rtti::tType type;
+    stream >> type;
+    remote_types.SetTime(type, stream.ReadShort());
+    message.FinishDeserialize(stream);
+  }
   else if (opcode == tOpCode::STRUCTURE_CREATE)
   {
     rrlib::thread::tLock lock(GetStructureMutex(), false);

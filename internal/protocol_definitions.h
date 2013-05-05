@@ -83,7 +83,7 @@ enum class tOpCode : uint8_t
   PULLCALL,          // Pull call
   PULLCALL_RETURN,   // Returning pull call
   RPC_CALL,          // RPC call
-  UPDATE_TIME,       // Update on desired update times
+  TYPE_UPDATE,       // Update on remote type info (typically desired update time)
   STRUCTURE_CREATE,  // Update on remote framework elements: Element created
   STRUCTURE_CHANGE,  // Update on remote framework elements: Port changed
   STRUCTURE_DELETE,  // Update on remote framework elements: Element deleted
@@ -179,8 +179,8 @@ typedef tMessage<tOpCode::PULLCALL_RETURN, tMessageSize::VARIABLE_UP_TO_4GB, tCa
 // Parameters: [remote port handle][call type] after message: [pass stream to DeserializeCallFunction of tMessage]
 typedef tMessage<tOpCode::RPC_CALL, tMessageSize::VARIABLE_UP_TO_4GB, tFrameworkElementHandle, rpc_ports::tCallType> tRPCCall;
 
-// Parameters: [int16: data type][int16: new update time]
-typedef tMessage<tOpCode::UPDATE_TIME, tMessageSize::FIXED, int16_t, int16_t> tUpdateTimeMessage;
+// Parameters: after message: [data type][int16: new update time]
+typedef tMessage<tOpCode::TYPE_UPDATE, tMessageSize::VARIABLE_UP_TO_4GB> tTypeUpdateMessage;
 
 // Parameters: [local port handle] after message: [tFrameworkElementInfo]
 typedef tMessage<tOpCode::STRUCTURE_CREATE, tMessageSize::VARIABLE_UP_TO_4GB, tFrameworkElementHandle> tStructureCreateMessage;
