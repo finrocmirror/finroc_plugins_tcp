@@ -25,6 +25,8 @@
  *
  * \date    2013-01-05
  *
+ * \brief
+ *
  * Various definitions of the TCP protocol that peers use to communicate.
  *
  */

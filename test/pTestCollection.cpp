@@ -25,8 +25,6 @@
  *
  * \date    2013-01-20
  *
- * \brief Contains mTestCollection
- *
  * \b pTestCollection
  *
  * Performs various tests on connected network ports

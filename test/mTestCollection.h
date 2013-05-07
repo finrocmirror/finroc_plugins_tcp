@@ -25,7 +25,7 @@
  *
  * \date    2013-01-20
  *
- * \brief Contains mTestCollection
+ * \brief   Contains mTestCollection
  *
  * \b mTestCollection
  *

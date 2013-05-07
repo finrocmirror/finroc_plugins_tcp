@@ -25,6 +25,8 @@
  *
  * \date    2013-02-21
  *
+ * \brief
+ *
  * Contains various utility functions for TCP plugin implementation
  *
  */
