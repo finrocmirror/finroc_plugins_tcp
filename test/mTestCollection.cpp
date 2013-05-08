@@ -82,7 +82,7 @@ mTestCollection::mTestCollection(core::tFrameworkElement *parent, const std::str
   out_initial_pushing(cINITIAL_VALUE),
   out_initial_pushing_reverse(tFlag::SHARED | tFlag::PUSH_STRATEGY_REVERSE),
   in_initial_pushing_reverse(cINITIAL_VALUE),
-  in_burst_publishing(0, 5, tFlag::HAS_DEQUEUE_ALL_QUEUE),
+  in_burst_publishing(0, data_ports::tQueueSettings(true, 5)),
   test_interface_client("Test Interface", &GetInputs()),
   test_interface_server(test_interface, "Test Interface", &GetOutputs(), tFlag::SHARED),
   float_blackboard("float blackboard", this, false, 10, true, blackboard::tReadPorts::INTERNAL),

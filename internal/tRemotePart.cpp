@@ -515,7 +515,8 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
           flags |= tFlag::PUSH_STRATEGY_REVERSE;
         }
 
-        data_ports::tGenericPort created_port(port->GetQualifiedName().substr(1), GetServerPortsElement(), port->GetDataType(), flags, message.Get<3>());
+        data_ports::tGenericPort created_port(port->GetQualifiedName().substr(1), GetServerPortsElement(), port->GetDataType(), flags);
+        created_port.GetWrapped()->SetMinNetUpdateIntervalRaw(message.Get<3>());
         tNetworkPortInfo* network_port_info = new tNetworkPortInfo(*this, message.Get<4>(), message.Get<1>(), true, *created_port.GetWrapped(), message.Get<0>());
         network_port_info->SetServerSideSubscriptionData(message.Get<1>(), message.Get<2>(), message.Get<3>(), message.Get<5>());
         created_port.AddPortListenerForPointer(*network_port_info);
