@@ -348,7 +348,6 @@ private:
 
 /*!
  * Writes structure to stream
- * TODO: continue
  */
 class tStructureWriteHandler
 {
@@ -363,6 +362,7 @@ public:
     {
       buffer.reset(new rrlib::serialization::tMemoryBuffer(0));
       *buffer = connection->peer.SerializeSharedPorts(connection->remote_types);
+      connection->framework_elements_in_full_structure_exchange_sent_until_handle = std::numeric_limits<tFrameworkElementHandle>::max(); // we want to receive any updates now
       ready_after_write = true;
       boost::asio::async_write(*(connection->socket), boost::asio::const_buffers_1(buffer->GetBufferPointer(0), buffer->GetSize()), *this);
     }
@@ -872,7 +872,7 @@ void tConnection::SendStructureChange(const tSerializedStructureChange& structur
 {
   if (initial_reading_complete && initial_writing_complete)
   {
-    if ((structure_exchange_level == common::tStructureExchange::SHARED_PORTS) || initial_structure_writing_complete ||
+    if (initial_structure_writing_complete ||
         structure_change.GetLocalHandle() < framework_elements_in_full_structure_exchange_sent_until_handle)
     {
       if (initial_structure_writing_complete)

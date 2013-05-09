@@ -115,7 +115,7 @@ void tNetworkPortInfo::ChangeStrategy(int16_t new_strategy)
 void tNetworkPortInfo::DoSubscriptionCheck()
 {
   data_ports::common::tAbstractDataPort* port = GetAnnotated<data_ports::common::tAbstractDataPort>();
-  FINROC_LOG_PRINT(DEBUG, "Checking subscription of ", port->GetQualifiedName(), " ", port->GetStrategy(), " ", port->CountIncomingConnections() + port->CountOutgoingConnections());
+  FINROC_LOG_PRINT(DEBUG_VERBOSE_1, "Checking subscription of ", port->GetQualifiedName(), " ", port->GetStrategy(), " ", port->CountIncomingConnections() + port->CountOutgoingConnections());
   subscription_check_pending.store(false); // Reset "pending" flag
 
   // Determine necessary subscription parameters
@@ -160,7 +160,6 @@ void tNetworkPortInfo::DoSubscriptionCheck()
     if (management_connection)
     {
       // Update subscription
-      FINROC_LOG_PRINT(DEBUG, "Subscribing");
       tSubscribeMessage::Serialize(true, management_connection->CurrentWriteStream(), remote_handle, subscription_strategy,
                                    subscription_reverse_push, subscription_update_time, port->GetHandle(), rrlib::serialization::tDataEncoding::BINARY);
       current_subscription_strategy = subscription_strategy;

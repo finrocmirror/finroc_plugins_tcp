@@ -93,7 +93,7 @@ public:
     core::tAbstractPort* port = GetAnnotated<core::tAbstractPort>();
     if ((!server_port) && data_ports::IsDataFlowType(port->GetDataType()) && (!subscription_check_pending.load()))
     {
-      FINROC_LOG_PRINT(DEBUG, "Checking subscription of ", port->GetQualifiedName());
+      FINROC_LOG_PRINT(DEBUG_VERBOSE_1, "Checking subscription of ", port->GetQualifiedName());
       subscription_check_pending.store(true);
       rrlib::thread::tLock lock(pending_subscription_checks_mutex);
       pending_subscription_checks.push_back(port->GetHandle());

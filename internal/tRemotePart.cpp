@@ -178,6 +178,11 @@ void tRemotePart::AddRemotePort(common::tFrameworkElementInfo& info)
     FINROC_LOG_PRINT(WARNING, "Remote shared port '", info.links[0].name, "' has unknown type. Ignoring.");
     return;
   }
+  if (remote_port_map.find(info.handle) != remote_port_map.end())
+  {
+    FINROC_LOG_PRINT(WARNING, "Received info on remote shared port '", info.links[0].name, "' twice.");
+    return;
+  }
 
   core::tPortWrapperBase created_port;
   if (data_ports::IsDataFlowType(info.type))
@@ -212,7 +217,7 @@ void tRemotePart::AddRemotePort(common::tFrameworkElementInfo& info)
     }
     remote_port_map.insert(std::pair<tFrameworkElementHandle, core::tAbstractPort*>(info.handle, created_port.GetWrapped()));
     created_port.Init();
-    FINROC_LOG_PRINT(DEBUG, "Created remote port ", created_port.GetWrapped()->GetQualifiedName());
+    FINROC_LOG_PRINT(DEBUG_VERBOSE_1, "Created remote port ", created_port.GetWrapped()->GetQualifiedName(), " ", info.handle);
   }
 }
 
