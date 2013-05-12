@@ -511,7 +511,7 @@ void tPeerImplementation::ProcessRuntimeChange(core::tRuntimeListener::tEvent ch
   bool serve_structure_copy = serve_structure.load();
 
   bool relevant_for_shared_port_client = shared_port && (!edge_change);
-  bool relevant_for_structure_client = !framework_element.GetFlag(core::tFrameworkElement::tFlag::NETWORK_ELEMENT) && (!edge_change);
+  bool relevant_for_structure_client = !element.GetFlag(core::tFrameworkElement::tFlag::NETWORK_ELEMENT) && (!edge_change);
 
   if ((relevant_for_shared_port_client || serve_structure_copy) && (change_type != core::tRuntimeListener::tEvent::PRE_INIT))
   {
