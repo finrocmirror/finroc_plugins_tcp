@@ -64,8 +64,11 @@ using namespace finroc::core;
 //----------------------------------------------------------------------
 // Const values
 //----------------------------------------------------------------------
-const char * const cPROGRAM_VERSION = "1.0";
-const char * const cPROGRAM_DESCRIPTION = "This program performs various tests on connected network ports.";
+const std::string cPROGRAM_DESCRIPTION = "This program performs various tests on connected network ports.";
+const std::string cCOMMAND_LINE_ARGUMENTS = "";
+const std::string cADDITIONAL_HELP_TEXT = "";
+const std::string cMAIN_THREAD_CONTAINER_NAME = "Main Thread";
+bool make_all_port_links_unique = false;
 
 //----------------------------------------------------------------------
 // Implementation
@@ -118,14 +121,12 @@ tConnector connector;
 // StartUp
 //----------------------------------------------------------------------
 void StartUp()
-{
-  links_are_unique = false;
-}
+{}
 
 //----------------------------------------------------------------------
 // InitMainGroup
 //----------------------------------------------------------------------
-void InitMainGroup(finroc::structure::tThreadContainer *main_thread, std::vector<char*> remaining_args)
+void InitMainGroup(finroc::structure::tThreadContainer *main_thread, const std::vector<std::string> &remaining_arguments)
 {
   test_collection_module = new finroc::tcp::test::mTestCollection(main_thread);
   tRuntimeEnvironment::GetInstance().AddListener(connector);
