@@ -590,7 +590,7 @@ rrlib::serialization::tMemoryBuffer tPeerImplementation::SerializeSharedPorts(co
   }
   stream.WriteInt(0); // size of next packet
   stream.Close();
-  buffer.GetBuffer()->PutInt(0, buffer.GetSize() - 8);
+  buffer.GetBuffer().PutInt(0, buffer.GetSize() - 8);
   return buffer;
 }
 

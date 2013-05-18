@@ -70,7 +70,7 @@ class tRemotePart;
  * Info on TCP peer.
  * This is info is exchanged among different processes (and possibly combined).
  */
-struct tPeerInfo : boost::noncopyable
+struct tPeerInfo : private rrlib::util::tNoncopyable
 {
   /*!
    * UUID of peer.

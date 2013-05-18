@@ -83,7 +83,7 @@ enum class tMessageSize
  * \tparam TArgs Arguments of message
  */
 template <tOpCode OPCODE, tMessageSize SIZE, typename ... TArgs>
-struct tMessage : boost::noncopyable
+struct tMessage : private rrlib::util::tNoncopyable
 {
   /*! parameters in this message */
   std::tuple<TArgs...> parameters;

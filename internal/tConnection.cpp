@@ -441,7 +441,7 @@ public:
       }
       stream.Close();
       size_t payload_size = buffer->GetSize() - 4;
-      buffer->GetBuffer()->PutInt(0, payload_size);
+      buffer->GetBuffer().PutInt(0, payload_size);
       ready_after_write = (payload_size == 0);
       boost::asio::async_write(*(connection->socket), boost::asio::const_buffers_1(buffer->GetBufferPointer(0), buffer->GetSize()), *this);
     }
@@ -805,9 +805,9 @@ void tConnection::SendPendingMessages(const rrlib::time::tTimestamp& time_now)
     }
 
     // send a packet
-    front_buffer.GetBuffer()->PutInt(0, front_buffer.GetSize() - 4); // put size
-    front_buffer.GetBuffer()->PutShort(4, ack_request); // put ack request
-    front_buffer.GetBuffer()->PutShort(6, last_ack_request_index); // put ack response
+    front_buffer.GetBuffer().PutInt(0, front_buffer.GetSize() - 4); // put size
+    front_buffer.GetBuffer().PutShort(4, ack_request); // put ack request
+    front_buffer.GetBuffer().PutShort(6, last_ack_request_index); // put ack response
     last_ack_request_index = -1;
     std::swap(front_buffer, back_buffer);
 

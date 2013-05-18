@@ -74,7 +74,7 @@ class tSerializedStructureChange;
 /*!
  * A single connection between two TCP sockets.
  */
-class tConnection : boost::noncopyable
+class tConnection : private rrlib::util::tNoncopyable
 {
 
 //----------------------------------------------------------------------
