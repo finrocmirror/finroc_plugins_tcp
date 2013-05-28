@@ -84,11 +84,7 @@ public:
   /*!
    * \param listener Listener to add
    */
-  inline void AddListener(tUpdateTimeChangeListener& listener)
-  {
-    rrlib::thread::tLock lock(*this);
-    update_time_listeners.Add(&listener);
-  }
+  void AddListener(tUpdateTimeChangeListener& listener);
 
   /*!
    * \return Singleton instance
@@ -107,11 +103,7 @@ public:
   /*!
    * \param listener Listener to remove
    */
-  inline void RemoveListener(tUpdateTimeChangeListener& listener)
-  {
-    rrlib::thread::tLock lock(*this);
-    update_time_listeners.Remove(&listener);
-  }
+  void RemoveListener(tUpdateTimeChangeListener& listener);
 
   /*!
    * \param type Data type

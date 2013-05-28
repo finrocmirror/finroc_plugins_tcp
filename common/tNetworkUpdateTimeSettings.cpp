@@ -96,6 +96,8 @@ public:
   int16_t update_time;
 };
 
+static rrlib::thread::tMutex listener_mutex;
+
 }
 
 
@@ -127,6 +129,12 @@ void tNetworkUpdateTimeSettings::AddDataTypeParameters()
   }
 }
 
+void tNetworkUpdateTimeSettings::AddListener(tUpdateTimeChangeListener& listener)
+{
+  rrlib::thread::tLock lock(internal::listener_mutex);
+  update_time_listeners.Add(&listener);
+}
+
 tNetworkUpdateTimeSettings& tNetworkUpdateTimeSettings::GetInstance()
 {
   static tNetworkUpdateTimeSettings* settings = new tNetworkUpdateTimeSettings();
@@ -156,6 +164,12 @@ void tNetworkUpdateTimeSettings::OnPortChange(const int16_t& value, data_ports::
       (*it)->UpdateTimeChanged(dt, value);
     }
   }
+}
+
+void tNetworkUpdateTimeSettings::RemoveListener(tUpdateTimeChangeListener& listener)
+{
+  rrlib::thread::tLock lock(internal::listener_mutex);
+  update_time_listeners.Remove(&listener);
 }
 
 void tNetworkUpdateTimeSettings::SetMinNetUpdateInterval(rrlib::rtti::tType& type, int16_t new_time)
