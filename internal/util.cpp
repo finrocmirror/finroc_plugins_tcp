@@ -69,23 +69,29 @@ namespace internal
 // Implementation
 //----------------------------------------------------------------------
 
-boost::asio::ip::tcp::endpoint ParseAndResolveNetworkAddress(const std::string& network_address)
+std::vector<boost::asio::ip::tcp::endpoint> ParseAndResolveNetworkAddress(const std::string& network_address)
 {
   std::vector<std::string> splitted;
-  boost::split(splitted, network_address, boost::is_any_of(":"));
-  if (splitted.size() != 2)
+  size_t colon_pos = network_address.rfind(':');
+
+  if (colon_pos == std::string::npos)
   {
     throw std::runtime_error("Could not parse network address: " + network_address);
   }
-  int port = atoi(splitted[1].c_str());
+  int port = atoi(network_address.substr(colon_pos + 1).c_str());
+  std::string address_string = network_address.substr(0, colon_pos);
   if (port <= 20 || port > 65535)
   {
     throw std::runtime_error("Invalid port in network address: " + network_address);
   }
   try
   {
-    boost::asio::ip::address address = ResolveHostname(splitted[0]);
-    return boost::asio::ip::tcp::endpoint(address, port);
+    std::vector<boost::asio::ip::tcp::endpoint> endpoints;
+for (const boost::asio::ip::address & addr : ResolveHostname(address_string))
+    {
+      endpoints.push_back(boost::asio::ip::tcp::endpoint(addr, port));
+    }
+    return endpoints;
   }
   catch (const std::exception& ex)
   {
@@ -93,7 +99,7 @@ boost::asio::ip::tcp::endpoint ParseAndResolveNetworkAddress(const std::string& 
   }
 }
 
-boost::asio::ip::address ResolveHostname(const std::string hostname)
+std::vector<boost::asio::ip::address> ResolveHostname(const std::string hostname)
 {
   boost::asio::io_service io;
   boost::asio::ip::tcp::resolver resolver(io);
@@ -107,22 +113,17 @@ boost::asio::ip::address ResolveHostname(const std::string hostname)
   }
 
   boost::asio::ip::tcp::resolver::iterator end;
-  boost::asio::ip::address v4_address;
-  bool first = true;
+  std::vector<boost::asio::ip::address> addresses;
   while (endpoint_iterator != end)
   {
-    if (endpoint_iterator->endpoint().protocol() == boost::asio::ip::tcp::v6())
-    {
-      return endpoint_iterator->endpoint().address();
-    }
-    else if (first)
-    {
-      v4_address = endpoint_iterator->endpoint().address();
-    }
+    addresses.push_back(endpoint_iterator->endpoint().address());
     endpoint_iterator++;
-    first = false;
   }
-  return v4_address;
+
+  // sort, so that IPv6 is preferred
+  std::sort(addresses.begin(), addresses.end(), [](const boost::asio::ip::address & a, const boost::asio::ip::address & b) -> bool { return a.is_v6(); });
+
+  return addresses;
 }
 
 //----------------------------------------------------------------------

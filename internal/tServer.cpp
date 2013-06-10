@@ -174,7 +174,7 @@ void tServer::Run()
   // If no connect-address was specified and desired port was occupied - connect to part that is running there
   if (peer.network_connection.length() == 0 && DesiredPort() != peer.this_peer.uuid.port)
   {
-    peer.connect_to.emplace_back(ResolveHostname("localhost"), DesiredPort());
+    peer.connect_to.push_back(std::string("localhost:") + std::to_string(DesiredPort()));
   }
 
   // Accept connections on socket

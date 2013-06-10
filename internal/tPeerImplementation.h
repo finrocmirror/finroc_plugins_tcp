@@ -235,7 +235,7 @@ private:
   std::string network_connection;
 
   /*! Vector containing all network addresses this peer should try to connect to */
-  std::vector<boost::asio::ip::tcp::endpoint> connect_to;
+  std::vector<std::string> connect_to;
 
   /*! Info on this peer */
   tPeerInfo this_peer;

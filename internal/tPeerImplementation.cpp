@@ -34,6 +34,8 @@
 //----------------------------------------------------------------------
 #include "core/tRuntimeEnvironment.h"
 
+#include <boost/asio/connect.hpp>
+
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
@@ -117,28 +119,43 @@ struct tProcessEventsCaller
 struct tAddressConnectorTask
 {
   tPeerImplementation* implementation;
-  boost::asio::ip::tcp::endpoint connect_to;
+  std::string connect_to;
+  std::vector<boost::asio::ip::tcp::endpoint> endpoints;
   std::shared_ptr<boost::asio::ip::tcp::socket> socket;
 
-  tAddressConnectorTask(tPeerImplementation& implementation, boost::asio::ip::tcp::endpoint connect_to) :
+  tAddressConnectorTask(tPeerImplementation& implementation, const std::string &connect_to) :
     implementation(&implementation),
     connect_to(connect_to),
+    endpoints(),
     socket(new boost::asio::ip::tcp::socket(implementation.IOService()))
   {
-    socket->async_connect(connect_to, *this);
+    try
+    {
+      endpoints = ParseAndResolveNetworkAddress(connect_to);
+    }
+    catch (const std::exception &e)
+    {
+      FINROC_LOG_PRINT(DEBUG, "Could not connect to ", connect_to, ". Reason: ", e.what());
+      this->implementation->connect_to.push_back(connect_to);
+    }
+
+    //for(auto endpoint : )
+
+    //socket->async_connect(endpoints.begin(), endpoints.end(), *this);
+    boost::asio::async_connect(*socket, endpoints.begin(), endpoints.end(), *this);
   }
 
-  void operator()(const boost::system::error_code& error)
+  void operator()(const boost::system::error_code& error, std::vector<boost::asio::ip::tcp::endpoint>::iterator iterator)
   {
     if (error)
     {
       // put address back
-      FINROC_LOG_PRINT(DEBUG, "Could not connect to ", connect_to.address().to_string(), " port ", connect_to.port(), ". Reason: ", error.message());
+      FINROC_LOG_PRINT(DEBUG, "Could not connect to ", connect_to, ". Reason: ", error.message());
       implementation->connect_to.push_back(connect_to);
     }
     else
     {
-      FINROC_LOG_PRINT(DEBUG, "Connected to ", connect_to.address().to_string());
+      FINROC_LOG_PRINT(DEBUG, "Connected to ", connect_to, " (", iterator->address().to_string(), ")");
       tConnection::InitConnection(*implementation, socket, 0x7, NULL, true); // TODO: possibly use multiple connections
     }
   }
@@ -309,14 +326,7 @@ void tPeerImplementation::Connect()
 
   if (network_connection.length() > 0)
   {
-    try
-    {
-      connect_to.push_back(ParseAndResolveNetworkAddress(network_connection));
-    }
-    catch (const std::exception& ex)
-    {
-      FINROC_LOG_PRINT(WARNING, ex.what());
-    }
+    connect_to.push_back(network_connection);
   }
 
   low_priority_tasks_timer.async_wait(tProcessLowPriorityTasksCaller<false>(*this)); // immediately trigger connecting
@@ -489,7 +499,7 @@ void tPeerImplementation::ProcessLowPriorityTasks()
   {
     for (auto it = connect_to.begin(); it != connect_to.end(); ++it)
     {
-      FINROC_LOG_PRINT(DEBUG, "Connecting to ", it->address().to_string());
+      FINROC_LOG_PRINT(DEBUG, "Connecting to ", *it);
       tAddressConnectorTask connector_task(*this, *it);
     }
     connect_to.clear();

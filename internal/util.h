@@ -78,21 +78,21 @@ inline rrlib::serialization::tFixedBuffer CopyToNewFixedBuffer(rrlib::serializat
 
 /*!
  * Parses and resolves network address in specified string
- * Throws exception address cannot be parsed or resolved
+ * Throws exception if address cannot be parsed or resolved
  *
  * \param network_address Network address (e.g. 'localhost:4444')
- * \return TCP endpoint corresponding to this address
+ * \return std::vector of TCP endpoints corresponding to this address
  */
-boost::asio::ip::tcp::endpoint ParseAndResolveNetworkAddress(const std::string& network_address);
+std::vector<boost::asio::ip::tcp::endpoint> ParseAndResolveNetworkAddress(const std::string& network_address);
 
 /*!
- * Look up an IP address for the specified host name
+ * Look up the IP addresses for the specified host name
  * Throws exception if host could not be found
- * Prefers IPv6 addresses
+ * Prefers IPv6 addresses (they are stored at the beginning of the vector)
  *
- * \return Returns an IP address
+ * \return std::vector of IP addresses
  */
-boost::asio::ip::address ResolveHostname(const std::string host_name);
+std::vector<boost::asio::ip::address> ResolveHostname(const std::string host_name);
 
 //----------------------------------------------------------------------
 // End of namespace declaration
