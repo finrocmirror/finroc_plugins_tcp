@@ -203,13 +203,6 @@ public:
   void RunEventLoop();
 
   /*!
-   * Serialize tPeerInfo to an output stream for peer exchange
-   * \param stream the output stream to serialize to
-   * \param p the tPeerInfo to be serialized
-   */
-  void SerializePeerInfo(rrlib::serialization::tOutputStream& stream, const tPeerInfo& p);
-
-  /*!
    * Serializes shared ports and returns that in memory buffer
    *
    * \param connection_type_encoder Type encoder object of connection to serialize shared ports for
@@ -356,6 +349,13 @@ private:
 
   /*! Handles runtime changes from callbacks - and forwards info to 'incoming_structure_changes' queue */
   void ProcessRuntimeChange(core::tRuntimeListener::tEvent change_type, core::tFrameworkElement& element, bool edge_change);
+
+  /*!
+   * Serialize tPeerInfo to an output stream for peer exchange
+   * \param stream the output stream to serialize to
+   * \param p the tPeerInfo to be serialized
+   */
+  void SerializePeerInfo(rrlib::serialization::tOutputStream& stream, const tPeerInfo& p);
 
   /*! Starts TCP Thread */
   void StartThread();

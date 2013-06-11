@@ -598,13 +598,10 @@ void tPeerImplementation::ProcessLowPriorityTasks()
 
           tPeerInfoMessage::Serialize(false, management_connection->CurrentWriteStream());
 
-          management_connection->CurrentWriteStream().WriteBoolean(true);
-
           SerializePeerInfo(management_connection->CurrentWriteStream(), this_peer);
 
           for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
           {
-            management_connection->CurrentWriteStream().WriteBoolean(true);
             SerializePeerInfo(management_connection->CurrentWriteStream(), **it);
           }
 
@@ -693,6 +690,7 @@ void tPeerImplementation::SerializePeerInfo(rrlib::serialization::tOutputStream&
 {
   if ((&peer == &this_peer || peer.connected) && peer.peer_type != tPeerType::CLIENT_ONLY)
   {
+    stream << true;
     stream << peer.uuid;
     stream << peer.peer_type;
     stream << peer.name;
