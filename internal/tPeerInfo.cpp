@@ -80,16 +80,17 @@ tPeerInfo::tPeerInfo(tPeerType peer_type) :
 {
 }
 
-void tPeerInfo::AddAddress(const boost::asio::ip::address& address)
+bool tPeerInfo::AddAddress(const boost::asio::ip::address& address)
 {
   for (auto it = addresses.begin(); it != addresses.end(); ++it)
   {
     if (*it == address)
     {
-      return;
+      return false;
     }
   }
   addresses.push_back(address);
+  return true;
 }
 
 tPeerInfo::tActiveConnect::tActiveConnect(tPeerInfo& peer_info) :

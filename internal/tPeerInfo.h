@@ -128,8 +128,9 @@ struct tPeerInfo : private rrlib::util::tNoncopyable
 
   /*!
    * Adds address to known addresses of this peer
+   * \return true iff the address was not known before
    */
-  void AddAddress(const boost::asio::ip::address& address);
+  bool AddAddress(const boost::asio::ip::address& address);
 
   /*! Host name of peer */
   std::string Hostname()

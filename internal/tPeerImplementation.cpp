@@ -248,7 +248,8 @@ tPeerImplementation::tPeerImplementation(core::tFrameworkElement& framework_elem
   connect_to(),
   this_peer(peer_type),
   other_peers(),
-  peer_list_revision(0),
+  //peer_list_revision(0),
+  peer_list_changed(false),
   thread(),
   io_service(),
   low_priority_tasks_timer(io_service, boost::posix_time::milliseconds(cLOW_PRIORITY_TASK_CALL_INTERVAL)),
@@ -313,7 +314,8 @@ void tPeerImplementation::AddAddress(const boost::asio::ip::address& address)
   }
 
   this_peer.addresses.push_back(address);
-  peer_list_revision++;
+// peer_list_revision++;
+  peer_list_changed = true;
 }
 
 void tPeerImplementation::Connect()
@@ -326,6 +328,21 @@ void tPeerImplementation::Connect()
   }
 
   low_priority_tasks_timer.async_wait(tProcessLowPriorityTasksCaller<false>(*this)); // immediately trigger connecting
+}
+
+void tPeerImplementation::DeserializePeerInfo(rrlib::serialization::tInputStream& stream, tPeerInfo& peer)
+{
+  stream >> peer.uuid;
+  stream >> peer.peer_type;
+  stream >> peer.name;
+  int size = stream.ReadInt();
+  peer.addresses.clear();
+  for (int i = 0; i < size; ++i)
+  {
+    boost::asio::ip::address address;
+    stream >> address;
+    peer.addresses.push_back(address);
+  }
 }
 
 tRemotePart* tPeerImplementation::GetRemotePart(const tUUID& uuid, tPeerType peer_type, const std::string& peer_name, const boost::asio::ip::address& address, bool never_forget)
@@ -345,8 +362,13 @@ tRemotePart* tPeerImplementation::GetRemotePart(const tUUID& uuid, tPeerType pee
         (*it)->remote_part = new tRemotePart(**it, framework_element, *this);
         (*it)->remote_part->Init();
       }
-
       (*it)->AddAddress(address);
+#if 0
+      if ((*it)->AddAddress(address))
+      {
+        peer_list_revision++;
+      }
+#endif
       (*it)->name = peer_name;
       (*it)->never_forget |= never_forget;
       return (*it)->remote_part;
@@ -361,7 +383,7 @@ tRemotePart* tPeerImplementation::GetRemotePart(const tUUID& uuid, tPeerType pee
   info.never_forget = never_forget;
   info.remote_part = new tRemotePart(info, framework_element, *this);
   info.remote_part->Init();
-  peer_list_revision++;
+  //peer_list_revision++;
   return info.remote_part;
 }
 
@@ -418,6 +440,57 @@ void tPeerImplementation::OnFrameworkElementChange(core::tRuntimeListener::tEven
     rrlib::thread::tLock lock(deleted_rpc_ports_mutex);
     deleted_rpc_ports.push_back(element.GetHandle());
   }
+}
+
+void tPeerImplementation::ProcessIncomingPeerInfo(const tPeerInfo& peer_info)
+{
+  tPeerInfo* existing_peer = NULL;
+  if (peer_info.uuid == this_peer.uuid)
+  {
+    existing_peer = &this_peer;
+  }
+
+for (auto & it : other_peers)
+  {
+    if (peer_info.uuid == it->uuid)
+    {
+      existing_peer = &(*it);
+    }
+  }
+
+  if (existing_peer)
+  {
+    if (existing_peer->peer_type != peer_info.peer_type)
+    {
+      FINROC_LOG_PRINT(WARNING, "Peer type of existing peer has changed, will not update it.");
+    }
+for (auto & address : peer_info.addresses)
+    {
+      bool found = false;
+for (auto & existing_address : existing_peer->addresses)
+      {
+        if (existing_address == address)
+        {
+          found = true;
+          break;
+        }
+      }
+      if (!found)
+      {
+        existing_peer->addresses.push_back(address);
+        SetPeerListChanged();
+      }
+    }
+  }
+  else
+  {
+    other_peers.emplace_back(new tPeerInfo(peer_info.peer_type));
+    tPeerInfo& info = **(other_peers.end() - 1);
+    info.addresses = peer_info.addresses;
+    info.uuid = peer_info.uuid;
+    info.name = peer_info.name;
+  }
+
 }
 
 void tPeerImplementation::ProcessEvents()
@@ -509,6 +582,41 @@ void tPeerImplementation::ProcessLowPriorityTasks()
       }
     }
   }
+
+  // send peer list if needed
+  if (peer_list_changed)
+  {
+    for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
+    {
+      tPeerInfo& peer = **it;
+      tRemotePart *remote_part = peer.remote_part;
+      if (remote_part && peer.connected)
+      {
+        std::shared_ptr<tConnection> management_connection = remote_part->GetManagementConnection();
+        if (management_connection && management_connection->IsReady())
+        {
+
+          tPeerInfoMessage::Serialize(false, management_connection->CurrentWriteStream());
+
+          management_connection->CurrentWriteStream().WriteBoolean(true);
+
+          SerializePeerInfo(management_connection->CurrentWriteStream(), this_peer);
+
+          for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
+          {
+            management_connection->CurrentWriteStream().WriteBoolean(true);
+            SerializePeerInfo(management_connection->CurrentWriteStream(), **it);
+          }
+
+          management_connection->CurrentWriteStream().WriteBoolean(false);
+          tPeerInfoMessage::FinishMessage(management_connection->CurrentWriteStream());
+
+        }
+      }
+    }
+
+    peer_list_changed = false;
+  }
 }
 
 void tPeerImplementation::ProcessRuntimeChange(core::tRuntimeListener::tEvent change_type, core::tFrameworkElement& element, bool edge_change)
@@ -578,6 +686,21 @@ void tPeerImplementation::RunEventLoop()
     event_loop_running = true;
     event_processing_timer.expires_from_now(boost::posix_time::milliseconds(cPROCESS_EVENTS_CALL_INTERVAL));
     event_processing_timer.async_wait(tProcessEventsCaller(*this));
+  }
+}
+
+void tPeerImplementation::SerializePeerInfo(rrlib::serialization::tOutputStream& stream, const tPeerInfo& peer)
+{
+  if ((&peer == &this_peer || peer.connected) && peer.peer_type != tPeerType::CLIENT_ONLY)
+  {
+    stream << peer.uuid;
+    stream << peer.peer_type;
+    stream << peer.name;
+    stream.WriteInt(static_cast<int>(peer.addresses.size()));
+for (auto & it : peer.addresses)
+    {
+      stream << it;
+    }
   }
 }
 

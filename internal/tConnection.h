@@ -105,6 +105,14 @@ public:
   static void InitConnection(tPeerImplementation& peer, std::shared_ptr<boost::asio::ip::tcp::socket>& socket, int flags,
                              std::shared_ptr<tPeerInfo::tActiveConnect> active_connect_indicator, bool never_forget = false);
 
+  /*!
+   * \return True when connection is ready for writing
+   */
+  bool IsReady() const
+  {
+    return ready;
+  }
+
 //----------------------------------------------------------------------
 // Private fields and methods
 //----------------------------------------------------------------------

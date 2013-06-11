@@ -117,6 +117,13 @@ public:
   void Connect();
 
   /*!
+   * Deserialize tPeerInfo from an input stream for peer exchange
+   * \param stream the input stream to deserialize from
+   * \param p the tPeerInfo to deserialize into
+   */
+  void DeserializePeerInfo(rrlib::serialization::tInputStream& stream, tPeerInfo& p);
+
+  /*!
    * \return Peer info about this peer
    */
   const tPeerInfo& GetPeerInfo() const
@@ -173,6 +180,12 @@ public:
   void ProcessEvents();
 
   /*!
+   * Processes tPeerInfo received e.g. from other peers
+   * \param peer_info the info to be processed
+   */
+  void ProcessIncomingPeerInfo(const tPeerInfo& peer_info);
+
+  /*!
    * Called in a regular interval to do things like establishing new connections
    */
   void ProcessLowPriorityTasks();
@@ -190,11 +203,19 @@ public:
   void RunEventLoop();
 
   /*!
+   * Serialize tPeerInfo to an output stream for peer exchange
+   * \param stream the output stream to serialize to
+   * \param p the tPeerInfo to be serialized
+   */
+  void SerializePeerInfo(rrlib::serialization::tOutputStream& stream, const tPeerInfo& p);
+
+  /*!
    * Serializes shared ports and returns that in memory buffer
    *
    * \param connection_type_encoder Type encoder object of connection to serialize shared ports for
    */
   rrlib::serialization::tMemoryBuffer SerializeSharedPorts(common::tRemoteTypes& connection_type_encoder);
+
 
   /*!
    * \return True as soon as peer also serves clients interested in complete application structure
@@ -202,6 +223,15 @@ public:
   bool ServesStructure() const
   {
     return serve_structure.load();
+  }
+
+  /*!
+   * Mark the peer list as changed.
+   * This will cause the peer list to be sent to all connected peers.
+   */
+  void SetPeerListChanged()
+  {
+    peer_list_changed = true;
   }
 
   /*!
@@ -248,7 +278,10 @@ private:
   std::vector<std::unique_ptr<tPeerInfo>> other_peers;
 
   /*! Revision of peer information */
-  int32_t peer_list_revision;
+  //int32_t peer_list_revision;
+
+  /*! Set to true if peer list has changed and needs to be sent */
+  bool peer_list_changed;
 
   /*! Primary TCP thread that does all the socket related work for this peer */
   std::shared_ptr<rrlib::thread::tThread> thread;
@@ -326,6 +359,7 @@ private:
 
   /*! Starts TCP Thread */
   void StartThread();
+
 };
 
 //----------------------------------------------------------------------

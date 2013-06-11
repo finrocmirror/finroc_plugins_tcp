@@ -394,6 +394,7 @@ public:
       if (connection->initial_structure_reading_complete)
       {
         connection->ready = true;
+        connection->peer.SetPeerListChanged();
         tMessageBatchReadHandler handler(connection);
         return;
       }
@@ -507,6 +508,7 @@ public:
         if (connection->initial_structure_writing_complete)
         {
           connection->ready = true;
+          connection->peer.SetPeerListChanged();
           FINROC_LOG_PRINT(DEBUG_VERBOSE_1, "Reading structure complete, waiting for message batch");
           tMessageBatchReadHandler handler(connection);
         }
@@ -620,6 +622,10 @@ void tConnection::Close()
     if (remote_part)
     {
       remote_part->RemoveConnection(*this);
+    }
+    if (ready)
+    {
+      peer.SetPeerListChanged();
     }
   }
 }

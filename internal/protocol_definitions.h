@@ -67,11 +67,12 @@ extern const char* cGREET_MESSAGE;
 enum { cPROTOCOL_VERSION = 1 };
 
 /*! Mode of peer */
-enum tPeerType
+enum class tPeerType
 {
   CLIENT_ONLY,  //!< Peer is client only
   SERVER_ONLY,  //!< Peer is server only
-  FULL          //!< Peer is client and server
+  FULL,         //!< Peer is client and server
+  UNSPECIFIED   //!< Peer type is not specified
 };
 
 /*!
@@ -193,7 +194,7 @@ typedef tMessage<tOpCode::STRUCTURE_CHANGE, tMessageSize::VARIABLE_UP_TO_4GB, tF
 // Parameters: [local port handle]
 typedef tMessage<tOpCode::STRUCTURE_DELETE, tMessageSize::FIXED, tFrameworkElementHandle> tStructureDeleteMessage;
 
-// Parameters: TODO
+// Parameters: after message: [list of [tPeerInfo.uuid, tPeerInfo.peer_type, tPeerInfo.name, tPeerInfo.addresses]]
 typedef tMessage<tOpCode::PEER_INFO, tMessageSize::VARIABLE_UP_TO_4GB> tPeerInfoMessage;
 
 

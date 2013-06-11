@@ -652,6 +652,19 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
       return true; // We could not obtain lock - try again later
     }
   }
+  else if (opcode == tOpCode::PEER_INFO)
+  {
+    tPeerInfoMessage message;
+    message.Deserialize(stream, false);
+    while (stream.ReadBoolean())
+    {
+      tPeerInfo peer(tPeerType::UNSPECIFIED);
+      peer_implementation.DeserializePeerInfo(stream, peer);
+      RRLIB_LOG_PRINT(DEBUG, "Deserialized peer ", peer.ToString());
+      peer_implementation.ProcessIncomingPeerInfo(peer);
+    }
+    message.FinishDeserialize(stream);
+  }
 
   return false;
 }
