@@ -138,10 +138,6 @@ struct tAddressConnectorTask
       FINROC_LOG_PRINT(DEBUG, "Could not connect to ", connect_to, ". Reason: ", e.what());
       this->implementation->connect_to.push_back(connect_to);
     }
-
-    //for(auto endpoint : )
-
-    //socket->async_connect(endpoints.begin(), endpoints.end(), *this);
     boost::asio::async_connect(*socket, endpoints.begin(), endpoints.end(), *this);
   }
 
