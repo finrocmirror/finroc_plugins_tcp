@@ -597,12 +597,12 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
       stream >> changeable_port_info;
       message.FinishDeserialize(stream);
 
-      core::tAbstractPort* port_to_change = remote_port_map[message.Get<0>()];
-      if (port_to_change)
+      auto port_to_change = remote_port_map.find(message.Get<0>());
+      if (port_to_change != remote_port_map.end())
       {
-        if (data_ports::IsDataFlowType(port_to_change->GetDataType()))
+        if (data_ports::IsDataFlowType(port_to_change->second->GetDataType()))
         {
-          data_ports::common::tAbstractDataPort& data_port = static_cast<data_ports::common::tAbstractDataPort&>(*port_to_change);
+          data_ports::common::tAbstractDataPort& data_port = static_cast<data_ports::common::tAbstractDataPort&>(*port_to_change->second);
           data_port.SetPushStrategy(changeable_port_info.flags.Get(tFlag::PUSH_STRATEGY));
           data_port.SetReversePushStrategy(changeable_port_info.flags.Get(tFlag::PUSH_STRATEGY_REVERSE));
           data_port.SetMinNetUpdateIntervalRaw(changeable_port_info.min_net_update_time);
@@ -614,12 +614,12 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
         }
         else
         {
-          FINROC_LOG_PRINT(WARNING, "Port to change does not have data flow type: ", port_to_change->GetQualifiedName());
+          FINROC_LOG_PRINT(WARNING, "Port to change does not have data flow type: ", port_to_change->second->GetQualifiedName());
         }
       }
       else
       {
-        FINROC_LOG_PRINT(WARNING, "There is port to change with handle ", message.Get<0>());
+        FINROC_LOG_PRINT(WARNING, "There is no port to change with handle ", message.Get<0>());
       }
     }
     else
@@ -635,16 +635,16 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
       tStructureDeleteMessage message;
       message.Deserialize(stream);
 
-      core::tAbstractPort* port_to_delete = remote_port_map[message.Get<0>()];
-      if (port_to_delete)
+      auto port_to_delete = remote_port_map.find(message.Get<0>());
+      if (port_to_delete != remote_port_map.end())
       {
         tFrameworkElementHandle handle = message.Get<0>();
         remote_port_map.erase(handle);
-        port_to_delete->ManagedDelete();
+        port_to_delete->second->ManagedDelete();
       }
       else
       {
-        FINROC_LOG_PRINT(WARNING, "There is port to delete with handle ", message.Get<0>());
+        FINROC_LOG_PRINT(WARNING, "There is no port to delete with handle ", message.Get<0>());
       }
     }
     else
