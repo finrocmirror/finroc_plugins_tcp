@@ -34,8 +34,6 @@
 //----------------------------------------------------------------------
 #include "core/tRuntimeEnvironment.h"
 
-#include <boost/asio/connect.hpp>
-
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
@@ -121,37 +119,53 @@ struct tAddressConnectorTask
   tPeerImplementation* implementation;
   std::string connect_to;
   std::vector<boost::asio::ip::tcp::endpoint> endpoints;
+  size_t current_endpoint_index;
   std::shared_ptr<boost::asio::ip::tcp::socket> socket;
 
   tAddressConnectorTask(tPeerImplementation& implementation, const std::string &connect_to) :
     implementation(&implementation),
     connect_to(connect_to),
     endpoints(),
+    current_endpoint_index(0),
     socket(new boost::asio::ip::tcp::socket(implementation.IOService()))
   {
     try
     {
       endpoints = ParseAndResolveNetworkAddress(connect_to);
+      Connect("no endpoints resolved");
     }
     catch (const std::exception &e)
     {
       FINROC_LOG_PRINT(DEBUG, "Could not connect to ", connect_to, ". Reason: ", e.what());
       this->implementation->connect_to.push_back(connect_to);
     }
-    boost::asio::async_connect(*socket, endpoints.begin(), endpoints.end(), *this);
   }
 
-  void operator()(const boost::system::error_code& error, std::vector<boost::asio::ip::tcp::endpoint>::iterator iterator)
+  void Connect(const char* fail_reason)
   {
-    if (error)
+    if (current_endpoint_index < endpoints.size())
     {
-      // put address back
-      FINROC_LOG_PRINT(DEBUG, "Could not connect to ", connect_to, ". Reason: ", error.message());
-      implementation->connect_to.push_back(connect_to);
+      socket.reset(new boost::asio::ip::tcp::socket(implementation->IOService()));
+      socket->async_connect(endpoints[current_endpoint_index], *this);
     }
     else
     {
-      FINROC_LOG_PRINT(DEBUG, "Connected to ", connect_to, " (", iterator->address().to_string(), ")");
+      // put address back
+      FINROC_LOG_PRINT(DEBUG, "Could not connect to ", connect_to, ". Reason: ", fail_reason);
+      implementation->connect_to.push_back(connect_to);
+    }
+  }
+
+  void operator()(const boost::system::error_code& error)
+  {
+    if (error)
+    {
+      current_endpoint_index++;
+      Connect(error.message().c_str());
+    }
+    else
+    {
+      FINROC_LOG_PRINT(DEBUG, "Connected to ", connect_to, " (", endpoints[current_endpoint_index].address().to_string(), ")");
       tConnection::InitConnection(*implementation, socket, 0x7, NULL, true); // TODO: possibly use multiple connections
     }
   }
