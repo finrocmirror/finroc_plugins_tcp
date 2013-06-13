@@ -162,6 +162,11 @@ public:
   }
 
   /*!
+   * Called just before boost::asio io service is deleted
+   */
+  void OnBoostAsioIoServiceDelete();
+
+  /*!
    * Called when network port is deleted.
    * Will remove port from ports_with_express_data_to_send and ports_with_bulk_data_to_send
    */

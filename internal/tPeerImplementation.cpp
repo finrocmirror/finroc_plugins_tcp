@@ -307,6 +307,14 @@ tPeerImplementation::tPeerImplementation(core::tFrameworkElement& framework_elem
 
 tPeerImplementation::~tPeerImplementation()
 {
+  for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
+  {
+    if ((*it)->remote_part)
+    {
+      (*it)->remote_part->OnBoostAsioIoServiceDelete();
+    }
+  }
+
   io_service.stop();
   if (thread)
   {

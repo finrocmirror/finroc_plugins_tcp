@@ -241,6 +241,13 @@ core::tFrameworkElement* tRemotePart::GetServerPortsElement()
   return server_ports;
 }
 
+void tRemotePart::OnBoostAsioIoServiceDelete()
+{
+  express_connection.reset();
+  bulk_connection.reset();
+  management_connection.reset();
+}
+
 data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject> tRemotePart::OnPullRequest(data_ports::tGenericPort& origin)
 {
   FINROC_LOG_PRINT(DEBUG_VERBOSE_1, "Pull request received");
