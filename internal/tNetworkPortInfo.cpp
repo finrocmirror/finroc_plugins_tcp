@@ -87,17 +87,7 @@ tNetworkPortInfo::tNetworkPortInfo(tRemotePart& remote_part, tHandle remote_hand
   assert(((!server_port) || served_port_handle) && "Server ports require served_port_handle to be set");
 
   port.AddAnnotation(*this);
-  if (data_ports::IsDataFlowType(port.GetDataType()))
-  {
-    if (port.IsOutputPort())
-    {
-      values_to_send.SetMaxLength(port.GetFlag(core::tFrameworkElement::tFlag::PUSH_STRATEGY_REVERSE) ? 1 : 0);
-    }
-    else
-    {
-      values_to_send.SetMaxLength(strategy < 0 ? 0 : strategy);
-    }
-  }
+  ChangeStrategy(strategy);
 }
 
 void tNetworkPortInfo::AnnotatedObjectToBeDeleted()
@@ -110,6 +100,18 @@ void tNetworkPortInfo::AnnotatedObjectToBeDeleted()
 void tNetworkPortInfo::ChangeStrategy(int16_t new_strategy)
 {
   strategy = new_strategy;
+  core::tAbstractPort* port = this->GetAnnotated<core::tAbstractPort>();
+  if (data_ports::IsDataFlowType(port->GetDataType()))
+  {
+    if (port->IsOutputPort())
+    {
+      values_to_send.SetMaxLength(port->GetFlag(core::tFrameworkElement::tFlag::PUSH_STRATEGY_REVERSE) ? 1 : 0);
+    }
+    else
+    {
+      values_to_send.SetMaxLength(strategy < 0 ? 0 : strategy);
+    }
+  }
 }
 
 void tNetworkPortInfo::DoSubscriptionCheck()

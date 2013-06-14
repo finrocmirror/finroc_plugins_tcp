@@ -654,7 +654,7 @@ void tPeerImplementation::ProcessRuntimeChange(core::tRuntimeListener::tEvent ch
 
     if (relevant_for_shared_port_client)
     {
-      rrlib::thread::tLock lock(shared_ports_mutex);
+      rrlib::thread::tLock lock(shared_ports_mutex, false);
       if (change_type == core::tRuntimeListener::tEvent::ADD || change_type == core::tRuntimeListener::tEvent::CHANGE)
       {
         rrlib::serialization::tStackMemoryBuffer<2048> buffer;
@@ -662,10 +662,12 @@ void tPeerImplementation::ProcessRuntimeChange(core::tRuntimeListener::tEvent ch
         std::string string_buffer;
         common::tFrameworkElementInfo::Serialize(stream, element, common::tStructureExchange::SHARED_PORTS, string_buffer);
         stream.Flush();
+        lock.Lock();
         shared_ports.insert(std::pair<core::tFrameworkElement::tHandle, rrlib::serialization::tFixedBuffer>(element.GetHandle(), CopyToNewFixedBuffer(buffer)));
       }
       else if (change_type == core::tRuntimeListener::tEvent::REMOVE)
       {
+        lock.Lock();
         shared_ports.erase(element.GetHandle());
       }
       incoming_structure_changes.Enqueue(std::move(change)); // do this with lock - to avoid inconsistencies

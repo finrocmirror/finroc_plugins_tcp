@@ -610,7 +610,7 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
         if (data_ports::IsDataFlowType(port_to_change->second->GetDataType()))
         {
           data_ports::common::tAbstractDataPort& data_port = static_cast<data_ports::common::tAbstractDataPort&>(*port_to_change->second);
-          data_port.SetPushStrategy(changeable_port_info.flags.Get(tFlag::PUSH_STRATEGY));
+          data_port.SetPushStrategy(changeable_port_info.strategy > 0);
           data_port.SetReversePushStrategy(changeable_port_info.flags.Get(tFlag::PUSH_STRATEGY_REVERSE));
           data_port.SetMinNetUpdateIntervalRaw(changeable_port_info.min_net_update_time);
           tNetworkPortInfo* network_port_info = data_port.GetAnnotation<tNetworkPortInfo>();
