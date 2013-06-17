@@ -204,6 +204,7 @@ public:
 
         if (!connection->remote_part->AddConnection(connection))
         {
+          connection->remote_part = NULL;
           connection->Close(); // we already have a connection of this type
           return;
         }
