@@ -454,6 +454,22 @@ void tPeerImplementation::OnFrameworkElementChange(core::tRuntimeListener::tEven
       network_port_info->CheckSubscription(pending_subscription_checks, pending_subscription_checks_mutex);
     }
   }
+  if (change_type == core::tRuntimeListener::tEvent::ADD && element.IsPort())
+  {
+    // Check for any connected remote destination ports:
+    // Network input port may already be initialized, while local connected output port is initialized now.
+    // => Trigger subscription check in this case
+    core::tAbstractPort& port = static_cast<core::tAbstractPort&>(element);
+    for (auto it = port.OutgoingConnectionsBegin(); it != port.OutgoingConnectionsEnd(); ++it)
+    {
+      tNetworkPortInfo* network_port_info = it->GetAnnotation<tNetworkPortInfo>();
+      if (network_port_info)
+      {
+        network_port_info->CheckSubscription(pending_subscription_checks, pending_subscription_checks_mutex);
+      }
+    }
+  }
+
 
   // RPC port deletion?
   if (change_type == core::tRuntimeListener::tEvent::REMOVE && element.IsPort() &&
@@ -663,7 +679,7 @@ void tPeerImplementation::ProcessRuntimeChange(core::tRuntimeListener::tEvent ch
         common::tFrameworkElementInfo::Serialize(stream, element, common::tStructureExchange::SHARED_PORTS, string_buffer);
         stream.Flush();
         lock.Lock();
-        shared_ports.insert(std::pair<core::tFrameworkElement::tHandle, rrlib::serialization::tFixedBuffer>(element.GetHandle(), CopyToNewFixedBuffer(buffer)));
+        shared_ports[element.GetHandle()] = CopyToNewFixedBuffer(buffer);
       }
       else if (change_type == core::tRuntimeListener::tEvent::REMOVE)
       {
