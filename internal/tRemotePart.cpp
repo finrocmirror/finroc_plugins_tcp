@@ -279,6 +279,14 @@ void tRemotePart::PortDeleted(tNetworkPortInfo* deleted_port)
       FINROC_LOG_PRINT(ERROR, "Deleted server port was not im map (This is a programming error)");
     }
   }
+  else
+  {
+    size_t erased = remote_port_map.erase(deleted_port->GetRemoteHandle());
+    if (!erased)
+    {
+      FINROC_LOG_PRINT(ERROR, "Deleted remote port was not im map (This is a programming error)");
+    }
+  }
 }
 
 bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBuffer& buffer, common::tRemoteTypes& remote_types, tConnection& connection)
@@ -667,7 +675,7 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
     {
       tPeerInfo peer(tPeerType::UNSPECIFIED);
       peer_implementation.DeserializePeerInfo(stream, peer);
-      RRLIB_LOG_PRINT(DEBUG, "Deserialized peer ", peer.ToString());
+      RRLIB_LOG_PRINT(DEBUG_VERBOSE_1, "Deserialized peer ", peer.ToString());
       peer_implementation.ProcessIncomingPeerInfo(peer);
     }
     message.FinishDeserialize(stream);
