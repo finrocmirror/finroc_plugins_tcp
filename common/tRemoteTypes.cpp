@@ -201,7 +201,7 @@ void tRemoteTypes::SerializeLocalDataTypes(rrlib::serialization::tOutputStream& 
     co.WriteShort(dt.GetUid());
     co.WriteShort(tNetworkUpdateTimeSettings::GetMinNetUpdateInterval(dt));
     tTypeClassification classification = rpc_ports::IsRPCType(dt) ? tTypeClassification::RPC_INTERFACE :
-                                         (data_ports::IsCheaplyCopiedType(dt) ? tTypeClassification::DATA_FLOW_STANDARD : tTypeClassification::DATA_FLOW_CHEAP_COPY);
+                                         (data_ports::IsCheaplyCopiedType(dt) ? tTypeClassification::DATA_FLOW_CHEAP_COPY : tTypeClassification::DATA_FLOW_STANDARD);
     co << classification;
     co.WriteString(dt.GetName());
     const int cTRAITS = rrlib::rtti::trait_flags::cIS_ENUM | rrlib::rtti::trait_flags::cIS_BINARY_SERIALIZABLE | rrlib::rtti::trait_flags::cIS_STRING_SERIALIZABLE | rrlib::rtti::trait_flags::cIS_XML_SERIALIZABLE;
