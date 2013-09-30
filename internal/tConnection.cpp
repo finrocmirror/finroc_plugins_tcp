@@ -431,8 +431,9 @@ public:
       std::string temp_buffer;
       for (size_t i = 0; i < element_count; i++)
       {
-        bool relevant = (connection->remote_part->GetDesiredStructureInfo() == common::tStructureExchange::FINSTRUCT) ||
-                        (!framework_element_buffer[i]->GetFlag(core::tFrameworkElement::tFlag::NETWORK_ELEMENT));
+        bool relevant = framework_element_buffer[i]->IsReady() &&
+                        ((connection->remote_part->GetDesiredStructureInfo() == common::tStructureExchange::FINSTRUCT) ||
+                         (!framework_element_buffer[i]->GetFlag(core::tFrameworkElement::tFlag::NETWORK_ELEMENT)));
         if (relevant)
         {
           stream.WriteInt(framework_element_buffer[i]->GetHandle());
