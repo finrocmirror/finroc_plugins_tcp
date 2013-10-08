@@ -757,6 +757,12 @@ void tPeerImplementation::RunEventLoop()
   }
 }
 
+//FIXME: remove in next Finroc version
+bool IsLoopbackAddress(const boost::asio::ip::address& address)
+{
+  return address.is_v4() ? (address.to_v4() == boost::asio::ip::address_v4::loopback()) : (address.to_v6() == boost::asio::ip::address_v6::loopback());
+}
+
 void tPeerImplementation::SerializePeerInfo(rrlib::serialization::tOutputStream& stream, const tPeerInfo& peer)
 {
   if ((&peer == &this_peer || peer.connected) && peer.peer_type != tPeerType::CLIENT_ONLY)
@@ -770,7 +776,8 @@ void tPeerImplementation::SerializePeerInfo(rrlib::serialization::tOutputStream&
     int address_count = 0;
 for (auto & it : peer.addresses)
     {
-      if (!it.is_loopback())
+      // if (!it.is_loopback()) FIXME: replace in next Finroc version
+      if (!IsLoopbackAddress(it))
       {
         address_count++;
       }
@@ -780,7 +787,8 @@ for (auto & it : peer.addresses)
     // serialize non-loopback addresses
 for (auto & it : peer.addresses)
     {
-      if (!it.is_loopback())
+      // if (!it.is_loopback()) FIXME: replace in next Finroc version
+      if (!IsLoopbackAddress(it))
       {
         stream << it;
       }
