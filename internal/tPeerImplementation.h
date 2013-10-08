@@ -250,6 +250,7 @@ private:
   friend struct tProcessEventsCaller;
 
   friend struct tAddressConnectorTask;
+  friend struct tConnectorTask;
 
   /*! Framework element associated with server */
   core::tFrameworkElement& framework_element;
@@ -340,6 +341,21 @@ private:
   /*! Mutex for 'deleted_rpc_ports' access */
   rrlib::thread::tMutex deleted_rpc_ports_mutex;
 
+
+  /*!
+   * Adds all the provided addresses to the specified peer info
+   * (if they have not been added already)
+   *
+   * \param existing_peer Peer to add addresses to
+   * \param addresses Addresses to check and possibly add
+   */
+  void AddPeerAddresses(tPeerInfo& existing_peer, const std::vector<boost::asio::ip::address>& addresses);
+
+  /*!
+   * Scans current peer list and adds missing addresses
+   * (e.g. if two peers have the same host, they must both have the same IP addresses)
+   */
+  void InferMissingAddresses();
 
   /*! Is provided element a shared port (to be announced to other peers)? */
   static bool IsSharedPort(core::tFrameworkElement& framework_element);

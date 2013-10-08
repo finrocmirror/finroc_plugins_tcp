@@ -186,6 +186,15 @@ struct tConnectorTask
     socket(),
     active_connect_indicator(new tPeerInfo::tActiveConnect(peer_info))
   {
+    if (peer_info.addresses.size() == 0)
+    {
+      implementation.InferMissingAddresses();
+    }
+    if (peer_info.addresses.size() == 0)
+    {
+      FINROC_LOG_PRINT(WARNING, "Peer info with no addresses. This is likely a programming error.");
+    }
+
     Connect();
   }
 
@@ -340,6 +349,27 @@ void tPeerImplementation::AddAddress(const boost::asio::ip::address& address)
   peer_list_changed = true;
 }
 
+void tPeerImplementation::AddPeerAddresses(tPeerInfo& existing_peer, const std::vector<boost::asio::ip::address>& addresses)
+{
+for (auto & address : addresses)
+  {
+    bool found = false;
+for (auto & existing_address : existing_peer.addresses)
+    {
+      if (existing_address == address)
+      {
+        found = true;
+        break;
+      }
+    }
+    if (!found)
+    {
+      existing_peer.addresses.push_back(address);
+      SetPeerListChanged();
+    }
+  }
+}
+
 void tPeerImplementation::Connect()
 {
   actively_connect = true;
@@ -407,6 +437,23 @@ tRemotePart* tPeerImplementation::GetRemotePart(const tUUID& uuid, tPeerType pee
   info.remote_part->Init();
   //peer_list_revision++;
   return info.remote_part;
+}
+
+void tPeerImplementation::InferMissingAddresses()
+{
+for (auto & info : other_peers)
+  {
+    if (info->addresses.size() == 0)
+    {
+for (auto & other_info : other_peers)
+      {
+        if (other_info != info && (other_info->uuid.host_name == info->uuid.host_name))
+        {
+          AddPeerAddresses(*info, other_info->addresses);
+        }
+      }
+    }
+  }
 }
 
 bool tPeerImplementation::IsSharedPort(core::tFrameworkElement& framework_element)
@@ -502,23 +549,7 @@ for (auto & it : other_peers)
     {
       FINROC_LOG_PRINT(WARNING, "Peer type of existing peer has changed, will not update it.");
     }
-for (auto & address : peer_info.addresses)
-    {
-      bool found = false;
-for (auto & existing_address : existing_peer->addresses)
-      {
-        if (existing_address == address)
-        {
-          found = true;
-          break;
-        }
-      }
-      if (!found)
-      {
-        existing_peer->addresses.push_back(address);
-        SetPeerListChanged();
-      }
-    }
+    AddPeerAddresses(*existing_peer, peer_info.addresses);
   }
   else
   {
@@ -734,10 +765,25 @@ void tPeerImplementation::SerializePeerInfo(rrlib::serialization::tOutputStream&
     stream << peer.uuid;
     stream << peer.peer_type;
     stream << peer.name;
-    stream.WriteInt(static_cast<int>(peer.addresses.size()));
+
+    // count non-loopback addresses
+    int address_count = 0;
 for (auto & it : peer.addresses)
     {
-      stream << it;
+      if (!it.is_loopback())
+      {
+        address_count++;
+      }
+    }
+    stream.WriteInt(address_count);
+
+    // serialize non-loopback addresses
+for (auto & it : peer.addresses)
+    {
+      if (!it.is_loopback())
+      {
+        stream << it;
+      }
     }
   }
 }
