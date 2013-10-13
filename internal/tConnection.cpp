@@ -683,14 +683,14 @@ size_t tConnection::ProcessMessageBatch(size_t start_at)
     // process acknowledging
     if (start_at == 0)
     {
-      // packet acknowledgement request
+      // packet acknowledgment request
       int16_t ack_request_index = stream.ReadShort();
       if (ack_request_index >= 0)
       {
         last_ack_request_index = ack_request_index;
       }
 
-      // packet acknowledgements
+      // packet acknowledgments
       int16_t acknowledgement = stream.ReadShort();
       if (acknowledgement >= 0)
       {
