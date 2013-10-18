@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <targets>
-  <finrocplugin name="tcp" libs="boost_system">
+  <finrocplugin libs="boost_system">
     <sources>
       tPeer.cpp
       tSettings.cpp
