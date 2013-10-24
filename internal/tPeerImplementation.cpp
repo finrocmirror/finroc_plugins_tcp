@@ -351,10 +351,10 @@ void tPeerImplementation::AddAddress(const boost::asio::ip::address& address)
 
 void tPeerImplementation::AddPeerAddresses(tPeerInfo& existing_peer, const std::vector<boost::asio::ip::address>& addresses)
 {
-for (auto & address : addresses)
+  for (auto & address : addresses)
   {
     bool found = false;
-for (auto & existing_address : existing_peer.addresses)
+    for (auto & existing_address : existing_peer.addresses)
     {
       if (existing_address == address)
       {
@@ -441,11 +441,11 @@ tRemotePart* tPeerImplementation::GetRemotePart(const tUUID& uuid, tPeerType pee
 
 void tPeerImplementation::InferMissingAddresses()
 {
-for (auto & info : other_peers)
+  for (auto & info : other_peers)
   {
     if (info->addresses.size() == 0)
     {
-for (auto & other_info : other_peers)
+      for (auto & other_info : other_peers)
       {
         if (other_info != info && (other_info->uuid.host_name == info->uuid.host_name))
         {
@@ -535,7 +535,7 @@ void tPeerImplementation::ProcessIncomingPeerInfo(const tPeerInfo& peer_info)
     existing_peer = &this_peer;
   }
 
-for (auto & it : other_peers)
+  for (auto & it : other_peers)
   {
     if (peer_info.uuid == it->uuid)
     {
@@ -774,7 +774,7 @@ void tPeerImplementation::SerializePeerInfo(rrlib::serialization::tOutputStream&
 
     // count non-loopback addresses
     int address_count = 0;
-for (auto & it : peer.addresses)
+    for (auto & it : peer.addresses)
     {
       // if (!it.is_loopback()) FIXME: replace in next Finroc version
       if (!IsLoopbackAddress(it))
@@ -785,7 +785,7 @@ for (auto & it : peer.addresses)
     stream.WriteInt(address_count);
 
     // serialize non-loopback addresses
-for (auto & it : peer.addresses)
+    for (auto & it : peer.addresses)
     {
       // if (!it.is_loopback()) FIXME: replace in next Finroc version
       if (!IsLoopbackAddress(it))

@@ -87,7 +87,7 @@ std::vector<boost::asio::ip::tcp::endpoint> ParseAndResolveNetworkAddress(const 
   try
   {
     std::vector<boost::asio::ip::tcp::endpoint> endpoints;
-for (const boost::asio::ip::address & addr : ResolveHostname(address_string))
+    for (const boost::asio::ip::address & addr : ResolveHostname(address_string))
     {
       endpoints.push_back(boost::asio::ip::tcp::endpoint(addr, port));
     }
