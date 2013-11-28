@@ -166,23 +166,39 @@ void tFrameworkElementInfo::Serialize(rrlib::serialization::tOutputStream& strea
 
 void tFrameworkElementInfo::SerializeConnections(rrlib::serialization::tOutputStream& stream, core::tAbstractPort& port)
 {
+  network_transport::tNetworkConnections* network_connections = port.GetAnnotation<network_transport::tNetworkConnections>();
+  bool has_network_connections = network_connections && network_connections->Count();
   std::array<core::tAbstractPort*, 256> connections;
   int connection_count = 0;
   for (auto it = port.OutgoingConnectionsBegin(); it != port.OutgoingConnectionsEnd(); ++it)
   {
     connections[connection_count] = &(*it);
-    if (connection_count == 255)
+    if (connection_count == 254)
     {
-      FINROC_LOG_PRINT(WARNING, "Port ", port, " has more than 255 connections. Serializing only 255. The rest will not be visible in finstruct.");
+      FINROC_LOG_PRINT(WARNING, "Port ", port, " has more than 254 connections. Serializing only 254. The rest will not be visible in finstruct.");
       break;
     }
     connection_count++;
   }
+
+  // To remain binary compatible with older versions of Finroc, we use 255 for escaping. 255 signals that there are also network connections.
+  // This somewhat reduces readability of the code and should be changed, should we decide to develop a new version of the TCP protocol
+  if (has_network_connections)
+  {
+    stream.WriteByte(0xFF);
+  }
+
   stream.WriteByte(connection_count);
   for (int i = 0; i < connection_count; i++)
   {
     stream.WriteInt(connections[i]->GetHandle());
     stream.WriteBoolean(port.IsEdgeFinstructed(*connections[i]));
+  }
+
+  // Possibly serialize network connections
+  if (has_network_connections)
+  {
+    stream << (*network_connections);
   }
 }
 
