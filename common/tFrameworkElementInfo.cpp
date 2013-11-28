@@ -34,6 +34,7 @@
 //----------------------------------------------------------------------
 #include "core/tFrameworkElementTags.h"
 #include "plugins/data_ports/common/tAbstractDataPort.h"
+#include "plugins/network_transport/tNetworkConnections.h"
 
 //----------------------------------------------------------------------
 // Internal includes with ""
