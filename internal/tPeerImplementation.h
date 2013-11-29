@@ -69,6 +69,7 @@ namespace internal
 // Forward declarations / typedefs / enums
 //----------------------------------------------------------------------
 
+class tPlugin;
 class tServer;
 
 //----------------------------------------------------------------------
@@ -115,6 +116,17 @@ public:
 
   /*! Starts actively connecting to the specified network */
   void Connect();
+
+  /*!
+   * Connect local port to port in remote runtime environment using TCP network transport plugin.
+   *
+   * \param local_port Local port to connect
+   * \param remote_runtime_uuid UUID of remote runtime
+   * \param remote_port_handle Handle of remote port
+   * \param remote_port_link Link of port in remote runtime environment
+   * \return Returns error message if connecting failed. On success an empty string is returned.
+   */
+  std::string Connect(core::tAbstractPort& local_port, const std::string& remote_runtime_uuid, int remote_port_handle, const std::string remote_port_link);
 
   /*!
    * Deserialize tPeerInfo from an input stream for peer exchange
