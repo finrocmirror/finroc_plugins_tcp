@@ -494,23 +494,27 @@ bool tPeerImplementation::IsSharedPort(core::tFrameworkElement& framework_elemen
 void tPeerImplementation::OnEdgeChange(core::tRuntimeListener::tEvent change_type, core::tAbstractPort& source, core::tAbstractPort& target)
 {
   // Maintain interpart edge information for finstruct
+  bool target_port_changed = false;
   {
     tNetworkPortInfo* target_port_info = target.GetAnnotation<tNetworkPortInfo>();
     bool destination_is_source = false;
+    core::tAbstractPort* connection_annotated = &source;
     if ((!target_port_info) || target_port_info->IsServerPort())
     {
       target_port_info = source.GetAnnotation<tNetworkPortInfo>();
       destination_is_source = true;
+      connection_annotated = &target;
     }
 
     if (target_port_info && (!target_port_info->IsServerPort()))
     {
-      network_transport::tNetworkConnections* connections_annotation = source.GetAnnotation<network_transport::tNetworkConnections>();
+      target_port_changed = destination_is_source;
+      network_transport::tNetworkConnections* connections_annotation = connection_annotated->GetAnnotation<network_transport::tNetworkConnections>();
       if (change_type == core::tRuntimeListener::tEvent::ADD)
       {
         if (!connections_annotation)
         {
-          connections_annotation = &source.EmplaceAnnotation<network_transport::tNetworkConnections>();
+          connections_annotation = &connection_annotated->EmplaceAnnotation<network_transport::tNetworkConnections>();
         }
         connections_annotation->Add(network_transport::tNetworkConnection(target_port_info->GetRemotePart().peer_info.uuid.ToString(), target_port_info->GetRemoteHandle(), destination_is_source));
       }
@@ -525,6 +529,10 @@ void tPeerImplementation::OnEdgeChange(core::tRuntimeListener::tEvent change_typ
   if (source.IsReady())
   {
     ProcessRuntimeChange(core::tRuntimeListener::tEvent::CHANGE, source, true);
+  }
+  if (target.IsReady() && target_port_changed)
+  {
+    ProcessRuntimeChange(core::tRuntimeListener::tEvent::CHANGE, target, true);
   }
 
   // Check subscriptions?
