@@ -88,7 +88,18 @@ class tPlugin : public network_transport::tNetworkTransportPlugin
     {
       return "No peer element instantiated";
     }
-    return static_cast<tPeer*>(peer_element)->implementation->Connect(local_port, remote_runtime_uuid, remote_port_handle, remote_port_link);
+    return static_cast<tPeer*>(peer_element)->implementation->Connect(local_port, remote_runtime_uuid, remote_port_handle, remote_port_link, false);
+  }
+
+  virtual std::string Disconnect(core::tAbstractPort& local_port, const std::string& remote_runtime_uuid,
+                                 int remote_port_handle, const std::string remote_port_link)
+  {
+    core::tFrameworkElement* peer_element = core::tRuntimeEnvironment::GetInstance().GetChild("TCP");
+    if (!peer_element)
+    {
+      return "No peer element instantiated";
+    }
+    return static_cast<tPeer*>(peer_element)->implementation->Connect(local_port, remote_runtime_uuid, remote_port_handle, remote_port_link, true);
   }
 
   virtual const char* GetId()

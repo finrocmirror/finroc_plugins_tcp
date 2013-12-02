@@ -384,7 +384,7 @@ void tPeerImplementation::Connect()
 }
 
 std::string tPeerImplementation::Connect(core::tAbstractPort& local_port, const std::string& remote_runtime_uuid,
-    int remote_port_handle, const std::string remote_port_link)
+    int remote_port_handle, const std::string remote_port_link, bool disconnect)
 {
   for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
   {
@@ -394,12 +394,24 @@ std::string tPeerImplementation::Connect(core::tAbstractPort& local_port, const 
       auto remote_port = part.remote_port_map.find(remote_port_handle);
       if (remote_port != part.remote_port_map.end())
       {
-        local_port.ConnectTo(remote_port->second->GetQualifiedLink(), core::tAbstractPort::tConnectDirection::AUTO, true);
-        if (!local_port.IsConnectedTo(*remote_port->second))
+        if (!disconnect)
         {
-          return "Could not connect ports (see console output for reasons)";
+          local_port.ConnectTo(remote_port->second->GetQualifiedLink(), core::tAbstractPort::tConnectDirection::AUTO, true);
+          if (!local_port.IsConnectedTo(*remote_port->second))
+          {
+            return "Could not connect ports (see console output for reasons)";
+          }
+          return "";
         }
-        return "";
+        else
+        {
+          local_port.DisconnectFrom(remote_port->second->GetQualifiedLink());
+          if (local_port.IsConnectedTo(*remote_port->second))
+          {
+            return "Could not disconnect ports (see console output for reasons)";
+          }
+          return "";
+        }
       }
       else
       {
