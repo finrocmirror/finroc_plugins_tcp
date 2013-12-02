@@ -33,6 +33,7 @@
 // External includes (system with <>, local with "")
 //----------------------------------------------------------------------
 #include "core/tRuntimeEnvironment.h"
+#include "plugins/network_transport/tNetworkConnections.h"
 
 //----------------------------------------------------------------------
 // Internal includes with ""
@@ -382,6 +383,46 @@ void tPeerImplementation::Connect()
   low_priority_tasks_timer.async_wait(tProcessLowPriorityTasksCaller<false>(*this)); // immediately trigger connecting
 }
 
+std::string tPeerImplementation::Connect(core::tAbstractPort& local_port, const std::string& remote_runtime_uuid,
+    int remote_port_handle, const std::string remote_port_link, bool disconnect)
+{
+  for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
+  {
+    if ((*it)->remote_part && (*it)->uuid.ToString() == remote_runtime_uuid)
+    {
+      tRemotePart& part = *((*it)->remote_part);
+      auto remote_port = part.remote_port_map.find(remote_port_handle);
+      if (remote_port != part.remote_port_map.end())
+      {
+        if (!disconnect)
+        {
+          local_port.ConnectTo(remote_port->second->GetQualifiedLink(), core::tAbstractPort::tConnectDirection::AUTO, true);
+          if (!local_port.IsConnectedTo(*remote_port->second))
+          {
+            return "Could not connect ports (see console output for reasons)";
+          }
+          return "";
+        }
+        else
+        {
+          local_port.DisconnectFrom(remote_port->second->GetQualifiedLink());
+          if (local_port.IsConnectedTo(*remote_port->second))
+          {
+            return "Could not disconnect ports (see console output for reasons)";
+          }
+          return "";
+        }
+      }
+      else
+      {
+        return "No remote port with handle " + std::to_string(remote_port_handle) + "found";
+      }
+    }
+  }
+  return "No remote runtime with UUID " + remote_runtime_uuid + " found";
+}
+
+
 void tPeerImplementation::DeserializePeerInfo(rrlib::serialization::tInputStream& stream, tPeerInfo& peer)
 {
   stream >> peer.uuid;
@@ -464,9 +505,46 @@ bool tPeerImplementation::IsSharedPort(core::tFrameworkElement& framework_elemen
 
 void tPeerImplementation::OnEdgeChange(core::tRuntimeListener::tEvent change_type, core::tAbstractPort& source, core::tAbstractPort& target)
 {
+  // Maintain interpart edge information for finstruct
+  bool target_port_changed = false;
+  {
+    tNetworkPortInfo* target_port_info = target.GetAnnotation<tNetworkPortInfo>();
+    bool destination_is_source = false;
+    core::tAbstractPort* connection_annotated = &source;
+    if ((!target_port_info) || target_port_info->IsServerPort())
+    {
+      target_port_info = source.GetAnnotation<tNetworkPortInfo>();
+      destination_is_source = true;
+      connection_annotated = &target;
+    }
+
+    if (target_port_info && (!target_port_info->IsServerPort()))
+    {
+      target_port_changed = destination_is_source;
+      network_transport::tNetworkConnections* connections_annotation = connection_annotated->GetAnnotation<network_transport::tNetworkConnections>();
+      if (change_type == core::tRuntimeListener::tEvent::ADD)
+      {
+        if (!connections_annotation)
+        {
+          connections_annotation = &connection_annotated->EmplaceAnnotation<network_transport::tNetworkConnections>();
+        }
+        connections_annotation->Add(network_transport::tNetworkConnection(target_port_info->GetRemotePart().peer_info.uuid.ToString(), target_port_info->GetRemoteHandle(), destination_is_source));
+      }
+      else if (change_type == core::tRuntimeListener::tEvent::REMOVE && connections_annotation)
+      {
+        connections_annotation->Remove(network_transport::tNetworkConnection(target_port_info->GetRemotePart().peer_info.uuid.ToString(), target_port_info->GetRemoteHandle(), destination_is_source));
+      }
+    }
+  }
+
+  // Forward change to clients
   if (source.IsReady())
   {
     ProcessRuntimeChange(core::tRuntimeListener::tEvent::CHANGE, source, true);
+  }
+  if (target.IsReady() && target_port_changed)
+  {
+    ProcessRuntimeChange(core::tRuntimeListener::tEvent::CHANGE, target, true);
   }
 
   // Check subscriptions?

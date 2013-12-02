@@ -126,6 +126,8 @@ public:
 //----------------------------------------------------------------------
 private:
 
+  friend class internal::tPlugin;
+
   /*! Peer implementation */
   std::unique_ptr<internal::tPeerImplementation> implementation;
 

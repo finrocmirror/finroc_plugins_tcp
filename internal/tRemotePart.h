@@ -280,6 +280,7 @@ private:
   };
 
   friend struct tPullCallInfo;
+  friend class tPeerImplementation;
 
   /*! Peer info that this part belongs to */
   tPeerInfo& peer_info;

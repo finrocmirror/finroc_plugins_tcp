@@ -19,25 +19,26 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 //----------------------------------------------------------------------
-/*!\file    plugins/tcp/tPeer.cpp
+/*!\file    plugins/tcp/internal/tPlugin.cpp
  *
  * \author  Max Reichardt
  *
- * \date    2013-01-04
+ * \date    2013-11-29
  *
+ * TCP transport plugin implementation
  */
 //----------------------------------------------------------------------
-#include "plugins/tcp/tPeer.h"
 
 //----------------------------------------------------------------------
 // External includes (system with <>, local with "")
 //----------------------------------------------------------------------
 #include "core/tRuntimeEnvironment.h"
-#include "core/tFrameworkElementTags.h"
+#include "plugins/network_transport/tNetworkTransportPlugin.h"
 
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
+#include "plugins/tcp/tPeer.h"
 
 //----------------------------------------------------------------------
 // Debugging
@@ -55,6 +56,8 @@ namespace finroc
 {
 namespace tcp
 {
+namespace internal
+{
 
 //----------------------------------------------------------------------
 // Forward declarations / typedefs / enums
@@ -68,50 +71,52 @@ namespace tcp
 // Implementation
 //----------------------------------------------------------------------
 
-tPeer::tPeer(const std::string& peer_name, const std::string& network_connection, int preferred_server_port, bool try_next_ports_if_occupied,
-             bool auto_connect_to_all_peers, const std::string& server_listen_address) :
-  core::tFrameworkElement(&core::tRuntimeEnvironment::GetInstance(), "TCP", tFlag::NETWORK_ELEMENT),
-  implementation(new internal::tPeerImplementation(*this, peer_name, internal::tPeerType::FULL, network_connection, preferred_server_port,
-                 try_next_ports_if_occupied, auto_connect_to_all_peers, server_listen_address))
+//----------------------------------------------------------------------
+// Class declaration
+//----------------------------------------------------------------------
+//! TCP transport plugin implementation
+/*!
+ * TCP transport plugin implementation
+ */
+class tPlugin : public network_transport::tNetworkTransportPlugin
 {
-  core::tFrameworkElementTags::AddTag(*this, core::tFrameworkElementTags::cHIDDEN_IN_TOOLS);
-}
+  virtual std::string Connect(core::tAbstractPort& local_port, const std::string& remote_runtime_uuid,
+                              int remote_port_handle, const std::string remote_port_link)
+  {
+    core::tFrameworkElement* peer_element = core::tRuntimeEnvironment::GetInstance().GetChild("TCP");
+    if (!peer_element)
+    {
+      return "No peer element instantiated";
+    }
+    return static_cast<tPeer*>(peer_element)->implementation->Connect(local_port, remote_runtime_uuid, remote_port_handle, remote_port_link, false);
+  }
 
-tPeer::tPeer(const std::string& peer_name, int preferred_server_port, bool try_next_ports_if_occupied, const std::string& server_listen_address) :
-  core::tFrameworkElement(&core::tRuntimeEnvironment::GetInstance(), "TCP", tFlag::NETWORK_ELEMENT),
-  implementation(new internal::tPeerImplementation(*this, peer_name, internal::tPeerType::SERVER_ONLY, "", preferred_server_port,
-                 try_next_ports_if_occupied, false, server_listen_address))
-{
-  core::tFrameworkElementTags::AddTag(*this, core::tFrameworkElementTags::cHIDDEN_IN_TOOLS);
-}
+  virtual std::string Disconnect(core::tAbstractPort& local_port, const std::string& remote_runtime_uuid,
+                                 int remote_port_handle, const std::string remote_port_link)
+  {
+    core::tFrameworkElement* peer_element = core::tRuntimeEnvironment::GetInstance().GetChild("TCP");
+    if (!peer_element)
+    {
+      return "No peer element instantiated";
+    }
+    return static_cast<tPeer*>(peer_element)->implementation->Connect(local_port, remote_runtime_uuid, remote_port_handle, remote_port_link, true);
+  }
 
-tPeer::tPeer(const std::string& peer_name, const std::string& network_connection, bool auto_connect_to_all_peers) :
-  core::tFrameworkElement(&core::tRuntimeEnvironment::GetInstance(), "TCP", tFlag::NETWORK_ELEMENT),
-  implementation(new internal::tPeerImplementation(*this, peer_name, internal::tPeerType::CLIENT_ONLY, network_connection, -1, false, auto_connect_to_all_peers, ""))
-{
-  core::tFrameworkElementTags::AddTag(*this, core::tFrameworkElementTags::cHIDDEN_IN_TOOLS);
-}
+  virtual const char* GetId()
+  {
+    return "tcp";
+  }
 
-tPeer::~tPeer()
-{}
+  virtual void Init()
+  {
+  }
+};
 
-void tPeer::Connect()
-{
-  implementation->Connect();
-}
-
-void tPeer::PostChildInit()
-{
-  implementation->StartServer();
-}
-
-void tPeer::PrepareDelete()
-{
-  implementation.reset();
-}
+static tPlugin cPLUGIN_INSTANCE;
 
 //----------------------------------------------------------------------
 // End of namespace declaration
 //----------------------------------------------------------------------
+}
 }
 }
