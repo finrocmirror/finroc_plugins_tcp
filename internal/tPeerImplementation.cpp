@@ -300,8 +300,13 @@ tPeerImplementation::tPeerImplementation(core::tFrameworkElement& framework_elem
   char buffer[258];
   if (gethostname(buffer, 257))
   {
-    this_peer.uuid.host_name = "No host name";
+    this_peer.uuid.host_name = "No host name@" + std::to_string(rrlib::time::Now(true).time_since_epoch().count());
     FINROC_LOG_PRINT(ERROR, "Error retrieving host name.");
+  }
+  else if (std::string(buffer) == "localhost")
+  {
+    this_peer.uuid.host_name = "localhost@" + std::to_string(rrlib::time::Now(true).time_since_epoch().count());
+    FINROC_LOG_PRINT(ERROR, "The hostname of this system is 'localhost' (according to the hostname() function). When using the finroc_tcp plugin, this is not allowed (a unique identifier for this Finroc runtime environment is derived from the hostname). Ideally, the hostname is the name under which the system can be found in the network using DNS lookup. Otherwise, please set it to a unique name in the network. For now, the current time is appended for the uuid: '", this_peer.uuid.host_name, "'.");
   }
   else
   {
