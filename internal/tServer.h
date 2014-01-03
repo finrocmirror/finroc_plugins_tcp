@@ -115,7 +115,7 @@ private:
   const bool try_next_ports_if_occupied;
 
   /* The address that server is supposed to listen on ("::" will enable IPv6) */
-  const std::string& server_listen_address;
+  const std::string server_listen_address;
 
 
   ~tServer();
