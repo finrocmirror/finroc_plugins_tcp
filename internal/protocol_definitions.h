@@ -43,6 +43,7 @@
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
+#include "plugins/tcp/tOptions.h"
 #include "plugins/tcp/common/tFrameworkElementInfo.h"
 #include "plugins/tcp/internal/tUUID.h"
 
@@ -65,15 +66,6 @@ extern const char* cGREET_MESSAGE;
 
 /*! TCP protocol version */
 enum { cPROTOCOL_VERSION = 1 };
-
-/*! Mode of peer */
-enum class tPeerType
-{
-  CLIENT_ONLY,  //!< Peer is client only
-  SERVER_ONLY,  //!< Peer is server only
-  FULL,         //!< Peer is client and server
-  UNSPECIFIED   //!< Peer type is not specified
-};
 
 /*!
  * Protocol OpCodes

@@ -68,26 +68,9 @@ namespace tcp
 // Implementation
 //----------------------------------------------------------------------
 
-tPeer::tPeer(const std::string& peer_name, const std::string& network_connection, int preferred_server_port, bool try_next_ports_if_occupied,
-             bool auto_connect_to_all_peers, const std::string& server_listen_address) :
+tPeer::tPeer(const tOptions& options) :
   core::tFrameworkElement(&core::tRuntimeEnvironment::GetInstance(), "TCP", tFlag::NETWORK_ELEMENT),
-  implementation(new internal::tPeerImplementation(*this, peer_name, internal::tPeerType::FULL, network_connection, preferred_server_port,
-                 try_next_ports_if_occupied, auto_connect_to_all_peers, server_listen_address))
-{
-  core::tFrameworkElementTags::AddTag(*this, core::tFrameworkElementTags::cHIDDEN_IN_TOOLS);
-}
-
-tPeer::tPeer(const std::string& peer_name, int preferred_server_port, bool try_next_ports_if_occupied, const std::string& server_listen_address) :
-  core::tFrameworkElement(&core::tRuntimeEnvironment::GetInstance(), "TCP", tFlag::NETWORK_ELEMENT),
-  implementation(new internal::tPeerImplementation(*this, peer_name, internal::tPeerType::SERVER_ONLY, "", preferred_server_port,
-                 try_next_ports_if_occupied, false, server_listen_address))
-{
-  core::tFrameworkElementTags::AddTag(*this, core::tFrameworkElementTags::cHIDDEN_IN_TOOLS);
-}
-
-tPeer::tPeer(const std::string& peer_name, const std::string& network_connection, bool auto_connect_to_all_peers) :
-  core::tFrameworkElement(&core::tRuntimeEnvironment::GetInstance(), "TCP", tFlag::NETWORK_ELEMENT),
-  implementation(new internal::tPeerImplementation(*this, peer_name, internal::tPeerType::CLIENT_ONLY, network_connection, -1, false, auto_connect_to_all_peers, ""))
+  implementation(new internal::tPeerImplementation(*this, options))
 {
   core::tFrameworkElementTags::AddTag(*this, core::tFrameworkElementTags::cHIDDEN_IN_TOOLS);
 }

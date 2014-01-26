@@ -81,11 +81,8 @@ public:
 
   /*!
    * \param peer Peer that this server belongs to
-   * \param desired_port Port Server is supposed to run on
-   * \param try_next_ports_if_occupied Try the following ports, if specified port is already occupied?
-   * \param server_listen_address The address that server is supposed to listen on ("::" will enable IPv6)
    */
-  tServer(tPeerImplementation& peer, int desired_port, bool try_next_ports_if_occupied, const std::string& server_listen_address = "0.0.0.0");
+  tServer(tPeerImplementation& peer);
 
   /*!
    * \return TCP Port Server is supposed to listen on

@@ -112,12 +112,12 @@ public:
   std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor;
 };
 
-tServer::tServer(tPeerImplementation& peer, int desired_port, bool try_next_ports_if_occupied, const std::string& server_listen_address) :
+tServer::tServer(tPeerImplementation& peer) :
   tFrameworkElement(&peer.framework_element, "TCP Server", tFlag::NETWORK_ELEMENT, static_cast<int>(core::tLockOrderLevel::LEAF_GROUP)),
   peer(peer),
-  desired_port(desired_port),
-  try_next_ports_if_occupied(try_next_ports_if_occupied),
-  server_listen_address(server_listen_address)
+  desired_port(peer.create_options.preferred_server_port),
+  try_next_ports_if_occupied(peer.create_options.try_next_ports_if_occupied),
+  server_listen_address(peer.create_options.server_listen_address)
 {
 }
 
@@ -172,7 +172,7 @@ void tServer::Run()
   FINROC_LOG_PRINT(USER, "TCP server is listening on port ", peer.this_peer.uuid.port);
 
   // If no connect-address was specified and desired port was occupied - connect to part that is running there
-  if (peer.network_connection.length() == 0 && DesiredPort() != peer.this_peer.uuid.port)
+  if (peer.create_options.auto_connect_to_all_peers && DesiredPort() != peer.this_peer.uuid.port)
   {
     peer.connect_to.push_back(std::string("localhost:") + std::to_string(DesiredPort()));
   }

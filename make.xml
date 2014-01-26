@@ -2,6 +2,7 @@
 <targets>
   <finrocplugin libs="boost_system">
     <sources>
+      tOptions.h
       tPeer.cpp
       tSettings.cpp
       common/**

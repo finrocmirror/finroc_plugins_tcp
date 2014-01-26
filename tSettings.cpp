@@ -81,10 +81,10 @@ const int tSettings::cMAX_PORTS_TO_TRY_FOR_CREATING_SERVER_PORT;
 
 tSettings::tSettings() :
   core::tFrameworkElement(&core::tRuntimeSettings::GetInstance(), "TCP"),
-  max_not_acknowledged_packets_express("Maximum not acknowledged express packets", this, 4, data_ports::tBounds<uint32_t>(1, 40, true)),
+  max_not_acknowledged_packets_express("Maximum not acknowledged express packets", this, 10, data_ports::tBounds<uint32_t>(1, 40, true)),
   max_not_acknowledged_packets_bulk("Maximum not acknowledged bulk packets", this, 2, data_ports::tBounds<uint32_t>(1, 40, true)),
-  min_update_interval_express("Minimum Express Update Interval", this, std::chrono::milliseconds(25), data_ports::tBounds<rrlib::time::tDuration>(std::chrono::milliseconds(1), std::chrono::seconds(2))),
-  min_update_interval_bulk("Minimum Bulk Update Interval", this, std::chrono::milliseconds(50), data_ports::tBounds<rrlib::time::tDuration>(std::chrono::milliseconds(1), std::chrono::seconds(2))),
+  min_update_interval_express("Minimum Express Update Interval", this, std::chrono::milliseconds(1), data_ports::tBounds<rrlib::time::tDuration>(std::chrono::milliseconds(1), std::chrono::seconds(2))),
+  min_update_interval_bulk("Minimum Bulk Update Interval", this, std::chrono::milliseconds(40), data_ports::tBounds<rrlib::time::tDuration>(std::chrono::milliseconds(1), std::chrono::seconds(2))),
   critical_ping_threshold("Critical Ping Threshold", this, std::chrono::milliseconds(1500), data_ports::tBounds<rrlib::time::tDuration>(std::chrono::milliseconds(50), std::chrono::seconds(20)))
 {
   assert(max_not_acknowledged_packets_bulk.Get() == 2);

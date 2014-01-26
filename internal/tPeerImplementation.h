@@ -95,16 +95,9 @@ public:
 
   /*!
    * \param framework_element Framework element associated with peer
-   * \param peer_name Name of peer. Will be displayed in tooling and status messages. Does not need to be unique. Typically the program/process name.
-   * \param peer_type Type of peer to be created
-   * \param network_connection Name of network that peer belongs to OR network address of one peer that belongs to P2P network
-   * \param preferred_server_port Port that we will try to open for server. Will try the next ones if not available (SERVER and FULL only)
-   * \param try_next_ports_if_occupied Try the following ports, if specified port is already occupied?
-   * \param auto_connect_to_all_peers Auto-connect to all peers that become known?
-   * \param server_listen_address The address that server is supposed to listen on ("::" will enable IPv6)
+   * \param Options for peer creation
    */
-  tPeerImplementation(core::tFrameworkElement& framework_element, const std::string& peer_name, tPeerType peer_type, const std::string& network_connection,
-                      int preferred_server_port, bool try_next_ports_if_occupied, bool auto_connect_to_all_peers, const std::string& server_listen_address);
+  tPeerImplementation(core::tFrameworkElement& framework_element, const tOptions& options);
 
   /*! Shuts peer down */
   ~tPeerImplementation();
@@ -268,8 +261,8 @@ private:
   /*! Framework element associated with server */
   core::tFrameworkElement& framework_element;
 
-  /*! Name of network that peer belongs to OR network address of one peer that belongs to P2P network */
-  std::string network_connection;
+  /*! Options that peer was created with */
+  tOptions create_options;
 
   /*! Vector containing all network addresses this peer should try to connect to */
   std::vector<std::string> connect_to;

@@ -32,6 +32,7 @@
 //----------------------------------------------------------------------
 // External includes (system with <>, local with "")
 //----------------------------------------------------------------------
+#include "rrlib/getopt/parser.h"
 #include "core/tRuntimeEnvironment.h"
 #include "plugins/network_transport/tNetworkTransportPlugin.h"
 
@@ -71,6 +72,18 @@ namespace internal
 // Implementation
 //----------------------------------------------------------------------
 
+bool OptionsHandler(const rrlib::getopt::tNameToOptionMap &name_to_option_map)
+{
+  // auto-connect mode
+  rrlib::getopt::tOption auto_connect(name_to_option_map.at("tcp-auto-connect"));
+  if (auto_connect->IsActive())
+  {
+    tOptions::GetDefaultOptions().auto_connect_to_all_peers = (rrlib::getopt::EvaluateValue(auto_connect) == "yes");
+  }
+
+  return true;
+}
+
 //----------------------------------------------------------------------
 // Class declaration
 //----------------------------------------------------------------------
@@ -80,6 +93,12 @@ namespace internal
  */
 class tPlugin : public network_transport::tNetworkTransportPlugin
 {
+public:
+  tPlugin()
+  {
+    rrlib::getopt::AddValue("tcp-auto-connect", 0, "Auto-connect to all peers that become known? (yes/no) - default is 'yes' (Note: this might change in future releases)", &OptionsHandler);
+  }
+
   virtual std::string Connect(core::tAbstractPort& local_port, const std::string& remote_runtime_uuid,
                               int remote_port_handle, const std::string remote_port_link)
   {

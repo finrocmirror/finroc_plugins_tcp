@@ -265,12 +265,11 @@ private:
 };
 
 
-tPeerImplementation::tPeerImplementation(core::tFrameworkElement& framework_element, const std::string& peer_name, tPeerType peer_type, const std::string& network_connection,
-    int preferred_server_port, bool try_next_ports_if_occupied, bool auto_connect_to_all_peers, const std::string& server_listen_address) :
+tPeerImplementation::tPeerImplementation(core::tFrameworkElement& framework_element, const tOptions& options) :
   framework_element(framework_element),
-  network_connection(network_connection),
+  create_options(options),
   connect_to(),
-  this_peer(peer_type),
+  this_peer(options.peer_type),
   other_peers(),
   //peer_list_revision(0),
   peer_list_changed(false),
@@ -293,8 +292,14 @@ tPeerImplementation::tPeerImplementation(core::tFrameworkElement& framework_elem
   deleted_rpc_ports(),
   deleted_rpc_ports_mutex()
 {
-  tSettings::GetInstance(); // initialize TCP settings
-  this_peer.name = peer_name;
+  // initialize and adjust TCP settings
+  tSettings::GetInstance().critical_ping_threshold.Set(options.critical_ping_threshold);
+  tSettings::GetInstance().max_not_acknowledged_packets_bulk.Set(options.max_not_acknowledged_packets_bulk);
+  tSettings::GetInstance().max_not_acknowledged_packets_express.Set(options.max_not_acknowledged_packets_express);
+  tSettings::GetInstance().min_update_interval_bulk.Set(options.min_update_interval_bulk);
+  tSettings::GetInstance().min_update_interval_express.Set(options.min_update_interval_express);
+
+  this_peer.name = options.peer_name;
 
   // Retrieve host name
   char buffer[258];
@@ -314,9 +319,9 @@ tPeerImplementation::tPeerImplementation(core::tFrameworkElement& framework_elem
   }
 
   // Create server
-  if (peer_type != tPeerType::CLIENT_ONLY)
+  if (options.peer_type != tPeerType::CLIENT_ONLY)
   {
-    server = new tServer(*this, preferred_server_port, try_next_ports_if_occupied, server_listen_address);
+    server = new tServer(*this);
   }
 }
 
@@ -380,9 +385,9 @@ void tPeerImplementation::Connect()
 {
   actively_connect = true;
 
-  if (network_connection.length() > 0)
+  for (const std::string & address : create_options.connect_to)
   {
-    connect_to.push_back(network_connection);
+    connect_to.push_back(address);
   }
 
   low_priority_tasks_timer.async_wait(tProcessLowPriorityTasksCaller<false>(*this)); // immediately trigger connecting
@@ -728,7 +733,8 @@ void tPeerImplementation::ProcessLowPriorityTasks()
     for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
     {
       tPeerInfo& peer = **it;
-      if ((!peer.connected) && (!peer.connecting) && (peer.peer_type != tPeerType::CLIENT_ONLY))
+      if ((!peer.connected) && (!peer.connecting) && (peer.peer_type != tPeerType::CLIENT_ONLY) &&
+          (create_options.auto_connect_to_all_peers || peer.never_forget))
       {
         tConnectorTask connector_task(*this, peer);
       }
