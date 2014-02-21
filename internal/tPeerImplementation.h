@@ -382,6 +382,10 @@ private:
   /*! Starts TCP Thread */
   void StartThread();
 
+  /*!
+   * Called whenever a new edge is added and updates network connection info if necessary
+   */
+  void UpdateNetworkConnectionInfo(core::tRuntimeListener::tEvent change_type, core::tAbstractPort& source, core::tAbstractPort& target, bool& target_port_changed);
 };
 
 //----------------------------------------------------------------------
