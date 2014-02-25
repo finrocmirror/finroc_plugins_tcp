@@ -166,7 +166,7 @@ private:
    */
   void Deserialize(rrlib::serialization::tInputStream& ci);
 
-  virtual rrlib::rtti::tType ReadType(rrlib::serialization::tInputStream& is); // TODO: mark override in gcc 4.7
+  virtual rrlib::rtti::tType ReadType(rrlib::serialization::tInputStream& is) override;
 
   /*!
    * Serializes information about local data types
@@ -175,7 +175,7 @@ private:
    */
   void SerializeLocalDataTypes(rrlib::serialization::tOutputStream& co);
 
-  virtual void WriteType(rrlib::serialization::tOutputStream& os, rrlib::rtti::tType dt); // TODO: mark override in gcc 4.7
+  virtual void WriteType(rrlib::serialization::tOutputStream& os, rrlib::rtti::tType dt) override;
 };
 
 //----------------------------------------------------------------------

@@ -87,7 +87,7 @@ public:
   {}
 
 private:
-  virtual data_ports::standard::tMultiTypePortBufferPool& ObtainBufferPool()
+  virtual data_ports::standard::tMultiTypePortBufferPool& ObtainBufferPool() override
   {
     auto it = rpc_call_buffer_pools.find(local_port_handle);
     if (it == rpc_call_buffer_pools.end())

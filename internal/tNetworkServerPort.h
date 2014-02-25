@@ -95,7 +95,7 @@ private:
         rrlib::concurrent_containers::tDequeueMode::ALL, false > incoming_call_queue;
 
 
-  virtual void SendCall(tCallPointer && call_to_send); // TODO: mark override in gcc 4.7
+  virtual void SendCall(tCallPointer && call_to_send) override;
 
 };
 

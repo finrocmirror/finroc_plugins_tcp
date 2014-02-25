@@ -136,7 +136,7 @@ private:
 
   uint32_t counter;
 
-  virtual void Update();
+  virtual void Update() override;
 };
 
 //----------------------------------------------------------------------

@@ -100,7 +100,7 @@ public:
   }
 
   virtual std::string Connect(core::tAbstractPort& local_port, const std::string& remote_runtime_uuid,
-                              int remote_port_handle, const std::string remote_port_link)
+                              int remote_port_handle, const std::string remote_port_link) override
   {
     core::tFrameworkElement* peer_element = core::tRuntimeEnvironment::GetInstance().GetChild("TCP");
     if (!peer_element)
@@ -111,7 +111,7 @@ public:
   }
 
   virtual std::string Disconnect(core::tAbstractPort& local_port, const std::string& remote_runtime_uuid,
-                                 int remote_port_handle, const std::string remote_port_link)
+                                 int remote_port_handle, const std::string remote_port_link) override
   {
     core::tFrameworkElement* peer_element = core::tRuntimeEnvironment::GetInstance().GetChild("TCP");
     if (!peer_element)
@@ -121,12 +121,12 @@ public:
     return static_cast<tPeer*>(peer_element)->implementation->Connect(local_port, remote_runtime_uuid, remote_port_handle, remote_port_link, true);
   }
 
-  virtual const char* GetId()
+  virtual const char* GetId() override
   {
     return "tcp";
   }
 
-  virtual void Init()
+  virtual void Init() override
   {
   }
 };

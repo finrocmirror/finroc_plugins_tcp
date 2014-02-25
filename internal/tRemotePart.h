@@ -328,7 +328,7 @@ private:
   std::vector<tPullCallInfo> pull_calls_awaiting_response;
 
 
-  virtual data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject> OnPullRequest(data_ports::tGenericPort& origin); // TODO: mark override in gcc 4.7
+  virtual data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject> OnPullRequest(data_ports::tGenericPort& origin) override;
 
   /*!
    * Sends specified RPC call to connection partner
@@ -343,7 +343,7 @@ private:
    */
   void SendPullRequest(tPullCallInfo& pull_call_info);
 
-  virtual void SendResponse(typename tResponseSender::tCallPointer && response_to_send); // TODO: mark override in gcc 4.7
+  virtual void SendResponse(typename tResponseSender::tCallPointer && response_to_send) override;
 };
 
 //----------------------------------------------------------------------

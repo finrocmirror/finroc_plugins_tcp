@@ -82,7 +82,7 @@ namespace internal
 class tNetworkBasePlugin : public core::tPlugin
 {
 
-  virtual void Init()
+  virtual void Init() override
   {
     tNetworkUpdateTimeSettings::GetInstance();
   }

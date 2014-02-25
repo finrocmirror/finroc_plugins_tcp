@@ -110,9 +110,9 @@ private:
 
   virtual ~tPeer();
 
-  virtual void PostChildInit(); // TODO: mark override in gcc 4.7
+  virtual void PostChildInit() override;
 
-  virtual void PrepareDelete(); // TODO: mark override in gcc 4.7
+  virtual void PrepareDelete() override;
 };
 
 //----------------------------------------------------------------------

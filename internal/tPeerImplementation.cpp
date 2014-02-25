@@ -236,7 +236,7 @@ public:
   }
 
 private:
-  virtual void Run()
+  virtual void Run() override
   {
     try
     {
@@ -256,7 +256,7 @@ private:
     }
   }
 
-  virtual void StopThread()
+  virtual void StopThread() override
   {
     implementation.io_service.stop();
   }

@@ -80,7 +80,7 @@ public:
 
   tNetworkPortInfo(tRemotePart& remote_part, tHandle remote_handle, int16_t strategy, bool server_port, core::tAbstractPort& port, tHandle served_port_handle = 0);
 
-  virtual void AnnotatedObjectToBeDeleted();
+  virtual void AnnotatedObjectToBeDeleted() override;
 
   /*!
    * Initiates subscription check in TCP thread if port is suitable and no such
