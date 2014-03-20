@@ -34,7 +34,6 @@
 //----------------------------------------------------------------------
 #include <boost/asio/ip/v6_only.hpp>
 #include "rrlib/thread/tThread.h"
-#include "core/tLockOrderLevel.h"
 
 //----------------------------------------------------------------------
 // Internal includes with ""
@@ -113,7 +112,7 @@ public:
 };
 
 tServer::tServer(tPeerImplementation& peer) :
-  tFrameworkElement(&peer.framework_element, "TCP Server", tFlag::NETWORK_ELEMENT, static_cast<int>(core::tLockOrderLevel::LEAF_GROUP)),
+  tFrameworkElement(&peer.framework_element, "TCP Server", tFlag::NETWORK_ELEMENT),
   peer(peer),
   desired_port(peer.create_options.preferred_server_port),
   try_next_ports_if_occupied(peer.create_options.try_next_ports_if_occupied),
