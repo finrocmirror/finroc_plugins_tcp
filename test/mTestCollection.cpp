@@ -78,7 +78,7 @@ rpc_ports::tRPCInterfaceType<tTestInterface> cTYPE("Test interface", &tTestInter
 //----------------------------------------------------------------------
 
 mTestCollection::mTestCollection(core::tFrameworkElement *parent, const std::string &name) :
-  tModule(parent, name, true, true),
+  tModule(parent, name, true),
   out_initial_pushing(cINITIAL_VALUE),
   out_initial_pushing_reverse(tFlag::SHARED | tFlag::PUSH_STRATEGY_REVERSE),
   in_initial_pushing_reverse(cINITIAL_VALUE),
