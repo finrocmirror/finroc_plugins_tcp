@@ -774,7 +774,6 @@ void tConnection::SendPendingMessages(const rrlib::time::tTimestamp& time_now)
   {
     if (!remote_part->PortsWithExpressDataToSend().empty())
     {
-      //FINROC_LOG_PRINT(DEBUG_WARNING, "sdfsdf");
       SendPortData(remote_part->PortsWithExpressDataToSend(), time_now);
     }
   }

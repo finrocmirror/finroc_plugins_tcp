@@ -126,7 +126,7 @@ public:
     return "tcp";
   }
 
-  virtual void Init() override
+  virtual void Init(rrlib::xml::tNode* config_node) override
   {
   }
 };
