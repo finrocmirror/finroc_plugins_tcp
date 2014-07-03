@@ -768,8 +768,8 @@ void tPeerImplementation::ProcessRuntimeChange(core::tRuntimeListener::tEvent ch
   if ((relevant_for_shared_port_client || serve_structure_copy) && (change_type != core::tRuntimeListener::tEvent::PRE_INIT))
   {
     std::unique_ptr<tSerializedStructureChange> change(new tSerializedStructureChange(change_type, element, serve_structure_copy,
-        relevant_for_shared_port_client ? common::tStructureExchange::SHARED_PORTS :
-        (relevant_for_structure_client ? common::tStructureExchange::COMPLETE_STRUCTURE : common::tStructureExchange::FINSTRUCT)));
+        relevant_for_shared_port_client ? network_transport::tStructureExchange::SHARED_PORTS :
+        (relevant_for_structure_client ? network_transport::tStructureExchange::COMPLETE_STRUCTURE : network_transport::tStructureExchange::FINSTRUCT)));
 
     if (relevant_for_shared_port_client)
     {
@@ -779,7 +779,7 @@ void tPeerImplementation::ProcessRuntimeChange(core::tRuntimeListener::tEvent ch
         rrlib::serialization::tStackMemoryBuffer<2048> buffer;
         rrlib::serialization::tOutputStream stream(buffer);
         std::string string_buffer;
-        common::tFrameworkElementInfo::Serialize(stream, element, common::tStructureExchange::SHARED_PORTS, string_buffer);
+        network_transport::tFrameworkElementInfo::Serialize(stream, element, network_transport::tStructureExchange::SHARED_PORTS, string_buffer);
         stream.Flush();
         lock.Lock();
         shared_ports[element.GetHandle()] = CopyToNewFixedBuffer(buffer);
@@ -907,7 +907,7 @@ void tPeerImplementation::StartServer()
       if (IsSharedPort(port))
       {
         stream.Reset();
-        common::tFrameworkElementInfo::Serialize(stream, port, common::tStructureExchange::SHARED_PORTS, string_buffer);
+        network_transport::tFrameworkElementInfo::Serialize(stream, port, network_transport::tStructureExchange::SHARED_PORTS, string_buffer);
         stream.Flush();
         shared_ports.insert(std::pair<core::tFrameworkElement::tHandle, rrlib::serialization::tFixedBuffer>(port.GetHandle(), CopyToNewFixedBuffer(buffer)));
       }

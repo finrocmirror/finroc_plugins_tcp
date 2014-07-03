@@ -48,7 +48,7 @@
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
-#include "plugins/tcp/common/tFrameworkElementInfo.h"
+#include "plugins/network_transport/structure_info/tFrameworkElementInfo.h"
 #include "plugins/tcp/common/tRemoteTypes.h"
 //#include "plugins/tcp/internal/tNetworkPortInfo.h"
 #include "plugins/tcp/internal/tPeerInfo.h"

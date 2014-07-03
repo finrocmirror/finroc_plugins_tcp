@@ -110,7 +110,7 @@ tRemotePart::tRemotePart(tPeerInfo& peer_info, core::tFrameworkElement& parent, 
   express_connection(),
   bulk_connection(),
   management_connection(),
-  send_structure_info(common::tStructureExchange::NONE),
+  send_structure_info(network_transport::tStructureExchange::NONE),
   global_links(NULL /*new core::tFrameworkElement(this, "global", tFlag::NETWORK_ELEMENT | tFlag::GLOBALLY_UNIQUE_LINK | tFlag::ALTERNATIVE_LINK_ROOT)*/),
   server_ports(NULL),
   server_port_map(),
@@ -166,7 +166,7 @@ bool tRemotePart::AddConnection(std::shared_ptr<tConnection> connection)
   return added;
 }
 
-void tRemotePart::AddRemotePort(common::tFrameworkElementInfo& info)
+void tRemotePart::AddRemotePort(network_transport::tFrameworkElementInfo& info)
 {
   if (info.link_count == 0)
   {
@@ -522,7 +522,7 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
         {
           flags |= tFlag::OUTPUT_PORT | tFlag::EMITS_DATA; // create output io port
         }
-        if (send_structure_info != common::tStructureExchange::SHARED_PORTS)
+        if (send_structure_info != network_transport::tStructureExchange::SHARED_PORTS)
         {
           flags |= tFlag::TOOL_PORT;
         }
@@ -590,7 +590,7 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
     {
       tStructureCreateMessage message;
       message.Deserialize(stream, false);
-      common::tFrameworkElementInfo framework_element_info;
+      network_transport::tFrameworkElementInfo framework_element_info;
       framework_element_info.handle = message.Get<0>();
       stream >> framework_element_info;
       message.FinishDeserialize(stream);
@@ -608,7 +608,7 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
     {
       tStructureChangeMessage message;
       message.Deserialize(stream, false);
-      common::tChangeablePortInfo changeable_port_info;
+      network_transport::tChangeablePortInfo changeable_port_info;
       stream >> changeable_port_info;
       message.FinishDeserialize(stream);
 
@@ -696,7 +696,7 @@ void tRemotePart::ProcessStructurePacket(rrlib::serialization::tInputStream& str
       return;
     }
 
-    common::tFrameworkElementInfo info;
+    network_transport::tFrameworkElementInfo info;
     while (stream.Remaining())
     {
       stream >> info.handle;
@@ -869,13 +869,13 @@ void tRemotePart::SendResponse(typename tResponseSender::tCallPointer && respons
   }
 }
 
-void tRemotePart::SetDesiredStructureInfo(common::tStructureExchange send_structure_info)
+void tRemotePart::SetDesiredStructureInfo(network_transport::tStructureExchange send_structure_info)
 {
-  if (send_structure_info == common::tStructureExchange::NONE)
+  if (send_structure_info == network_transport::tStructureExchange::NONE)
   {
     return;
   }
-  if (this->send_structure_info != common::tStructureExchange::NONE && this->send_structure_info != send_structure_info)
+  if (this->send_structure_info != network_transport::tStructureExchange::NONE && this->send_structure_info != send_structure_info)
   {
     FINROC_LOG_PRINT(WARNING, "Desired structure info already set to ", make_builder::GetEnumString(this->send_structure_info), ". This is likely to cause trouble.");
   }

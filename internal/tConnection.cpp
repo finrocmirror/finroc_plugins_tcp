@@ -101,7 +101,7 @@ public:
     stream1 << cGREET_MESSAGE;
     stream1.WriteShort(cPROTOCOL_VERSION);
     tConnectionInitMessage::Serialize(true, stream2, connection->peer.GetPeerInfo().uuid, connection->peer.GetPeerInfo().peer_type,
-                                      connection->peer.GetPeerInfo().name, common::tStructureExchange::SHARED_PORTS, connection->flags, connection->socket->remote_endpoint().address());
+                                      connection->peer.GetPeerInfo().name, network_transport::tStructureExchange::SHARED_PORTS, connection->flags, connection->socket->remote_endpoint().address());
     stream2.Close();
     stream1.Close();
 
@@ -190,7 +190,7 @@ public:
         tConnectionInitMessage message;
         message.Deserialize(stream);
 
-        if (message.Get<3>() != common::tStructureExchange::SHARED_PORTS && (!connection->peer.ServesStructure()))
+        if (message.Get<3>() != network_transport::tStructureExchange::SHARED_PORTS && (!connection->peer.ServesStructure()))
         {
           connection->Close(); // Not serving structure yet
           return;
@@ -359,7 +359,7 @@ public:
     buffer(),
     ready_after_write(false)
   {
-    if (connection->remote_part->GetDesiredStructureInfo() == common::tStructureExchange::SHARED_PORTS)
+    if (connection->remote_part->GetDesiredStructureInfo() == network_transport::tStructureExchange::SHARED_PORTS)
     {
       buffer.reset(new rrlib::serialization::tMemoryBuffer(0));
       *buffer = connection->peer.SerializeSharedPorts(connection->remote_types);
@@ -409,8 +409,8 @@ public:
   void SerializeNextElements()
   {
     typedef core::tFrameworkElement::tHandle tHandle;
-    assert(connection->remote_part->GetDesiredStructureInfo() == common::tStructureExchange::FINSTRUCT ||
-           connection->remote_part->GetDesiredStructureInfo() == common::tStructureExchange::COMPLETE_STRUCTURE);
+    assert(connection->remote_part->GetDesiredStructureInfo() == network_transport::tStructureExchange::FINSTRUCT ||
+           connection->remote_part->GetDesiredStructureInfo() == network_transport::tStructureExchange::COMPLETE_STRUCTURE);
     rrlib::thread::tLock lock(core::tRuntimeEnvironment::GetInstance().GetStructureMutex(), false);
     if (lock.TryLock())
     {
@@ -432,12 +432,12 @@ public:
       for (size_t i = 0; i < element_count; i++)
       {
         bool relevant = framework_element_buffer[i]->IsReady() &&
-                        ((connection->remote_part->GetDesiredStructureInfo() == common::tStructureExchange::FINSTRUCT) ||
+                        ((connection->remote_part->GetDesiredStructureInfo() == network_transport::tStructureExchange::FINSTRUCT) ||
                          (!framework_element_buffer[i]->GetFlag(core::tFrameworkElement::tFlag::NETWORK_ELEMENT)));
         if (relevant)
         {
           stream.WriteInt(framework_element_buffer[i]->GetHandle());
-          common::tFrameworkElementInfo::Serialize(stream, *framework_element_buffer[i], connection->remote_part->GetDesiredStructureInfo(), temp_buffer);
+          network_transport::tFrameworkElementInfo::Serialize(stream, *framework_element_buffer[i], connection->remote_part->GetDesiredStructureInfo(), temp_buffer);
           FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Serializing ", framework_element_buffer[i]->GetQualifiedName());
         }
         connection->framework_elements_in_full_structure_exchange_sent_until_handle = framework_element_buffer[i]->GetHandle() + 1;
@@ -638,7 +638,7 @@ void tConnection::DoInitialStructureExchange(std::shared_ptr<tConnection> connec
   {
     assert(this == remote_part->GetManagementConnection().get());
     tStructureReadHandler structure_read_handler(remote_part->GetManagementConnection());
-    if (remote_part->GetDesiredStructureInfo() != common::tStructureExchange::NONE)
+    if (remote_part->GetDesiredStructureInfo() != network_transport::tStructureExchange::NONE)
     {
       tStructureWriteHandler structure_write_handler(remote_part->GetManagementConnection());
     }
@@ -875,7 +875,7 @@ bool tConnection::SendPortData(std::vector<tNetworkPortInfo*>& port_list, const 
   return result;
 }
 
-void tConnection::SendStructureChange(const tSerializedStructureChange& structure_change, common::tStructureExchange structure_exchange_level)
+void tConnection::SendStructureChange(const tSerializedStructureChange& structure_change, network_transport::tStructureExchange structure_exchange_level)
 {
   if (initial_reading_complete && initial_writing_complete)
   {

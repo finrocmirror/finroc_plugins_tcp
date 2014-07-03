@@ -44,7 +44,7 @@
 // Internal includes with ""
 //----------------------------------------------------------------------
 #include "plugins/tcp/tOptions.h"
-#include "plugins/tcp/common/tFrameworkElementInfo.h"
+#include "plugins/network_transport/structure_info/tFrameworkElementInfo.h"
 #include "plugins/tcp/internal/tUUID.h"
 
 //----------------------------------------------------------------------
@@ -203,7 +203,7 @@ typedef tMessage < tOpCode::SMALL_PORT_VALUE_CHANGE_WITHOUT_TIMESTAMP, tMessageS
         rrlib::serialization::tDataEncoding > tSmallPortValueChangeWithoutTimestamp;
 
 // Initializes connection between two peers: [my UUID][peer type][peer name][structure exchange][connection flags][your address]
-typedef tMessage < tOpCode::OTHER, tMessageSize::VARIABLE_UP_TO_4GB, tUUID, tPeerType, std::string, common::tStructureExchange,
+typedef tMessage < tOpCode::OTHER, tMessageSize::VARIABLE_UP_TO_4GB, tUUID, tPeerType, std::string, network_transport::tStructureExchange,
         int32_t, boost::asio::ip::address > tConnectionInitMessage;
 
 //----------------------------------------------------------------------

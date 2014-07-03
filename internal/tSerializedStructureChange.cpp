@@ -70,7 +70,7 @@ namespace internal
 //----------------------------------------------------------------------
 
 tSerializedStructureChange::tSerializedStructureChange(core::tRuntimeListener::tEvent change_type,
-    core::tFrameworkElement& element, bool serve_structure, common::tStructureExchange minimum_relevant_level) :
+    core::tFrameworkElement& element, bool serve_structure, network_transport::tStructureExchange minimum_relevant_level) :
   change_type(change_type),
   storage(0),
   minimum_relevant_level(minimum_relevant_level),
@@ -84,18 +84,18 @@ tSerializedStructureChange::tSerializedStructureChange(core::tRuntimeListener::t
     rrlib::serialization::tOutputStream stream(buffer);
     std::string string_buffer;
 
-    if (minimum_relevant_level == common::tStructureExchange::SHARED_PORTS)
+    if (minimum_relevant_level == network_transport::tStructureExchange::SHARED_PORTS)
     {
-      common::tFrameworkElementInfo::Serialize(stream, element, common::tStructureExchange::SHARED_PORTS, string_buffer);
+      network_transport::tFrameworkElementInfo::Serialize(stream, element, network_transport::tStructureExchange::SHARED_PORTS, string_buffer);
       stream.Flush();
       full_structure_info_begin = buffer.GetSize();
     }
     //if (serve_structure)  if we start serving structure, while this is still in a queue... this is suboptimal
     //{
-    common::tFrameworkElementInfo::Serialize(stream, element, common::tStructureExchange::COMPLETE_STRUCTURE, string_buffer);
+    network_transport::tFrameworkElementInfo::Serialize(stream, element, network_transport::tStructureExchange::COMPLETE_STRUCTURE, string_buffer);
     stream.Flush();
     finstruct_only_info_begin = buffer.GetSize();
-    common::tFrameworkElementInfo::SerializeFinstructOnlyInfo(stream, element);
+    network_transport::tFrameworkElementInfo::SerializeFinstructOnlyInfo(stream, element);
     stream.Flush();
     //}
     storage = CopyToNewFixedBuffer(buffer);
@@ -103,7 +103,7 @@ tSerializedStructureChange::tSerializedStructureChange(core::tRuntimeListener::t
   }
   else if (change_type == core::tRuntimeListener::tEvent::CHANGE)
   {
-    common::tChangeablePortInfo info;
+    network_transport::tChangeablePortInfo info;
     info.flags = element.GetAllFlags();
     assert(element.IsPort());
     core::tAbstractPort& port = static_cast<core::tAbstractPort&>(element);
@@ -121,14 +121,14 @@ tSerializedStructureChange::tSerializedStructureChange(core::tRuntimeListener::t
     finstruct_only_info_begin = buffer.GetSize();
     if (element.IsPort() && serve_structure)
     {
-      common::tFrameworkElementInfo::SerializeConnections(stream, port);
+      network_transport::tFrameworkElementInfo::SerializeConnections(stream, port);
       stream.Flush();
     }
     storage = CopyToNewFixedBuffer(buffer);
   }
 }
 
-void tSerializedStructureChange::WriteToStream(rrlib::serialization::tOutputStream& stream, common::tStructureExchange exchange_level) const
+void tSerializedStructureChange::WriteToStream(rrlib::serialization::tOutputStream& stream, network_transport::tStructureExchange exchange_level) const
 {
   //FINROC_LOG_PRINT(DEBUG, this, " ", full_structure_info_begin, " ", finstruct_only_info_begin);
 
@@ -150,7 +150,7 @@ void tSerializedStructureChange::WriteToStream(rrlib::serialization::tOutputStre
   else if (change_type == core::tRuntimeListener::tEvent::CHANGE)
   {
     tStructureChangeMessage::Serialize(false, stream, local_handle);
-    stream.Write(storage.GetPointer(), exchange_level == common::tStructureExchange::FINSTRUCT ? storage.Capacity() : finstruct_only_info_begin);
+    stream.Write(storage.GetPointer(), exchange_level == network_transport::tStructureExchange::FINSTRUCT ? storage.Capacity() : finstruct_only_info_begin);
     tStructureCreateMessage::FinishMessage(stream);
   }
   else if (change_type == core::tRuntimeListener::tEvent::REMOVE)

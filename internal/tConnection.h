@@ -274,7 +274,7 @@ private:
    * \param structure_change Serialized structure change to send
    * \param structure_exchange_level Desired structure exchange level of partner
    */
-  void SendStructureChange(const tSerializedStructureChange& structure_change, common::tStructureExchange structure_exchange_level);
+  void SendStructureChange(const tSerializedStructureChange& structure_change, network_transport::tStructureExchange structure_exchange_level);
 
   /*!
    * Send values of ports in list to network stream

@@ -85,7 +85,7 @@ public:
    * \param minimum_relevant_level Level for which this structure change is relevant
    */
   tSerializedStructureChange(core::tRuntimeListener::tEvent change_type, core::tFrameworkElement& element,
-                             bool serve_structure, common::tStructureExchange minimum_relevant_level);
+                             bool serve_structure, network_transport::tStructureExchange minimum_relevant_level);
 
   /*!
    * \return Framework element's local handle
@@ -98,7 +98,7 @@ public:
   /*!
    * \return Level for which this structure change is relevant
    */
-  common::tStructureExchange MinimumRelevantLevel() const
+  network_transport::tStructureExchange MinimumRelevantLevel() const
   {
     return minimum_relevant_level;
   }
@@ -109,7 +109,7 @@ public:
    * \param stream Stream to wrtie change to
    * \param exchange_level Exchange level to use
    */
-  void WriteToStream(rrlib::serialization::tOutputStream& stream, common::tStructureExchange exchange_level) const;
+  void WriteToStream(rrlib::serialization::tOutputStream& stream, network_transport::tStructureExchange exchange_level) const;
 
 //----------------------------------------------------------------------
 // Private fields and methods
@@ -133,7 +133,7 @@ private:
   rrlib::serialization::tFixedBuffer storage;
 
   /*! Level for which this structure change is relevant */
-  common::tStructureExchange minimum_relevant_level;
+  network_transport::tStructureExchange minimum_relevant_level;
 
   /*! Framework element's local handle */
   core::tFrameworkElement::tHandle local_handle;

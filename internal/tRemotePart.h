@@ -99,7 +99,7 @@ public:
   /*!
    * Add remote port specified by provided info to this remote part
    */
-  void AddRemotePort(common::tFrameworkElementInfo& info);
+  void AddRemotePort(network_transport::tFrameworkElementInfo& info);
 
   /*!
    * Enqueue port with data to send.
@@ -114,7 +114,7 @@ public:
   /*!
    * \return Structure information to send to remote part
    */
-  common::tStructureExchange GetDesiredStructureInfo() const
+  network_transport::tStructureExchange GetDesiredStructureInfo() const
   {
     return send_structure_info;
   }
@@ -242,7 +242,7 @@ public:
   /*!
    * \param send_structure_info Structure information to send to remote part
    */
-  void SetDesiredStructureInfo(common::tStructureExchange send_structure_info);
+  void SetDesiredStructureInfo(network_transport::tStructureExchange send_structure_info);
 
 //----------------------------------------------------------------------
 // Private fields and methods
@@ -298,7 +298,7 @@ private:
   std::shared_ptr<tConnection> management_connection;
 
   /*! Structure information to send to remote part */
-  common::tStructureExchange send_structure_info;
+  network_transport::tStructureExchange send_structure_info;
 
   /*! Framework element that contains all global links - possibly NULL */
   core::tFrameworkElement* global_links;
