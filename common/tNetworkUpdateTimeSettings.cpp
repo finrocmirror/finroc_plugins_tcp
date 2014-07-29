@@ -81,6 +81,8 @@ namespace internal
  */
 class tNetworkBasePlugin : public core::tPlugin
 {
+public:
+  tNetworkBasePlugin() : tPlugin("network_base") {} // TODO move to some other plugin
 
   virtual void Init() override
   {

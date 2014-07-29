@@ -94,7 +94,7 @@ bool OptionsHandler(const rrlib::getopt::tNameToOptionMap &name_to_option_map)
 class tPlugin : public network_transport::tNetworkTransportPlugin
 {
 public:
-  tPlugin()
+  tPlugin() : tNetworkTransportPlugin("tcp")
   {
     rrlib::getopt::AddValue("tcp-auto-connect", 0, "Auto-connect to all peers that become known? (yes/no) - default is 'yes' (Note: this might change in future releases)", &OptionsHandler);
   }
@@ -119,11 +119,6 @@ public:
       return "No peer element instantiated";
     }
     return static_cast<tPeer*>(peer_element)->implementation->Connect(local_port, remote_runtime_uuid, remote_port_handle, remote_port_link, true);
-  }
-
-  virtual const char* GetId() override
-  {
-    return "tcp";
   }
 
   virtual void Init(rrlib::xml::tNode* config_node) override
