@@ -209,12 +209,19 @@ void tRemoteTypes::SerializeLocalDataTypes(rrlib::serialization::tOutputStream& 
     co.WriteByte(dt.GetTypeTraits() & cTRAITS); // type traits
     if ((dt.GetTypeTraits() & rrlib::rtti::trait_flags::cIS_ENUM) != 0)
     {
-      const char* const* enum_strings = dt.GetEnumStrings();
-      size_t enum_strings_dimension = dt.GetEnumStringsDimension();
-      co.WriteShort(enum_strings_dimension);
-      for (size_t j = 0; j < enum_strings_dimension; j++)
+      const make_builder::internal::tEnumStrings* enum_strings = dt.GetEnumStringsData();
+      assert(enum_strings->size <= std::numeric_limits<short>::max() + 1); // more values would be quite ridiculous
+      co.WriteShort(static_cast<uint16_t>(enum_strings->size));
+      bool send_values = enum_strings->non_standard_values;
+      for (size_t j = 0; j < enum_strings->size; j++)
       {
-        co.WriteString(enum_strings[j]);
+        const char* enum_string = enum_strings->strings[static_cast<size_t>(make_builder::tEnumStringsFormat::NATURAL)][j];
+        co.WriteString(enum_string, (!send_values));
+        if (send_values)
+        {
+          co.WriteByte('|');
+          co.WriteString((*dt.GetNonStandardEnumValueStrings())[j]);
+        }
       }
     }
   }
