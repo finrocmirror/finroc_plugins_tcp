@@ -335,6 +335,7 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
       while (another_value);
 
       message.FinishDeserialize(stream);
+      connection.received_data_after_last_connect = true;
     }
   }
   else if (opcode == tOpCode::RPC_CALL)

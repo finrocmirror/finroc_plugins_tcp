@@ -231,6 +231,14 @@ private:
    */
   std::map<core::tFrameworkElement::tHandle, std::unique_ptr<data_ports::standard::tMultiTypePortBufferPool>> rpc_call_buffer_pools;
 
+  /*!
+   * Has any data been received since connection was (last) established?
+   * Set to true whenever data is received.
+   * If max. ping threshold is exceeded, ports are notified of disconnect and this variable is reset.
+   * The purpose of this variable is that ports are notified only once after ping threshold is exceeded.
+   */
+  bool received_data_after_last_connect;
+
 
   /*! Closes connection and removes it from remote part etc. */
   void Close();

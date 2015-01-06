@@ -222,7 +222,11 @@ public:
   void SendCall(tCallPointer& call_to_send, const rrlib::time::tTimestamp& time_now);
 
   /*!
-   * Sends pending messages in all connections
+   * Sends pending messages in all connections and check whether any timeouts occurred
+   * (TODO: Should we rename method because of the latter? Or add a parameter 'check_timeouts'?)
+   * Note: Due to overhead otherwise, it is beneficial to do both tasks in one method.
+   *
+   * \param time_now Current time
    */
   void SendPendingMessages(const rrlib::time::tTimestamp& time_now);
 

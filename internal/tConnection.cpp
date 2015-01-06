@@ -596,7 +596,8 @@ tConnection::tConnection(tPeerImplementation& peer, std::shared_ptr<boost::asio:
   sent_bulk_packets(0),
   sent_packet_data(),
   framework_elements_in_full_structure_exchange_sent_until_handle(0),
-  rpc_call_buffer_pools()
+  rpc_call_buffer_pools(),
+  received_data_after_last_connect(false)
 {
   current_write_stream.WriteInt(0); // Placeholder for size
   current_write_stream.WriteShort(0); // Placeholder for ack requests
@@ -751,6 +752,7 @@ void tConnection::RpcPortsDeleted(std::vector<core::tFrameworkElement::tHandle>&
 
 void tConnection::SendPendingMessages(const rrlib::time::tTimestamp& time_now)
 {
+  static tSettings& settings_instance = tSettings::GetInstance();
   if (writing_back_buffer_to_stream) // back buffer is still written - we cannot write anything else during this time
   {
     return;
@@ -767,7 +769,7 @@ void tConnection::SendPendingMessages(const rrlib::time::tTimestamp& time_now)
 
   tSentPacketData& last_acknowledged = sent_packet_data[last_acknowledged_packet % sent_packet_data.size()];
   uint32_t non_acknowledged_bulk_packets = sent_bulk_packets - last_acknowledged.second;
-  bool more_bulk_packets_allowed = non_acknowledged_bulk_packets < tSettings::GetInstance().max_not_acknowledged_packets_bulk.Get();
+  bool more_bulk_packets_allowed = non_acknowledged_bulk_packets < settings_instance.max_not_acknowledged_packets_bulk.Get();
 
   // Send new port data
   if (more_express_packets_allowed && (flags & static_cast<int>(tConnectionFlag::EXPRESS_DATA)))
@@ -847,6 +849,32 @@ void tConnection::SendPendingMessages(const rrlib::time::tTimestamp& time_now)
     else
     {
       FINROC_LOG_PRINT(ERROR, "Could not get shared pointer on connection");
+    }
+  }
+
+  // Check round-trip times: Is critical threshold exceeded?
+  if (received_data_after_last_connect && non_acknowledged_express_packets && (flags & (static_cast<int>(tConnectionFlag::EXPRESS_DATA) | static_cast<int>(tConnectionFlag::BULK_DATA))))
+  {
+    rrlib::time::tTimestamp first_non_acknowledged_send_time = sent_packet_data[(last_acknowledged_packet + 1) % sent_packet_data.size()].first;
+    if (time_now - first_non_acknowledged_send_time > settings_instance.critical_ping_threshold.Get())
+    {
+      FINROC_LOG_PRINT(WARNING, "Critical network roundtrip time exceeded. Notifying ports.");
+      for (auto sub_element = remote_part->SubElementsBegin(); sub_element != remote_part->SubElementsEnd(); ++sub_element)
+      {
+        if (sub_element->IsPort())
+        {
+          core::tAbstractPort& port = static_cast<core::tAbstractPort&>(*sub_element);
+          bool express_port = port.GetFlag(core::tFrameworkElement::tFlag::EXPRESS_PORT);
+          if ((express_port && (flags & (static_cast<int>(tConnectionFlag::EXPRESS_DATA)))) || ((!express_port) && (flags & (static_cast<int>(tConnectionFlag::BULK_DATA)))))
+          {
+            for (auto connected_port = port.OutgoingConnectionsBegin(); connected_port != port.OutgoingConnectionsEnd(); ++connected_port)
+            {
+              connected_port->NotifyOfNetworkConnectionLoss();
+            }
+          }
+        }
+      }
+      received_data_after_last_connect = false;
     }
   }
 }
