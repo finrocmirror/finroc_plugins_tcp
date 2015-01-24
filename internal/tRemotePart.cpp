@@ -805,7 +805,7 @@ void tRemotePart::SendCallImplementation(tCallPointer& call_to_send, const rrlib
 
 void tRemotePart::SendPendingMessages(const rrlib::time::tTimestamp& time_now)
 {
-  for (auto it = not_ready_calls.begin(); it < not_ready_calls.end(); ++it)
+  for (auto it = not_ready_calls.begin(); it < not_ready_calls.end();)
   {
     if ((*it)->ReadyForSending())
     {
@@ -813,19 +813,31 @@ void tRemotePart::SendPendingMessages(const rrlib::time::tTimestamp& time_now)
       SendCallImplementation(call_pointer, time_now);
       it = not_ready_calls.erase(it);
     }
+    else
+    {
+      ++it;
+    }
   }
-  for (auto it = calls_awaiting_response.begin(); it < calls_awaiting_response.end(); ++it)
+  for (auto it = calls_awaiting_response.begin(); it < calls_awaiting_response.end();)
   {
     if (time_now > it->first) // Did call time out?
     {
       it = calls_awaiting_response.erase(it);
     }
+    else
+    {
+      ++it;
+    }
   }
-  for (auto it = pull_calls_awaiting_response.begin(); it < pull_calls_awaiting_response.end(); ++it)
+  for (auto it = pull_calls_awaiting_response.begin(); it < pull_calls_awaiting_response.end();)
   {
     if (time_now > it->timeout_time) // Did call time out?
     {
       it = pull_calls_awaiting_response.erase(it);
+    }
+    else
+    {
+      ++it;
     }
   }
 
