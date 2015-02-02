@@ -328,8 +328,56 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
         }
         data_ports::tPortDataPointer<rrlib::rtti::tGenericObject> buffer = generic_port.GetUnusedBuffer();
         buffer.SetTimestamp(timestamp);
-        buffer->Deserialize(stream, message.Get<1>());
-        generic_port.BrowserPublish(buffer, false, change_type);
+        if (message.Get<1>() == tDataEncoding::BINARY_COMPRESSED)
+        {
+          char compression_format_buffer[100];
+          if (stream.ReadString(compression_format_buffer, true) >= sizeof(compression_format_buffer))
+          {
+            FINROC_LOG_PRINT(WARNING, "Compression format string exceeds max length");
+            return false;
+          }
+          if (compression_format_buffer[0])
+          {
+            size_t data_size = stream.ReadInt();
+            size_t data_end_position = stream.GetAbsoluteReadPosition() + data_size;
+            tNetworkPortInfo* network_port_info = port->GetAnnotation<tNetworkPortInfo>();
+            if (!network_port_info)
+            {
+              FINROC_LOG_PRINT(WARNING, "Port has no network port info attached. Skipping received compressed data.");
+            }
+            else
+            {
+#ifdef _LIB_FINROC_PLUGINS_DATA_COMPRESSION_PRESENT_
+              try
+              {
+                if ((!network_port_info->Decompressor()) || (network_port_info->Decompressor()->GetCompressionType() != compression_format_buffer))
+                {
+                  network_port_info->Decompressor().reset(new rrlib::data_compression::tDataCompressor(port->GetDataType(), compression_format_buffer));
+                }
+                network_port_info->Decompressor()->DecompressNext(stream, *buffer, data_size);
+                generic_port.BrowserPublish(buffer, false, change_type);
+              }
+              catch (const std::exception& exception)
+              {
+                FINROC_LOG_PRINT(WARNING, "Decompressing data from network failed: ", exception);
+              }
+#else
+              FINROC_LOG_PRINT(WARNING, "Decompressing data from network failed: finroc_plugins_data_compression not available");
+#endif
+            }
+            stream.Seek(data_end_position);
+          }
+          else
+          {
+            buffer->Deserialize(stream);
+            generic_port.BrowserPublish(buffer, false, change_type);
+          }
+        }
+        else
+        {
+          buffer->Deserialize(stream, static_cast<rrlib::serialization::tDataEncoding>(message.Get<1>()));
+          generic_port.BrowserPublish(buffer, false, change_type);
+        }
         another_value = stream.ReadBoolean();
       }
       while (another_value);
@@ -416,7 +464,7 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
       data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject> pulled_buffer =
         data_port.GetPointer(data_ports::tStrategy::PULL_IGNORING_HANDLER_ON_THIS_PORT);
       write_stream << pulled_buffer->GetType() << pulled_buffer.GetTimestamp();
-      pulled_buffer->Serialize(write_stream, message.Get<2>());
+      SerializeBuffer(write_stream, pulled_buffer, message.Get<2>(), *port);
       tPullCallReturn::FinishMessage(write_stream);
     }
     else
@@ -571,7 +619,7 @@ bool tRemotePart::ProcessMessage(tOpCode opcode, rrlib::serialization::tMemoryBu
     }
     else
     {
-      FINROC_LOG_PRINT(DEBUG_WARNING, "Port for unsubscribing not available");
+      FINROC_LOG_PRINT(DEBUG_WARNING, "Port for unsubscribing not available (", message.Get<0>(), ")");
       return false;
     }
   }
@@ -864,7 +912,7 @@ void tRemotePart::SendPullRequest(tPullCallInfo& pull_call_info)
 
   // Send call
   tPullCall::Serialize(true, express_connection->CurrentWriteStream(), pull_call_info.remote_port_handle,
-                       pull_call_info.call_id, rrlib::serialization::tDataEncoding::BINARY);
+                       pull_call_info.call_id, tDataEncoding::BINARY);
   this->SendPendingMessages(rrlib::time::Now(true));
 }
 

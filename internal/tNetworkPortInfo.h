@@ -46,6 +46,7 @@
 //----------------------------------------------------------------------
 #include "plugins/tcp/internal/tPeerImplementation.h"
 #include "plugins/tcp/internal/tRemotePart.h"
+#include "plugins/tcp/internal/util.h"
 
 //----------------------------------------------------------------------
 // Namespace declaration
@@ -193,9 +194,67 @@ public:
   }
 
   /*!
+   * Serializes buffer to binary stream using specified encoding.
+   * If data compression is specified but not available, binary encoding is used.
+   *
+   * \param stream Stream to serialize to
+   * \param buffer Buffer to serialize
+   * \param encoding Desired data encoding
+   */
+  inline void SerializeBuffer(rrlib::serialization::tOutputStream& stream, data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject>& buffer, tDataEncoding encoding)
+  {
+    if (encoding == tDataEncoding::BINARY_COMPRESSED)
+    {
+#ifdef _LIB_FINROC_PLUGINS_DATA_COMPRESSION_PRESENT_
+      // get origin port
+      core::tAbstractPort* annotated_port = GetAnnotated<core::tAbstractPort>();
+      core::tAbstractPort* origin = nullptr;
+      if (!server_port)
+      {
+        origin = annotated_port;
+      }
+      else
+      {
+        if (annotated_port->GetFlag(core::tFrameworkElement::tFlag::ACCEPTS_DATA))
+        {
+          auto it = annotated_port->IncomingConnectionsBegin();
+          if (it != annotated_port->IncomingConnectionsEnd())
+          {
+            origin = &(*it);
+            assert(origin->GetHandle() == served_port_handle); // connection to server port should always be the first
+          }
+        }
+        else
+        {
+          auto it = annotated_port->OutgoingConnectionsBegin();
+          if (it != annotated_port->OutgoingConnectionsEnd())
+          {
+            origin = &(*it);
+            assert(origin->GetHandle() == served_port_handle); // connection to server port should always be the first
+          }
+        }
+      }
+      if (origin && origin->IsReady())
+      {
+        internal::SerializeBuffer(stream, buffer, tDataEncoding::BINARY_COMPRESSED, *origin);
+        return;
+      }
+#endif
+
+      // use binary encoding instead (no compression string signals that no compression was used)
+      stream.WriteString("");
+      buffer.Get()->Serialize(stream);
+    }
+    else
+    {
+      buffer->Serialize(stream, static_cast<rrlib::serialization::tDataEncoding>(encoding));
+    }
+  }
+
+  /*!
    * Sets subscription data of server ports to specified values
    */
-  void SetServerSideSubscriptionData(int16_t strategy, bool reverse_push, int16_t update_time, rrlib::serialization::tDataEncoding encoding);
+  void SetServerSideSubscriptionData(int16_t strategy, bool reverse_push, int16_t update_time, tDataEncoding encoding);
 
   /*!
    * Writes all values to send to provided stream.
@@ -216,7 +275,7 @@ public:
           //FINROC_LOG_PRINT(WARNING, GetAnnotated<core::tAbstractPort>()->GetQualifiedName());
           tSmallPortValueChangeWithoutTimestamp::Serialize(false, stream, remote_handle, desired_encoding);
           stream << value_to_send->change_type;
-          value_to_send->new_value->Serialize(stream, desired_encoding);
+          value_to_send->new_value->Serialize(stream, static_cast<rrlib::serialization::tDataEncoding>(desired_encoding)); // express data is not compressed
           stream.WriteBoolean(false);
           tSmallPortValueChangeWithoutTimestamp::FinishMessage(stream);
         }
@@ -224,7 +283,7 @@ public:
         {
           tSmallPortValueChange::Serialize(false, stream, remote_handle, desired_encoding);
           stream << value_to_send->change_type << value_to_send->new_value.GetTimestamp();
-          value_to_send->new_value->Serialize(stream, desired_encoding);
+          value_to_send->new_value->Serialize(stream, static_cast<rrlib::serialization::tDataEncoding>(desired_encoding)); // express data is not compressed
           stream.WriteBoolean(false);
           tSmallPortValueChange::FinishMessage(stream);
         }
@@ -236,7 +295,7 @@ public:
         do
         {
           stream << value_to_send->change_type << value_to_send->new_value.GetTimestamp();
-          value_to_send->new_value->Serialize(stream, desired_encoding);
+          SerializeBuffer(stream, value_to_send->new_value, desired_encoding); // data might be compressed
           value_to_send = values_to_send.Dequeue();
           stream.WriteBoolean(value_to_send.get());
         }
@@ -245,6 +304,16 @@ public:
       }
     }
   }
+
+#ifdef _LIB_FINROC_PLUGINS_DATA_COMPRESSION_PRESENT_
+  /*!
+   * \return Reference to pointer to data decompressor
+   */
+  std::unique_ptr<rrlib::data_compression::tDataCompressor>& Decompressor()
+  {
+    return decompressor;
+  }
+#endif
 
 //----------------------------------------------------------------------
 // Private fields and methods
@@ -286,10 +355,15 @@ private:
   rrlib::time::tTimestamp last_update;
 
   /*! Desired encoding of network partner */
-  rrlib::serialization::tDataEncoding desired_encoding;
+  tDataEncoding desired_encoding;
 
   /*! In case this is a server port: Local handle of served port - otherwise 0 */
   const tHandle served_port_handle;
+
+#ifdef _LIB_FINROC_PLUGINS_DATA_COMPRESSION_PRESENT_
+  /*! Pointer to data decompressor if one is required */
+  std::unique_ptr<rrlib::data_compression::tDataCompressor> decompressor;
+#endif
 };
 
 //----------------------------------------------------------------------

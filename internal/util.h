@@ -40,9 +40,15 @@
 #include <boost/asio/ip/tcp.hpp>
 #include "rrlib/serialization/serialization.h"
 
+#ifdef _LIB_FINROC_PLUGINS_DATA_COMPRESSION_PRESENT_
+#include "rrlib/data_compression/tDataCompressor.h"
+#include "plugins/data_compression/tPlugin.h"
+#endif
+
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
+#include "plugins/tcp/internal/protocol_definitions.h"
 
 //----------------------------------------------------------------------
 // Namespace declaration
@@ -93,6 +99,41 @@ std::vector<boost::asio::ip::tcp::endpoint> ParseAndResolveNetworkAddress(const 
  * \return std::vector of IP addresses
  */
 std::vector<boost::asio::ip::address> ResolveHostname(const std::string host_name);
+
+/*!
+ * Serializes buffer to binary stream using specified encoding.
+ * If data compression is specified but not available, binary encoding is used.
+ *
+ * \param stream Stream to serialize to
+ * \param buffer Buffer to serialize
+ * \param encoding Desired data encoding
+ * \param origin Network port info of port that data originates from (used for checking for compression rules - whether compression is specified and required)
+ */
+inline void SerializeBuffer(rrlib::serialization::tOutputStream& stream, data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject>& buffer,
+                            tDataEncoding encoding, core::tAbstractPort& origin)
+{
+  if (encoding == tDataEncoding::BINARY_COMPRESSED)
+  {
+#ifdef _LIB_FINROC_PLUGINS_DATA_COMPRESSION_PRESENT_
+    data_compression::tCompressedData compressed_data = data_compression::tPlugin::ObtainCompressedData(buffer, origin);
+    if (compressed_data.data)
+    {
+      stream.WriteString(compressed_data.compression_format);
+      stream.WriteInt(compressed_data.data->GetSize());
+      stream.Write(compressed_data.data->GetBufferPointer(), compressed_data.data->GetSize());
+      return;
+    }
+#endif
+
+    // use binary encoding instead (no compression string signals that no compression was used)
+    stream.WriteString("");
+    buffer->Serialize(stream);
+  }
+  else
+  {
+    buffer->Serialize(stream, static_cast<rrlib::serialization::tDataEncoding>(encoding));
+  }
+}
 
 //----------------------------------------------------------------------
 // End of namespace declaration

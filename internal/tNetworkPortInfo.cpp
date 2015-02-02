@@ -81,7 +81,7 @@ tNetworkPortInfo::tNetworkPortInfo(tRemotePart& remote_part, tHandle remote_hand
   values_to_send(),
   deleted(false),
   last_update(rrlib::time::cNO_TIME),
-  desired_encoding(rrlib::serialization::tDataEncoding::BINARY),
+  desired_encoding(tDataEncoding::BINARY),
   served_port_handle(served_port_handle)
 {
   assert(((!server_port) || served_port_handle) && "Server ports require served_port_handle to be set");
@@ -163,7 +163,7 @@ void tNetworkPortInfo::DoSubscriptionCheck()
     {
       // Update subscription
       tSubscribeMessage::Serialize(true, management_connection->CurrentWriteStream(), remote_handle, subscription_strategy,
-                                   subscription_reverse_push, subscription_update_time, port->GetHandle(), rrlib::serialization::tDataEncoding::BINARY);
+                                   subscription_reverse_push, subscription_update_time, port->GetHandle(), tDataEncoding::BINARY);
       current_subscription_strategy = subscription_strategy;
       current_subscription_update_time = subscription_update_time;
       current_subscription_reverse_push = subscription_reverse_push;
@@ -171,15 +171,20 @@ void tNetworkPortInfo::DoSubscriptionCheck()
   }
 }
 
-void tNetworkPortInfo::SetServerSideSubscriptionData(int16_t strategy, bool reverse_push, int16_t update_time, rrlib::serialization::tDataEncoding encoding)
+void tNetworkPortInfo::SetServerSideSubscriptionData(int16_t strategy, bool reverse_push, int16_t update_time, tDataEncoding encoding)
 {
   this->strategy = strategy;
   this->current_subscription_strategy = strategy;
   this->current_subscription_reverse_push = reverse_push;
   this->current_subscription_update_time = update_time;
-  this->desired_encoding = encoding;
-
   core::tAbstractPort* port = GetAnnotated<core::tAbstractPort>();
+  this->desired_encoding = encoding;
+  if (encoding == tDataEncoding::BINARY_COMPRESSED && port->GetFlag(core::tFrameworkElement::tFlag::EXPRESS_PORT))
+  {
+    FINROC_LOG_PRINT(WARNING, "Received 'compressed' as desired encoding for express port. Setting to 'binary'.");
+    encoding = tDataEncoding::BINARY;
+  }
+
   if (data_ports::IsDataFlowType(port->GetDataType()))
   {
     if (port->IsOutputPort())

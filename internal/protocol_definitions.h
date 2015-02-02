@@ -68,6 +68,17 @@ extern const char* cGREET_MESSAGE;
 enum { cPROTOCOL_VERSION = 1 };
 
 /*!
+ * Data encoding to use (important: first three constants must be identical to rrlib::serialization::tDataEncoding)
+ */
+enum class tDataEncoding : uint8_t
+{
+  BINARY,
+  STRING,
+  XML,
+  BINARY_COMPRESSED
+};
+
+/*!
  * Protocol OpCodes
  */
 enum class tOpCode : uint8_t
@@ -155,9 +166,9 @@ extern const tMessageSizeReader message_size_for_opcodes[static_cast<int>(tOpCod
 // Message types
 ////////////////////
 
-// Parameters: [remote port handle][int16: strategy][bool: reverse push][int16: update interval][local port handle][encoding]
+// Parameters: [remote port handle][int16: strategy][bool: reverse push][int16: update interval][local port handle][desired encoding]
 typedef tMessage < tOpCode::SUBSCRIBE, tMessageSize::FIXED, tFrameworkElementHandle, int16_t, bool,
-        int16_t, tFrameworkElementHandle, rrlib::serialization::tDataEncoding > tSubscribeMessage;
+        int16_t, tFrameworkElementHandle, tDataEncoding > tSubscribeMessage;
 
 // Parameters: [remote port handle]
 typedef tMessage<tOpCode::UNSUBSCRIBE, tMessageSize::FIXED, tFrameworkElementHandle> tUnsubscribeMessage;
@@ -166,7 +177,7 @@ typedef tMessage<tOpCode::UNSUBSCRIBE, tMessageSize::FIXED, tFrameworkElementHan
 //typedef tMessage<tOpCode::ACK, tMessageSize::FIXED, int32_t> tAckMessage;
 
 // Parameters: [remote port handle][call uid][desired encoding]
-typedef tMessage<tOpCode::PULLCALL, tMessageSize::FIXED, tFrameworkElementHandle, tCallId, rrlib::serialization::tDataEncoding> tPullCall;
+typedef tMessage<tOpCode::PULLCALL, tMessageSize::FIXED, tFrameworkElementHandle, tCallId, tDataEncoding> tPullCall;
 
 // Parameters: [call uid][failed?] after message: [type][timestamp][serialized data]
 typedef tMessage<tOpCode::PULLCALL_RETURN, tMessageSize::VARIABLE_UP_TO_4GB, tCallId, bool> tPullCallReturn;
@@ -191,16 +202,14 @@ typedef tMessage<tOpCode::PEER_INFO, tMessageSize::VARIABLE_UP_TO_4GB> tPeerInfo
 
 
 // Parameters: [int32: remote port handle][encoding] after message: [binary blob or null-terminated string depending on type encoding]
-typedef tMessage < tOpCode::PORT_VALUE_CHANGE, tMessageSize::VARIABLE_UP_TO_4GB, int32_t,
-        rrlib::serialization::tDataEncoding > tPortValueChange;
+typedef tMessage <tOpCode::PORT_VALUE_CHANGE, tMessageSize::VARIABLE_UP_TO_4GB, int32_t, tDataEncoding> tPortValueChange;
 
 // Parameters: [int32: remote port handle][encoding] after message: [binary blob or null-terminated string depending on type encoding]
-typedef tMessage < tOpCode::SMALL_PORT_VALUE_CHANGE, tMessageSize::VARIABLE_UP_TO_255_BYTE, int32_t,
-        rrlib::serialization::tDataEncoding > tSmallPortValueChange;
+typedef tMessage <tOpCode::SMALL_PORT_VALUE_CHANGE, tMessageSize::VARIABLE_UP_TO_255_BYTE, int32_t, tDataEncoding> tSmallPortValueChange;
 
 // Parameters: [int32: remote port handle][encoding] after message: [binary blob or null-terminated string depending on type encoding]
 typedef tMessage < tOpCode::SMALL_PORT_VALUE_CHANGE_WITHOUT_TIMESTAMP, tMessageSize::VARIABLE_UP_TO_255_BYTE, int32_t,
-        rrlib::serialization::tDataEncoding > tSmallPortValueChangeWithoutTimestamp;
+        tDataEncoding > tSmallPortValueChangeWithoutTimestamp;
 
 // Initializes connection between two peers: [my UUID][peer type][peer name][structure exchange][connection flags][your address]
 typedef tMessage < tOpCode::OTHER, tMessageSize::VARIABLE_UP_TO_4GB, tUUID, tPeerType, std::string, network_transport::tStructureExchange,
