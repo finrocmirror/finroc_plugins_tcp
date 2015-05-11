@@ -106,6 +106,7 @@ private:
 tRemotePart::tRemotePart(tPeerInfo& peer_info, core::tFrameworkElement& parent, tPeerImplementation& peer_implementation) :
   tFrameworkElement(&parent, peer_info.ToString(), tFlag::NETWORK_ELEMENT),
   peer_info(peer_info),
+  io_service(peer_implementation.io_service),
   peer_implementation(peer_implementation),
   express_connection(),
   bulk_connection(),
@@ -239,13 +240,6 @@ core::tFrameworkElement* tRemotePart::GetServerPortsElement()
     server_ports->Init();
   }
   return server_ports;
-}
-
-void tRemotePart::OnBoostAsioIoServiceDelete()
-{
-  express_connection.reset();
-  bulk_connection.reset();
-  management_connection.reset();
 }
 
 data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject> tRemotePart::OnPullRequest(data_ports::tGenericPort& origin)

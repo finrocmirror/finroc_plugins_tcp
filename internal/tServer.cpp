@@ -139,7 +139,7 @@ void tServer::Run()
     try
     {
       boost::asio::ip::tcp::endpoint epoint(listen_address, port_to_try);
-      acceptor.reset(new boost::asio::ip::tcp::acceptor(peer.io_service));
+      acceptor.reset(new boost::asio::ip::tcp::acceptor(*peer.io_service));
       acceptor->open(epoint.protocol());
       acceptor->set_option(boost::asio::ip::tcp::acceptor::reuse_address(true));
       if (epoint.protocol() == boost::asio::ip::tcp::v6())
@@ -178,7 +178,7 @@ void tServer::Run()
 
   // Accept connections on socket
   StartConnectionAccept(acceptor);
-  peer.io_service.run();
+  peer.io_service->run();
 }
 
 void tServer::StartConnectionAccept(std::shared_ptr<boost::asio::ip::tcp::acceptor>& acceptor)

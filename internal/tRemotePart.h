@@ -162,11 +162,6 @@ public:
   }
 
   /*!
-   * Called just before boost::asio io service is deleted
-   */
-  void OnBoostAsioIoServiceDelete();
-
-  /*!
    * Called when network port is deleted.
    * Will remove port from ports_with_express_data_to_send and ports_with_bulk_data_to_send
    */
@@ -288,6 +283,9 @@ private:
 
   /*! Peer info that this part belongs to */
   tPeerInfo& peer_info;
+
+  /*! IO service shared pointer for clean shutdown */
+  std::shared_ptr<boost::asio::io_service> io_service;
 
   /*! Peer implementation that this remote part belongs to */
   tPeerImplementation& peer_implementation;
