@@ -247,7 +247,7 @@ private:
       }
       else
       {
-        implementation.io_service.run();
+        implementation.io_service->run();
       }
     }
     catch (const std::exception& ex)
@@ -258,7 +258,7 @@ private:
 
   virtual void StopThread()
   {
-    implementation.io_service.stop();
+    implementation.io_service->stop();
   }
 
   tPeerImplementation& implementation;
@@ -275,9 +275,9 @@ tPeerImplementation::tPeerImplementation(core::tFrameworkElement& framework_elem
   //peer_list_revision(0),
   peer_list_changed(false),
   thread(),
-  io_service(),
-  low_priority_tasks_timer(io_service, boost::posix_time::milliseconds(cLOW_PRIORITY_TASK_CALL_INTERVAL)),
-  event_processing_timer(io_service, boost::posix_time::milliseconds(5)),
+  io_service(new boost::asio::io_service()),
+  low_priority_tasks_timer(*io_service, boost::posix_time::milliseconds(cLOW_PRIORITY_TASK_CALL_INTERVAL)),
+  event_processing_timer(*io_service, boost::posix_time::milliseconds(5)),
   server(NULL),
   shared_ports(),
   shared_ports_mutex(),
@@ -322,15 +322,7 @@ tPeerImplementation::tPeerImplementation(core::tFrameworkElement& framework_elem
 
 tPeerImplementation::~tPeerImplementation()
 {
-  for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
-  {
-    if ((*it)->remote_part)
-    {
-      (*it)->remote_part->OnBoostAsioIoServiceDelete();
-    }
-  }
-
-  io_service.stop();
+  io_service->stop();
   if (thread)
   {
     thread->StopThread();

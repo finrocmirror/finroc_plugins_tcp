@@ -83,7 +83,7 @@ class tPeerImplementation : public core::tRuntimeListener
 {
 
   typedef rrlib::buffer_pools::tBufferPool < tPortBufferChangeEvent, rrlib::concurrent_containers::tConcurrency::MULTIPLE_READERS,
-          rrlib::buffer_pools::management::QueueBased, rrlib::buffer_pools::deleting::ComplainOnMissingBuffers,
+          rrlib::buffer_pools::management::QueueBased, rrlib::buffer_pools::deleting::CollectGarbage,
           rrlib::buffer_pools::recycling::UseOwnerStorageInBuffer > tPortBufferChangeEventPool;
 
 //----------------------------------------------------------------------
@@ -170,7 +170,7 @@ public:
    */
   boost::asio::io_service& IOService()
   {
-    return io_service;
+    return *io_service;
   }
 
   void PortChanged(data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject>& value, tNetworkPortInfo* info, data_ports::tChangeContext& change_context)
@@ -257,6 +257,7 @@ private:
 
   friend class tServer;
   friend class tTCPThread;
+  friend class tRemotePart;
 
   template <bool REGULAR>
   friend struct tProcessLowPriorityTasksCaller;
@@ -294,7 +295,7 @@ private:
   std::shared_ptr<rrlib::thread::tThread> thread;
 
   /*! Boost asio IO service */
-  boost::asio::io_service io_service;
+  std::shared_ptr<boost::asio::io_service> io_service;
 
   /*! Timers for calling ProcessLowPriorityTasks() and ProcessEvents() regularly */
   boost::asio::deadline_timer low_priority_tasks_timer, event_processing_timer;
