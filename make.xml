@@ -1,6 +1,8 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE targets PUBLIC "-//RRLIB//DTD make 14.05" "http://finroc.org/xml/14.05/make.dtd">
+
 <targets>
-  <finrocplugin libs="boost_system">
+  <library libs="boost_system">
     <sources>
       tOptions.h
       tPeer.cpp
@@ -8,12 +10,12 @@
       common/**
       internal/**
     </sources>
-  </finrocplugin>
+  </library>
   
-  <testprogram name="collection">
+  <program name="collection" autorun="false">
     <sources>
       test/mTestCollection.cpp
       test/pTestCollection.cpp
     </sources>
-  </testprogram>
+  </program>
 </targets>
