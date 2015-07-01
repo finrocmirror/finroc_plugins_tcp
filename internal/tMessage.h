@@ -172,7 +172,7 @@ struct tMessage : private rrlib::util::tNoncopyable
    */
   static inline void Serialize(bool finish_message, rrlib::serialization::tOutputStream& stream, const TArgs& ... args)
   {
-    FINROC_LOG_PRINT(DEBUG_VERBOSE_1, "Sending message ", make_builder::GetEnumString(OPCODE));
+    FINROC_LOG_PRINT_STATIC(DEBUG_VERBOSE_1, "Sending message ", make_builder::GetEnumString(OPCODE));
     if (OPCODE != tOpCode::OTHER)
     {
       stream << OPCODE;
