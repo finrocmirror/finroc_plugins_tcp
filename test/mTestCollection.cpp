@@ -85,12 +85,11 @@ mTestCollection::mTestCollection(core::tFrameworkElement *parent, const std::str
   in_burst_publishing(0, data_ports::tQueueSettings(true, 5)),
   test_interface_client("Test Interface", &GetInputs()),
   test_interface_server(test_interface, "Test Interface", &GetOutputs(), tFlag::SHARED),
-  float_blackboard("float blackboard", this, false, 10, true, blackboard::tReadPorts::INTERNAL),
-  float_blackboard_client("float blackboard client", this, false, blackboard::tReadPorts::NONE),
+  float_blackboard("float blackboard", this, false, 10, true, nullptr),
+  float_blackboard_client("float blackboard", this, false, nullptr),
   counter(0)
 {
   in_pull_testing.SetPushStrategy(false);
-  float_blackboard_client.GetOutsideWritePort().GetWrapped()->SetName("float blackboard");
 }
 
 void mTestCollection::Update()
