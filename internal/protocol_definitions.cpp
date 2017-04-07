@@ -65,34 +65,6 @@ namespace internal
 //----------------------------------------------------------------------
 const char* cGREET_MESSAGE = "Greetings! I am a Finroc TCP peer.";
 
-template <typename T>
-constexpr tMessageSizeReader CreateReader()
-{
-  return tMessageSizeReader { T::MessageSize(), T::ArgumentsSize() + (tSettings::cDEBUG_TCP ? 1 : 0) };
-}
-
-const tMessageSizeReader message_size_for_opcodes[static_cast<int>(tOpCode::OTHER) + 1] =
-{
-  CreateReader<tSubscribeMessage>(),
-  CreateReader<tUnsubscribeMessage>(),
-  //CreateReader<tAckMessage>(),
-  CreateReader<tPullCall>(),
-  CreateReader<tPullCallReturn>(),
-  CreateReader<tRPCCall>(),
-  //CreateReader<tRPCMessageMessage>(),
-  //CreateReader<tRPCRequestMessage>(),
-  //CreateReader<tRPCResponseMessage>(),
-  CreateReader<tTypeUpdateMessage>(),
-  CreateReader<tStructureCreateMessage>(),
-  CreateReader<tStructureChangeMessage>(),
-  CreateReader<tStructureDeleteMessage>(),
-  CreateReader<tPeerInfoMessage>(),
-  CreateReader<tPortValueChange>(),
-  CreateReader<tSmallPortValueChange>(),
-  CreateReader<tSmallPortValueChangeWithoutTimestamp>(),
-  CreateReader<tConnectionInitMessage>(),
-};
-
 //----------------------------------------------------------------------
 // Implementation
 //----------------------------------------------------------------------

@@ -4,18 +4,15 @@
 <targets>
   <library libs="boost_system">
     <sources>
-      tOptions.h
-      tPeer.cpp
-      tSettings.cpp
-      common/**
-      internal/**
+      *
+      internal/*
     </sources>
   </library>
   
   <program name="collection" autorun="false">
     <sources>
-      test/mTestCollection.cpp
-      test/pTestCollection.cpp
+      tests/mTestCollection.cpp
+      tests/pTestCollection.cpp
     </sources>
   </program>
 </targets>

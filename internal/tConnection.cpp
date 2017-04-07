@@ -38,10 +38,7 @@
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
-#include "plugins/tcp/common/tNetworkUpdateTimeSettings.h"
-#include "plugins/tcp/internal/tNetworkPortInfo.h"
 #include "plugins/tcp/internal/tPeerImplementation.h"
-#include "plugins/tcp/internal/tRemotePart.h"
 
 //----------------------------------------------------------------------
 // Debugging
@@ -65,6 +62,7 @@ namespace internal
 //----------------------------------------------------------------------
 // Forward declarations / typedefs / enums
 //----------------------------------------------------------------------
+typedef network_transport::runtime_info::tStructureExchange tStructureExchange;
 
 //----------------------------------------------------------------------
 // Const values
@@ -80,11 +78,33 @@ static const size_t cMAX_MESSAGE_BATCH_SIZE = 300000000; // more than 30 MB
 // Implementation
 //----------------------------------------------------------------------
 
+namespace
+{
+
+rrlib::serialization::tMemoryBuffer SerializeSharedPorts(const network_transport::generic_protocol::tLocalRuntimeInfo::tSharedPortInfo& info, rrlib::serialization::tOutputStream& stream_prototype)
+{
+  rrlib::thread::tLock lock(core::tRuntimeEnvironment::GetInstance().GetStructureMutex());
+  rrlib::serialization::tMemoryBuffer buffer(info.size() * 200);
+  rrlib::serialization::tOutputStream stream(buffer, stream_prototype);
+  stream.WriteInt(0); // Placeholder for size
+  stream << rrlib::rtti::tDataType<std::string>(); // write a data type for initialization (only necessary in legacy mode - kept for backward-compatibility)
+  for (auto & entry : info)
+  {
+    stream << entry.second;
+  }
+  stream.WriteInt(0); // size of next packet
+  stream.Close();
+  buffer.GetBuffer().PutInt(0, buffer.GetSize() - 8);
+  return buffer;
+}
+
+}
+
 /*!
  * Writes things necessary for connection initialization to socket.
  * Connections are initialized as follows:
  *
- * 1st part: [GREET_MESSAGE][2 byte protocol version][4 byte 2nd part message length]
+ * 1st part: [GREET_MESSAGE][2 byte protocol version major][4 byte 2nd part message length]
  * 2nd part: [my UUID][peer type][peer name][structure exchange][connection flags][your address]
  */
 class tInitialWriteHandler
@@ -99,9 +119,11 @@ public:
     rrlib::serialization::tOutputStream stream1((*initial_message_buffers)[0]);
     rrlib::serialization::tOutputStream stream2((*initial_message_buffers)[1]);
     stream1 << cGREET_MESSAGE;
-    stream1.WriteShort(cPROTOCOL_VERSION);
-    tConnectionInitMessage::Serialize(true, stream2, connection->peer.GetPeerInfo().uuid, connection->peer.GetPeerInfo().peer_type,
-                                      connection->peer.GetPeerInfo().name, network_transport::tStructureExchange::SHARED_PORTS, connection->flags, connection->socket->remote_endpoint().address());
+    stream1.WriteShort(network_transport::generic_protocol::cPROTOCOL_VERSION_MAJOR);
+    uint32_t flags = connection->flags | ((network_transport::generic_protocol::cPROTOCOL_VERSION_MINOR & 0xFFFFFF) << 8) | (connection->peer.par_debug_tcp.Get() ? 0 : (static_cast<uint>(tConnectionFlag::NO_DEBUG)));
+    tConnectionInitMessage::Serialize(true, false, stream2, connection->peer.GetPeerInfo().uuid, connection->peer.GetPeerInfo().peer_type,
+                                      connection->peer.GetPeerInfo().name, tStructureExchange::SHARED_PORTS, flags, connection->socket->remote_endpoint().address());
+
     stream2.Close();
     stream1.Close();
 
@@ -121,8 +143,8 @@ public:
     }
     else
     {
-      connection->initial_writing_complete = true;
-      if (connection->initial_reading_complete && connection->initial_writing_complete)
+      connection->SharedConnectionInfo().initial_writing_complete = true;
+      if (connection->SharedConnectionInfo().initial_reading_complete && connection->SharedConnectionInfo().initial_writing_complete)
       {
         connection->DoInitialStructureExchange(connection);
       }
@@ -161,7 +183,7 @@ public:
     try
     {
       rrlib::serialization::tMemoryBuffer read_buffer(initial_message_buffer->begin(), bytes_transferred);
-      rrlib::serialization::tInputStream stream(read_buffer);
+      rrlib::serialization::tInputStream stream(read_buffer, connection->SharedConnectionInfo().input_stream_prototype);
       if (!first_message_received)
       {
         if (strcmp(stream.ReadString().c_str(), cGREET_MESSAGE) != 0)
@@ -169,7 +191,7 @@ public:
           connection->Close();
           return;
         }
-        if (stream.ReadShort() != cPROTOCOL_VERSION)
+        if (stream.ReadShort() != network_transport::generic_protocol::cPROTOCOL_VERSION_MAJOR)
         {
           connection->Close();
           return;
@@ -185,33 +207,70 @@ public:
 
         boost::asio::async_read(*(connection->socket), boost::asio::mutable_buffers_1(initial_message_buffer->begin(), size), *this);
       }
-      else if (!connection->closed)
+      else if (!connection->IsClosed())
       {
         tConnectionInitMessage message;
         message.Deserialize(stream);
 
-        if (message.Get<3>() != network_transport::tStructureExchange::SHARED_PORTS && (!connection->peer.ServesStructure()))
+        if (!network_transport::generic_protocol::tLocalRuntimeInfo::IsServingStructure())
         {
           connection->Close(); // Not serving structure yet
           return;
         }
 
         connection->peer.AddAddress(message.Get<5>());
-        connection->remote_part = connection->peer.GetRemotePart(message.Get<0>(), message.Get<1>(), message.Get<2>(),
-                                  connection->socket->remote_endpoint().address(), connection->never_forget);
+        connection->SharedConnectionInfo().remote_runtime = connection->peer.GetRemoteRuntime(connection, message.Get<0>(), message.Get<1>(), message.Get<2>(),
+            connection->socket->remote_endpoint().address(), connection->never_forget);
+        connection->flags |= message.Get<4>() & 0xFF;
 
-        connection->flags |= message.Get<4>();
+        // Setup shared connection info stream prototypes
+        bool java_partner = connection->flags & static_cast<uint>(tConnectionFlag::JAVA_PEER);
+        bool primary_connection = connection->flags & static_cast<uint>(tConnectionFlag::PRIMARY_CONNECTION);
+        bool express_only_connection = (connection->flags & static_cast<uint>(tConnectionFlag::EXPRESS_DATA)) && (!primary_connection);
+        rrlib::serialization::tSerializationInfo input_info(std::min<uint>(network_transport::generic_protocol::cPROTOCOL_VERSION_MINOR, static_cast<uint>(message.Get<4>()) >> 8),
+            rrlib::serialization::tRegisterEntryEncoding::UID,
+            static_cast<int>(message.Get<3>()) | (java_partner ? network_transport::runtime_info::cJAVA_CLIENT : 0) | (connection->flags & static_cast<uint>(tConnectionFlag::NO_DEBUG) ? 0 : network_transport::runtime_info::cDEBUG_PROTOCOL));
+        input_info.SetRegisterEntryEncoding(static_cast<uint>(network_transport::runtime_info::tRegisterUIDs::TYPE), rrlib::serialization::tRegisterEntryEncoding::PUBLISH_REGISTER_ON_CHANGE);
+        auto& unused_initialization_buffer = connection->peer.UnusedInitializationBuffer();
+        connection->SharedConnectionInfo().input_stream_prototype.Reset(unused_initialization_buffer, input_info);
 
-        if (!connection->remote_part->AddConnection(connection))
+        if (java_partner)
         {
-          connection->remote_part = NULL;
+          rrlib::serialization::tSerializationInfo output_info(input_info.revision, rrlib::serialization::tRegisterEntryEncoding::PUBLISH_REGISTER_ON_CHANGE, input_info.custom_info);
+          input_info.SetRegisterEntryEncoding(static_cast<uint>(network_transport::runtime_info::tRegisterUIDs::CREATE_ACTION), rrlib::serialization::tRegisterEntryEncoding::PUBLISH_REGISTER_ON_DEMAND);
+          connection->SharedConnectionInfo().output_stream_prototype.Reset(unused_initialization_buffer, output_info);
+        }
+        else if (input_info.revision == 0)
+        {
+          input_info.custom_info = static_cast<uint>(network_transport::runtime_info::tStructureExchange::SHARED_PORTS) | network_transport::runtime_info::cDEBUG_PROTOCOL;
+          connection->SharedConnectionInfo().output_stream_prototype.Reset(unused_initialization_buffer, input_info);
+        }
+        else
+        {
+          input_info.custom_info = static_cast<uint>(network_transport::runtime_info::tStructureExchange::SHARED_PORTS) | (connection->peer.par_debug_tcp.Get() ? network_transport::runtime_info::cDEBUG_PROTOCOL : 0);
+          connection->SharedConnectionInfo().output_stream_prototype.Reset(unused_initialization_buffer, input_info);
+        }
+        connection->InitFrontBuffer();
+
+        if (primary_connection && connection->SharedConnectionInfo().remote_runtime->GetPrimaryConnection() != connection)
+        {
+          connection->SharedConnectionInfo().remote_runtime = nullptr;
           connection->Close(); // we already have a connection of this type
           return;
         }
-        connection->remote_part->SetDesiredStructureInfo(message.Get<3>());
+        else if (express_only_connection)
+        {
+          if (!connection->SharedConnectionInfo().remote_runtime->AddConnection(connection, true))
+          {
+            connection->SharedConnectionInfo().remote_runtime = nullptr;
+            connection->Close(); // we already have a connection of this type
+            return;
+          }
+        }
+        connection->peer.RunEventLoop();
 
-        connection->initial_reading_complete = true;
-        if (connection->initial_reading_complete && connection->initial_writing_complete)
+        connection->SharedConnectionInfo().initial_reading_complete = true;
+        if (connection->SharedConnectionInfo().initial_reading_complete && connection->SharedConnectionInfo().initial_writing_complete)
         {
           connection->DoInitialStructureExchange(connection);
         }
@@ -237,25 +296,31 @@ private:
 class tMessageBatchWriteHandler
 {
 public:
-  tMessageBatchWriteHandler(std::shared_ptr<tConnection>& connection) : connection(connection)
+  tMessageBatchWriteHandler(std::shared_ptr<tConnection::tBase>& connection_base, const rrlib::serialization::tMemoryBuffer& buffer_to_send, bool& back_buffer_lock_variable) :
+    connection(std::static_pointer_cast<tConnection>(connection_base)),
+    buffer_to_send(&buffer_to_send),
+    back_buffer_lock_variable(&back_buffer_lock_variable)
   {
-    boost::asio::async_write(*(connection->socket), boost::asio::const_buffers_1(connection->back_buffer.GetBufferPointer(0), connection->back_buffer.GetSize()), *this);
+    back_buffer_lock_variable = true;
+    boost::asio::async_write(*(connection->socket), boost::asio::const_buffers_1(buffer_to_send.GetBufferPointer(0), buffer_to_send.GetSize()), *this);
   }
 
   void operator()(const boost::system::error_code& error, size_t bytes_transferred)
   {
-    if (error || bytes_transferred != connection->back_buffer.GetSize())
+    if (error || bytes_transferred != buffer_to_send->GetSize())
     {
       connection->Close();
     }
     else
     {
-      connection->writing_back_buffer_to_stream = false;
+      *back_buffer_lock_variable = false;
     }
   }
 
 private:
   std::shared_ptr<tConnection> connection;
+  const rrlib::serialization::tMemoryBuffer* buffer_to_send;
+  bool* back_buffer_lock_variable;
 };
 
 /*!
@@ -312,7 +377,7 @@ public:
 
         connection->read_buffer = rrlib::serialization::tFixedBuffer(bytes + 5000);
       }
-      if (!connection->closed)
+      if (!connection->IsClosed())
       {
         boost::asio::async_read(*(connection->socket), boost::asio::mutable_buffers_1(connection->read_buffer.GetPointer(), bytes), *this);
       }
@@ -325,7 +390,7 @@ public:
 
   void ProcessMessageBatch()
   {
-    continue_at = connection->ProcessMessageBatch(continue_at);
+    continue_at = connection->ProcessIncomingMessageBatch(rrlib::serialization::tFixedBuffer(connection->read_buffer.GetPointer(), connection->GetBytesToRead()), continue_at);
 
     if (continue_at == 0)
     {
@@ -359,11 +424,11 @@ public:
     buffer(),
     ready_after_write(false)
   {
-    if (connection->remote_part->GetDesiredStructureInfo() == network_transport::tStructureExchange::SHARED_PORTS)
+    if (connection->GetRemoteRuntime()->GetDesiredStructureInfo() == tStructureExchange::SHARED_PORTS)
     {
       buffer.reset(new rrlib::serialization::tMemoryBuffer(0));
-      *buffer = connection->peer.SerializeSharedPorts(connection->remote_types);
-      connection->framework_elements_in_full_structure_exchange_sent_until_handle = std::numeric_limits<tFrameworkElementHandle>::max(); // we want to receive any updates now
+      *buffer = SerializeSharedPorts(connection->peer.LocalRuntimeInfo()->SharedPortInfo(), connection->SharedConnectionInfo().output_stream_prototype);
+      connection->SharedConnectionInfo().framework_elements_in_full_structure_exchange_sent_until_handle = std::numeric_limits<core::tFrameworkElement::tHandle>::max(); // we want to receive any updates now
       ready_after_write = true;
       boost::asio::async_write(*(connection->socket), boost::asio::const_buffers_1(buffer->GetBufferPointer(0), buffer->GetSize()), *this);
     }
@@ -391,8 +456,8 @@ public:
     }
     else if (ready_after_write)
     {
-      connection->initial_structure_writing_complete = true;
-      if (connection->initial_structure_reading_complete)
+      connection->SharedConnectionInfo().initial_structure_writing_complete = true;
+      if (connection->SharedConnectionInfo().initial_structure_reading_complete)
       {
         connection->ready = true;
         connection->peer.SetPeerListChanged();
@@ -409,38 +474,37 @@ public:
   void SerializeNextElements()
   {
     typedef core::tFrameworkElement::tHandle tHandle;
-    assert(connection->remote_part->GetDesiredStructureInfo() == network_transport::tStructureExchange::FINSTRUCT ||
-           connection->remote_part->GetDesiredStructureInfo() == network_transport::tStructureExchange::COMPLETE_STRUCTURE);
+    assert(connection->GetRemoteRuntime()->GetDesiredStructureInfo() == tStructureExchange::FINSTRUCT ||
+           connection->GetRemoteRuntime()->GetDesiredStructureInfo() == tStructureExchange::COMPLETE_STRUCTURE);
     rrlib::thread::tLock lock(core::tRuntimeEnvironment::GetInstance().GetStructureMutex(), false);
     if (lock.TryLock())
     {
-      connection->peer.ProcessRuntimeChangeEvents();  // to make sure we don't get any shared port events twice
+      connection->peer.ProcessLocalRuntimeStructureChanges();  // to make sure we don't get any shared port events twice
       core::tFrameworkElement* framework_element_buffer[1000];
       size_t element_count = 0;
-      if (connection->framework_elements_in_full_structure_exchange_sent_until_handle <= std::numeric_limits<tHandle>::max())
+      if (connection->SharedConnectionInfo().framework_elements_in_full_structure_exchange_sent_until_handle <= std::numeric_limits<tHandle>::max())
       {
         element_count = core::tRuntimeEnvironment::GetInstance().GetAllElements(framework_element_buffer, 1000,
-                        connection->framework_elements_in_full_structure_exchange_sent_until_handle);
+                        connection->SharedConnectionInfo().framework_elements_in_full_structure_exchange_sent_until_handle);
       }
       if (!buffer)
       {
         buffer.reset(new rrlib::serialization::tMemoryBuffer(element_count * 200 + 4));
       }
-      rrlib::serialization::tOutputStream stream(*buffer, connection->remote_types);
+      rrlib::serialization::tOutputStream stream(*buffer, connection->SharedConnectionInfo().output_stream_prototype);
       stream.WriteInt(0); // placeholder for size
-      std::string temp_buffer;
       for (size_t i = 0; i < element_count; i++)
       {
         bool relevant = framework_element_buffer[i]->IsReady() &&
-                        ((connection->remote_part->GetDesiredStructureInfo() == network_transport::tStructureExchange::FINSTRUCT) ||
+                        ((connection->GetRemoteRuntime()->GetDesiredStructureInfo() == tStructureExchange::FINSTRUCT) ||
                          (!framework_element_buffer[i]->GetFlag(core::tFrameworkElement::tFlag::NETWORK_ELEMENT)));
         if (relevant)
         {
           stream.WriteInt(framework_element_buffer[i]->GetHandle());
-          network_transport::tFrameworkElementInfo::Serialize(stream, *framework_element_buffer[i], connection->remote_part->GetDesiredStructureInfo(), temp_buffer);
-          FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Serializing ", framework_element_buffer[i]->GetQualifiedName());
+          network_transport::runtime_info::tLocalFrameworkElementInfo::Serialize(stream, *framework_element_buffer[i]);
+          FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Serializing ", *framework_element_buffer[i]);
         }
-        connection->framework_elements_in_full_structure_exchange_sent_until_handle = framework_element_buffer[i]->GetHandle() + 1;
+        connection->SharedConnectionInfo().framework_elements_in_full_structure_exchange_sent_until_handle = framework_element_buffer[i]->GetHandle() + 1;
       }
       stream.Close();
       size_t payload_size = buffer->GetSize() - 4;
@@ -506,8 +570,8 @@ public:
       if (bytes == 0)
       {
         // ready
-        connection->initial_structure_reading_complete = true;
-        if (connection->initial_structure_writing_complete)
+        connection->SharedConnectionInfo().initial_structure_reading_complete = true;
+        if (connection->SharedConnectionInfo().initial_structure_writing_complete)
         {
           connection->ready = true;
           connection->peer.SetPeerListChanged();
@@ -539,24 +603,13 @@ public:
   void ProcessPacket()
   {
     // try to create structure
-    rrlib::thread::tLock lock(connection->remote_part->GetStructureMutex(), false);
-    if (lock.TryLock())
-    {
-      rrlib::serialization::tMemoryBuffer packet_buffer(read_buffer->GetPointer(), connection->bytes_to_read);
-      rrlib::serialization::tInputStream stream(packet_buffer, connection->remote_types);
-      connection->remote_part->ProcessStructurePacket(stream);
-      lock.Unlock();
+    rrlib::serialization::tMemoryBuffer packet_buffer(read_buffer->GetPointer(), connection->bytes_to_read);
+    rrlib::serialization::tInputStream stream(packet_buffer, connection->SharedConnectionInfo().input_stream_prototype);
+    connection->GetRemoteRuntime()->ProcessStructurePacket(stream);
 
-      // read size of next structure buffer
-      connection->bytes_to_read = 0;
-      boost::asio::async_read(*(connection->socket), boost::asio::mutable_buffers_1(connection->read_size_buffer.GetPointer(), 4), *this);
-    }
-    else
-    {
-      // Try again in 2ms
-      connection->defer_read_timer.expires_from_now(boost::posix_time::milliseconds(2));
-      connection->defer_read_timer.async_wait(*this);
-    }
+    // read size of next structure buffer
+    connection->bytes_to_read = 0;
+    boost::asio::async_read(*(connection->socket), boost::asio::mutable_buffers_1(connection->read_size_buffer.GetPointer(), 4), *this);
   }
 
 private:
@@ -568,90 +621,60 @@ private:
 
 tConnection::tConnection(tPeerImplementation& peer, std::shared_ptr<boost::asio::ip::tcp::socket>& socket, int flags,
                          std::shared_ptr<tPeerInfo::tActiveConnect> active_connect_indicator, bool never_forget) :
+  network_transport::generic_protocol::tConnection(*peer.LocalRuntimeInfo(), true),
   peer(peer),
   flags(flags),
   socket(socket),
-  closed(false),
-  remote_part(NULL),
-  initial_reading_complete(false),
-  initial_writing_complete(false),
-  initial_structure_reading_complete(false),
-  initial_structure_writing_complete(false),
   ready(false),
   read_size_buffer(4),
   read_buffer(cINITIAL_READ_BUFFER_SIZE),
   bytes_to_read(0),
-  front_buffer(cINITIAL_WRITE_BUFFER_SIZE),
-  back_buffer(cINITIAL_WRITE_BUFFER_SIZE),
-  writing_back_buffer_to_stream(false),
-  remote_types(),
-  current_write_stream(front_buffer, remote_types),
   active_connect_indicator(active_connect_indicator),
   never_forget(never_forget),
   defer_read_timer(peer.IOService()),
-  defer_write_timer(peer.IOService()),
-  last_ack_request_index(-1),
-  last_acknowledged_packet(0),
-  next_packet_index(1),
-  sent_bulk_packets(0),
-  sent_packet_data(),
-  framework_elements_in_full_structure_exchange_sent_until_handle(0),
-  rpc_call_buffer_pools(),
-  received_data_after_last_connect(false)
+  defer_write_timer(peer.IOService())
 {
-  current_write_stream.WriteInt(0); // Placeholder for size
-  current_write_stream.WriteShort(0); // Placeholder for ack requests
-  current_write_stream.WriteShort(0); // Placeholder for acks
-  sent_packet_data.fill(tSentPacketData(rrlib::time::cNO_TIME, 0));
 }
 
 tConnection::~tConnection()
 {}
 
-void tConnection::Close()
+void tConnection::CloseImplementation()
 {
-  if (!closed)
+  try
   {
-    try
-    {
-      // socket->shutdown(); TODO: Add with newer boost version (?)
-      socket->close();
-    }
-    catch (const std::exception& ex)
-    {
-      FINROC_LOG_PRINT(WARNING, "Closing connection failed: ", ex);
-    }
-    closed = true;
-    if (remote_part)
-    {
-      remote_part->RemoveConnection(*this);
-    }
-    if (ready)
-    {
-      peer.SetPeerListChanged();
-    }
+    // socket->shutdown(); TODO: Add with newer boost version (?)
+    socket->close();
+  }
+  catch (const std::exception& ex)
+  {
+    FINROC_LOG_PRINT(WARNING, "Closing connection failed: ", ex);
+  }
+  if (ready)
+  {
+    peer.SetPeerListChanged();
   }
 }
 
-void tConnection::DoInitialStructureExchange(std::shared_ptr<tConnection> connection)
+void tConnection::DoInitialStructureExchange(std::shared_ptr<tConnection>& connection)
 {
-  if ((flags & static_cast<int>(tConnectionFlag::MANAGEMENT_DATA)))
+  if (connection == connection->GetRemoteRuntime()->GetPrimaryConnection())
   {
-    assert(this == remote_part->GetManagementConnection().get());
-    tStructureReadHandler structure_read_handler(remote_part->GetManagementConnection());
-    if (remote_part->GetDesiredStructureInfo() != network_transport::tStructureExchange::NONE)
+    assert(this == connection.get());
+    tStructureReadHandler structure_read_handler(connection);
+    if (GetRemoteRuntime()->GetDesiredStructureInfo() != tStructureExchange::NONE)
     {
-      tStructureWriteHandler structure_write_handler(remote_part->GetManagementConnection());
+      tStructureWriteHandler structure_write_handler(connection);
     }
     else
     {
-      initial_structure_writing_complete = true;
+      SharedConnectionInfo().initial_structure_writing_complete = true;
     }
   }
   else
   {
-    initial_structure_reading_complete = true;
-    initial_structure_writing_complete = true;
+    SharedConnectionInfo().initial_structure_reading_complete = true;
+    SharedConnectionInfo().initial_structure_writing_complete = true;
     ready = true;
     tMessageBatchReadHandler handler(connection);
   }
@@ -665,8 +688,28 @@ size_t tConnection::GetBytesToRead()
   return bytes_to_read;
 }
 
-void tConnection::InitConnection(tPeerImplementation& peer, std::shared_ptr<boost::asio::ip::tcp::socket>& socket, int flags,
-                                 std::shared_ptr<tPeerInfo::tActiveConnect> active_connect_indicator, bool never_forget)
+void tConnection::ProcessPeerInfoMessage(rrlib::serialization::tMemoryBuffer& buffer)
+{
+  network_transport::generic_protocol::tPeerInfoMessage message;
+  rrlib::serialization::tInputStream stream(buffer, SharedConnectionInfo().input_stream_prototype);
+  message.Deserialize(stream, false);
+  while (stream.ReadBoolean())
+  {
+    tPeerInfo peer(tPeerType::UNSPECIFIED);
+    this->peer.DeserializePeerInfo(stream, peer);
+    RRLIB_LOG_PRINT(DEBUG_VERBOSE_1, "Deserialized peer ", peer.ToString());
+    this->peer.ProcessIncomingPeerInfo(peer);
+  }
+  message.FinishDeserialize(stream);
+}
+
+void tConnection::SendMessagePacket(std::shared_ptr<tBase>& self, const rrlib::serialization::tMemoryBuffer& buffer_to_send, bool& back_buffer_lock_variable)
+{
+  tMessageBatchWriteHandler write_handler(self, buffer_to_send, back_buffer_lock_variable);
+}
+
+void tConnection::TryToEstablishConnection(tPeerImplementation& peer, std::shared_ptr<boost::asio::ip::tcp::socket>& socket, int flags,
+    std::shared_ptr<tPeerInfo::tActiveConnect> active_connect_indicator, bool never_forget)
 {
   std::shared_ptr<tConnection> connection(new tConnection(peer, socket, flags, active_connect_indicator, never_forget));
 
@@ -674,263 +717,6 @@ void tConnection::InitConnection(tPeerImplementation& peer, std::shared_ptr<boos
   tInitialReadHandler read_handler(connection);
 }
 
-size_t tConnection::ProcessMessageBatch(size_t start_at)
-{
-  try
-  {
-    rrlib::serialization::tMemoryBuffer mem_buffer(read_buffer.GetPointer(), GetBytesToRead());
-    rrlib::serialization::tInputStream stream(mem_buffer);
-
-    // process acknowledging
-    if (start_at == 0)
-    {
-      // packet acknowledgment request
-      int16_t ack_request_index = stream.ReadShort();
-      if (ack_request_index >= 0)
-      {
-        last_ack_request_index = ack_request_index;
-      }
-
-      // packet acknowledgments
-      int16_t acknowledgement = stream.ReadShort();
-      if (acknowledgement >= 0)
-      {
-        last_acknowledged_packet = acknowledgement;
-      }
-    }
-    else
-    {
-      stream.Skip(start_at);
-    }
-
-    while (stream.MoreDataAvailable())
-    {
-      size_t command_start_position = static_cast<size_t>(stream.GetAbsoluteReadPosition());
-      tOpCode op_code = stream.ReadEnum<tOpCode>();
-      if (op_code >= tOpCode::OTHER)
-      {
-        FINROC_LOG_PRINT(WARNING, "Received corrupted TCP message batch. Invalid opcode. Skipping.");
-        return 0;
-      }
-      size_t message_size = message_size_for_opcodes[static_cast<size_t>(op_code)].ReadMessageSize(stream);
-      if (message_size == 0 || message_size > stream.Remaining())
-      {
-        FINROC_LOG_PRINT(WARNING, "Received corrupted TCP message batch. Invalid message size: ", message_size, ". Skipping.");
-        return 0;
-      }
-      rrlib::serialization::tMemoryBuffer message_buffer(mem_buffer.GetBufferPointer(static_cast<size_t>(stream.GetAbsoluteReadPosition())), message_size);
-      stream.Skip(message_size);
-
-      try
-      {
-        bool defer = remote_part->ProcessMessage(op_code, message_buffer, remote_types, *this);
-        if (defer)
-        {
-          return command_start_position;
-        }
-      }
-      catch (const std::exception& ex)
-      {
-        FINROC_LOG_PRINT(WARNING, "Failed to deserialize message of type ", make_builder::GetEnumString(op_code), ". Skipping. Cause: ", ex);
-      }
-    }
-  }
-  catch (const std::exception& ex)
-  {
-    FINROC_LOG_PRINT(WARNING, "Error processing message batch: ", ex, ". Skipping.");
-  }
-  return 0;
-}
-
-void tConnection::RpcPortsDeleted(std::vector<core::tFrameworkElement::tHandle>& deleted_ports)
-{
-  for (auto it = deleted_ports.begin(); it != deleted_ports.end(); ++it)
-  {
-    rpc_call_buffer_pools.erase(*it);
-  }
-}
-
-void tConnection::SendPendingMessages(const rrlib::time::tTimestamp& time_now)
-{
-  static tSettings& settings_instance = tSettings::GetInstance();
-  if (writing_back_buffer_to_stream) // back buffer is still written - we cannot write anything else during this time
-  {
-    return;
-  }
-
-  // Determine whether more packages can be sent (ugly: counter wrap-arounds)
-  int non_acknowledged_express_packets = (next_packet_index - 1) - last_acknowledged_packet;
-  if (non_acknowledged_express_packets < 0)
-  {
-    non_acknowledged_express_packets += 0x8000;
-  }
-  assert(non_acknowledged_express_packets >= 0 && non_acknowledged_express_packets <= tSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS);
-  bool more_express_packets_allowed = non_acknowledged_express_packets < tSettings::cMAX_NOT_ACKNOWLEDGED_PACKETS;
-
-  tSentPacketData& last_acknowledged = sent_packet_data[last_acknowledged_packet % sent_packet_data.size()];
-  uint32_t non_acknowledged_bulk_packets = sent_bulk_packets - last_acknowledged.second;
-  bool more_bulk_packets_allowed = non_acknowledged_bulk_packets < settings_instance.max_not_acknowledged_packets_bulk.Get();
-
-  // Send new port data
-  if (more_express_packets_allowed && (flags & static_cast<int>(tConnectionFlag::EXPRESS_DATA)))
-  {
-    if (!remote_part->PortsWithExpressDataToSend().empty())
-    {
-      SendPortData(remote_part->PortsWithExpressDataToSend(), time_now);
-    }
-  }
-  if (more_bulk_packets_allowed && (flags & static_cast<int>(tConnectionFlag::BULK_DATA)))
-  {
-    if (!remote_part->PortsWithBulkDataToSend().empty())
-    {
-      if (SendPortData(remote_part->PortsWithBulkDataToSend(), time_now))
-      {
-        sent_bulk_packets++;
-      }
-    }
-  }
-
-
-  // Send packet
-  current_write_stream.Flush();
-  if (front_buffer.GetSize() > 8 || last_ack_request_index >= 0)
-  {
-
-    // update internal acknowledgement management variables
-    bool data_packet = more_express_packets_allowed && front_buffer.GetSize() > 8;
-    int16_t ack_request = -1;
-    if (data_packet)
-    {
-      ack_request = next_packet_index;
-      tSentPacketData& current_packet_data = sent_packet_data[next_packet_index % sent_packet_data.size()];
-      current_packet_data.first = time_now;
-      current_packet_data.second = sent_bulk_packets;
-
-      next_packet_index++;
-      if (next_packet_index < 0)
-      {
-        next_packet_index = 0;
-      }
-    }
-
-    // send a packet
-    front_buffer.GetBuffer().PutInt(0, front_buffer.GetSize() - 4); // put size
-    front_buffer.GetBuffer().PutShort(4, ack_request); // put ack request
-    front_buffer.GetBuffer().PutShort(6, last_ack_request_index); // put ack response
-    last_ack_request_index = -1;
-    std::swap(front_buffer, back_buffer);
-
-    current_write_stream.Reset(front_buffer);
-    current_write_stream.WriteInt(0); // Placeholder for size
-    current_write_stream.WriteShort(0); // Placeholder for ack requests
-    current_write_stream.WriteShort(0); // Placeholder for acks
-    SerializeAnyNewTypes();
-
-    // Obtain shared pointer on connection: TODO could be significantly less ugly
-    std::shared_ptr<tConnection> connection;
-    if (flags & static_cast<int>(tConnectionFlag::MANAGEMENT_DATA))
-    {
-      connection = remote_part->GetManagementConnection();
-    }
-    else if (flags & static_cast<int>(tConnectionFlag::EXPRESS_DATA))
-    {
-      connection = remote_part->GetExpressConnection();
-    }
-    else if (flags & static_cast<int>(tConnectionFlag::BULK_DATA))
-    {
-      connection = remote_part->GetBulkConnection();
-    }
-
-    if (connection.get() == this)
-    {
-      writing_back_buffer_to_stream = true;
-      tMessageBatchWriteHandler write_handler(connection);
-    }
-    else
-    {
-      FINROC_LOG_PRINT(ERROR, "Could not get shared pointer on connection");
-    }
-  }
-
-  // Check round-trip times: Is critical threshold exceeded?
-  if (received_data_after_last_connect && non_acknowledged_express_packets && (flags & (static_cast<int>(tConnectionFlag::EXPRESS_DATA) | static_cast<int>(tConnectionFlag::BULK_DATA))))
-  {
-    rrlib::time::tTimestamp first_non_acknowledged_send_time = sent_packet_data[(last_acknowledged_packet + 1) % sent_packet_data.size()].first;
-    if (time_now - first_non_acknowledged_send_time > settings_instance.critical_ping_threshold.Get())
-    {
-      FINROC_LOG_PRINT(WARNING, "Critical network roundtrip time exceeded. Notifying ports.");
-      for (auto sub_element = remote_part->SubElementsBegin(); sub_element != remote_part->SubElementsEnd(); ++sub_element)
-      {
-        if (sub_element->IsPort())
-        {
-          core::tAbstractPort& port = static_cast<core::tAbstractPort&>(*sub_element);
-          bool express_port = port.GetFlag(core::tFrameworkElement::tFlag::EXPRESS_PORT);
-          if ((express_port && (flags & (static_cast<int>(tConnectionFlag::EXPRESS_DATA)))) || ((!express_port) && (flags & (static_cast<int>(tConnectionFlag::BULK_DATA)))))
-          {
-            for (auto connected_port = port.OutgoingConnectionsBegin(); connected_port != port.OutgoingConnectionsEnd(); ++connected_port)
-            {
-              connected_port->NotifyOfNetworkConnectionLoss();
-            }
-          }
-        }
-      }
-      received_data_after_last_connect = false;
-    }
-  }
-}
-
-bool tConnection::SendPortData(std::vector<tNetworkPortInfo*>& port_list, const rrlib::time::tTimestamp& time_now)
-{
-  bool result = false;
-  size_t keep_count = 0;
-  for (auto it = port_list.begin(); it != port_list.end(); ++it)
-  {
-    tNetworkPortInfo& port = **it;
-    if (port.GetLastUpdate() + port.GetUpdateInterval() <= time_now)
-    {
-      port.WriteDataBuffersToStream(current_write_stream, time_now);
-      result = true;
-    }
-    else
-    {
-      port_list[keep_count] = *it; // keep port in list for later sending
-      keep_count++;
-    }
-  }
-
-  port_list.resize(keep_count, NULL);
-
-  return result;
-}
-
-void tConnection::SendStructureChange(const tSerializedStructureChange& structure_change, network_transport::tStructureExchange structure_exchange_level)
-{
-  if (initial_reading_complete && initial_writing_complete)
-  {
-    if (initial_structure_writing_complete ||
-        structure_change.GetLocalHandle() < framework_elements_in_full_structure_exchange_sent_until_handle)
-    {
-      if (initial_structure_writing_complete)
-      {
-        // check whether we need to serialize further types
-        SerializeAnyNewTypes();
-      }
-      structure_change.WriteToStream(current_write_stream, structure_exchange_level);
-    }
-  }
-}
-
-void tConnection::SerializeAnyNewTypes()
-{
-  if (remote_types.TypeUpdateNecessary())
-  {
-    tTypeUpdateMessage message;
-    message.Serialize(false, current_write_stream);
-    current_write_stream << rrlib::rtti::tType();
-    current_write_stream.WriteShort(common::tNetworkUpdateTimeSettings::GetInstance().default_minimum_network_update_time.Get());
-    message.FinishMessage(current_write_stream);
-  }
-}
 
 //----------------------------------------------------------------------
 // End of namespace declaration

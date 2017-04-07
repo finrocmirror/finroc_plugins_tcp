@@ -40,11 +40,6 @@
 #include <boost/asio/ip/tcp.hpp>
 #include "rrlib/serialization/serialization.h"
 
-#ifdef _LIB_FINROC_PLUGINS_DATA_COMPRESSION_PRESENT_
-#include "rrlib/data_compression/tDataCompressor.h"
-#include "plugins/data_compression/tPlugin.h"
-#endif
-
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
@@ -68,19 +63,6 @@ namespace internal
 // Function declarations
 //----------------------------------------------------------------------
 
-/*!
- * Utility function.
- * Copies contents of specified memory buffer to newly allocated fixed buffer of exactly the contents' size
- *
- * \param memory_buffer Memory buffer whose data to copy
- * \return Fixed buffer with copied data
- */
-inline rrlib::serialization::tFixedBuffer CopyToNewFixedBuffer(rrlib::serialization::tMemoryBuffer& memory_buffer)
-{
-  rrlib::serialization::tFixedBuffer fixed_buffer(memory_buffer.GetSize());
-  memcpy(fixed_buffer.GetPointer(), memory_buffer.GetBufferPointer(0), fixed_buffer.Capacity());
-  return fixed_buffer;
-}
 
 /*!
  * Parses and resolves network address in specified string
@@ -99,41 +81,6 @@ std::vector<boost::asio::ip::tcp::endpoint> ParseAndResolveNetworkAddress(const 
  * \return std::vector of IP addresses
  */
 std::vector<boost::asio::ip::address> ResolveHostname(const std::string host_name);
-
-/*!
- * Serializes buffer to binary stream using specified encoding.
- * If data compression is specified but not available, binary encoding is used.
- *
- * \param stream Stream to serialize to
- * \param buffer Buffer to serialize
- * \param encoding Desired data encoding
- * \param origin Network port info of port that data originates from (used for checking for compression rules - whether compression is specified and required)
- */
-inline void SerializeBuffer(rrlib::serialization::tOutputStream& stream, data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject>& buffer,
-                            tDataEncoding encoding, core::tAbstractPort& origin)
-{
-  if (encoding == tDataEncoding::BINARY_COMPRESSED)
-  {
-#ifdef _LIB_FINROC_PLUGINS_DATA_COMPRESSION_PRESENT_
-    data_compression::tCompressedData compressed_data = data_compression::tPlugin::ObtainCompressedData(buffer, origin);
-    if (compressed_data.data)
-    {
-      stream.WriteString(compressed_data.compression_format);
-      stream.WriteInt(compressed_data.data->GetSize());
-      stream.Write(compressed_data.data->GetBufferPointer(), compressed_data.data->GetSize());
-      return;
-    }
-#endif
-
-    // use binary encoding instead (no compression string signals that no compression was used)
-    stream.WriteString("");
-    buffer->Serialize(stream);
-  }
-  else
-  {
-    buffer->Serialize(stream, static_cast<rrlib::serialization::tDataEncoding>(encoding));
-  }
-}
 
 //----------------------------------------------------------------------
 // End of namespace declaration

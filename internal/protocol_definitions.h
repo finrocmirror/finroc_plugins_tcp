@@ -38,13 +38,12 @@
 // External includes (system with <>, local with "")
 //----------------------------------------------------------------------
 #include <boost/asio/ip/tcp.hpp>
-#include "plugins/rpc_ports/definitions.h"
+#include "plugins/network_transport/generic_protocol/definitions.h"
 
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
-#include "plugins/tcp/tOptions.h"
-#include "plugins/network_transport/structure_info/tFrameworkElementInfo.h"
+#include "plugins/tcp/tTCPPlugin.h"
 #include "plugins/tcp/internal/tUUID.h"
 
 //----------------------------------------------------------------------
@@ -64,155 +63,20 @@ namespace internal
 /*! When two peers connnect - they use this message to identify themselves as Finroc peers */
 extern const char* cGREET_MESSAGE;
 
-/*! TCP protocol version */
-enum { cPROTOCOL_VERSION = 1 };
-
-/*!
- * Data encoding to use (important: first three constants must be identical to rrlib::serialization::tDataEncoding)
- */
-enum class tDataEncoding : uint8_t
-{
-  BINARY,
-  STRING,
-  XML,
-  BINARY_COMPRESSED
-};
-
-/*!
- * Protocol OpCodes
- */
-enum class tOpCode : uint8_t
-{
-  // Opcodes for management connection
-  SUBSCRIBE,         // Subscribe to data port
-  UNSUBSCRIBE,       // Unsubscribe from data port
-  PULLCALL,          // Pull call
-  PULLCALL_RETURN,   // Returning pull call
-  RPC_CALL,          // RPC call
-  TYPE_UPDATE,       // Update on remote type info (typically desired update time)
-  STRUCTURE_CREATE,  // Update on remote framework elements: Element created
-  STRUCTURE_CHANGE,  // Update on remote framework elements: Port changed
-  STRUCTURE_DELETE,  // Update on remote framework elements: Element deleted
-  PEER_INFO,         // Information about other peers
-
-  // Change event opcodes (from subscription - or for plain setting of port)
-  PORT_VALUE_CHANGE,                         // normal variant
-  SMALL_PORT_VALUE_CHANGE,                   // variant with max. 256 byte message length (3 bytes smaller than normal variant)
-  SMALL_PORT_VALUE_CHANGE_WITHOUT_TIMESTAMP, // variant with max. 256 byte message length and no timestamp (11 bytes smaller than normal variant)
-
-  // Used for messages without opcode
-  OTHER
-};
-
 /*!
  * Flags for connection properties
  */
-enum class tConnectionFlag : int
+enum class tConnectionFlag : uint32_t
 {
-  MANAGEMENT_DATA = 0x1, //<! This connection is used to transfer management data (e.g. available ports, peer info, subscriptions, rpc calls)
-  EXPRESS_DATA    = 0x2, //<! This connection transfers "express data" (port values of express ports) - candidate for UDP in the future
-  BULK_DATA       = 0x4  //<! This connection transfers "bulk data" (port values of bulk ports) - candidate for UDP in the future
+  PRIMARY_CONNECTION = 0x1,  //<! This connection is used to transfer management data (e.g. available ports, peer info, subscriptions, rpc calls)
+  EXPRESS_DATA    = 0x2,  //<! This connection transfers "express data" (port values of express ports) - candidate for UDP in the future
+  BULK_DATA       = 0x4,  //<! This connection transfers "bulk data" (port values of bulk ports) - candidate for UDP in the future
+  JAVA_PEER       = 0x8,  //<! Sent by Java Peers on connection initialization
+  NO_DEBUG        = 0x10, //<! No debug information in protocol
 };
-
-}
-}
-}
-
-#include "plugins/tcp/internal/tMessage.h"
-
-namespace finroc
-{
-namespace tcp
-{
-namespace internal
-{
-
-typedef rpc_ports::internal::tCallId tCallId;
-
-typedef typename core::tFrameworkElement::tHandle tFrameworkElementHandle;
-
-/*!
- * Helper to read message size from stream
- * Exists once for each opcode
- */
-struct tMessageSizeReader
-{
-  tMessageSize message_size;
-  size_t argument_size;
-
-  size_t ReadMessageSize(rrlib::serialization::tInputStream& stream) const
-  {
-    if (message_size == tMessageSize::FIXED)
-    {
-      return argument_size;
-    }
-    else if (message_size == tMessageSize::VARIABLE_UP_TO_4GB)
-    {
-      return stream.ReadInt();
-    }
-    else
-    {
-      return stream.ReadNumber<uint8_t>();
-    }
-  }
-};
-
-/*!
- * Lookup for message size reader for each opcode
- */
-extern const tMessageSizeReader message_size_for_opcodes[static_cast<int>(tOpCode::OTHER) + 1];
-
-////////////////////
-// Message types
-////////////////////
-
-// Parameters: [remote port handle][int16: strategy][bool: reverse push][int16: update interval][local port handle][desired encoding]
-typedef tMessage < tOpCode::SUBSCRIBE, tMessageSize::FIXED, tFrameworkElementHandle, int16_t, bool,
-        int16_t, tFrameworkElementHandle, tDataEncoding > tSubscribeMessage;
-
-// Parameters: [remote port handle]
-typedef tMessage<tOpCode::UNSUBSCRIBE, tMessageSize::FIXED, tFrameworkElementHandle> tUnsubscribeMessage;
-
-// Parameters: [int32: acknowledged message batch]
-//typedef tMessage<tOpCode::ACK, tMessageSize::FIXED, int32_t> tAckMessage;
-
-// Parameters: [remote port handle][call uid][desired encoding]
-typedef tMessage<tOpCode::PULLCALL, tMessageSize::FIXED, tFrameworkElementHandle, tCallId, tDataEncoding> tPullCall;
-
-// Parameters: [call uid][failed?] after message: [type][timestamp][serialized data]
-typedef tMessage<tOpCode::PULLCALL_RETURN, tMessageSize::VARIABLE_UP_TO_4GB, tCallId, bool> tPullCallReturn;
-
-// Parameters: [remote port handle][call type] after message: [pass stream to DeserializeCallFunction of tMessage]
-typedef tMessage<tOpCode::RPC_CALL, tMessageSize::VARIABLE_UP_TO_4GB, tFrameworkElementHandle, rpc_ports::tCallType> tRPCCall;
-
-// Parameters: after message: [data type][int16: new update time]
-typedef tMessage<tOpCode::TYPE_UPDATE, tMessageSize::VARIABLE_UP_TO_4GB> tTypeUpdateMessage;
-
-// Parameters: [local port handle] after message: [tFrameworkElementInfo]
-typedef tMessage<tOpCode::STRUCTURE_CREATE, tMessageSize::VARIABLE_UP_TO_4GB, tFrameworkElementHandle> tStructureCreateMessage;
-
-// Parameters: [local port handle] after message: [tChangeablePortInfo and possibly edge info]
-typedef tMessage<tOpCode::STRUCTURE_CHANGE, tMessageSize::VARIABLE_UP_TO_4GB, tFrameworkElementHandle> tStructureChangeMessage;
-
-// Parameters: [local port handle]
-typedef tMessage<tOpCode::STRUCTURE_DELETE, tMessageSize::FIXED, tFrameworkElementHandle> tStructureDeleteMessage;
-
-// Parameters: after message: [list of [tPeerInfo.uuid, tPeerInfo.peer_type, tPeerInfo.name, tPeerInfo.addresses]]
-typedef tMessage<tOpCode::PEER_INFO, tMessageSize::VARIABLE_UP_TO_4GB> tPeerInfoMessage;
-
-
-// Parameters: [int32: remote port handle][encoding] after message: [binary blob or null-terminated string depending on type encoding]
-typedef tMessage <tOpCode::PORT_VALUE_CHANGE, tMessageSize::VARIABLE_UP_TO_4GB, int32_t, tDataEncoding> tPortValueChange;
-
-// Parameters: [int32: remote port handle][encoding] after message: [binary blob or null-terminated string depending on type encoding]
-typedef tMessage <tOpCode::SMALL_PORT_VALUE_CHANGE, tMessageSize::VARIABLE_UP_TO_255_BYTE, int32_t, tDataEncoding> tSmallPortValueChange;
-
-// Parameters: [int32: remote port handle][encoding] after message: [binary blob or null-terminated string depending on type encoding]
-typedef tMessage < tOpCode::SMALL_PORT_VALUE_CHANGE_WITHOUT_TIMESTAMP, tMessageSize::VARIABLE_UP_TO_255_BYTE, int32_t,
-        tDataEncoding > tSmallPortValueChangeWithoutTimestamp;
 
 // Initializes connection between two peers: [my UUID][peer type][peer name][structure exchange][connection flags][your address]
-typedef tMessage < tOpCode::OTHER, tMessageSize::VARIABLE_UP_TO_4GB, tUUID, tPeerType, std::string, network_transport::tStructureExchange,
+typedef network_transport::generic_protocol::tMessage < network_transport::generic_protocol::tOpCode, network_transport::generic_protocol::tOpCode::OTHER, network_transport::generic_protocol::tMessageSize::VARIABLE_UP_TO_4GB, tUUID, tPeerType, std::string, network_transport::runtime_info::tStructureExchange,
         int32_t, boost::asio::ip::address > tConnectionInitMessage;
 
 //----------------------------------------------------------------------

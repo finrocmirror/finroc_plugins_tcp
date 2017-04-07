@@ -19,7 +19,7 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 //----------------------------------------------------------------------
-/*!\file    plugins/tcp/test/mTestCollection.h
+/*!\file    plugins/tcp/tests/mTestCollection.h
  *
  * \author  Max Reichardt
  *
@@ -34,8 +34,8 @@
  *
  */
 //----------------------------------------------------------------------
-#ifndef __plugins__tcp__test__mTestCollection_h__
-#define __plugins__tcp__test__mTestCollection_h__
+#ifndef __plugins__tcp__tests__mTestCollection_h__
+#define __plugins__tcp__tests__mTestCollection_h__
 
 #include "plugins/structure/tModule.h"
 
@@ -55,7 +55,7 @@ namespace finroc
 {
 namespace tcp
 {
-namespace test
+namespace tests
 {
 
 //----------------------------------------------------------------------

@@ -72,11 +72,10 @@ tPeerInfo::tPeerInfo(tPeerType peer_type) :
   uuid(),
   peer_type(peer_type),
   addresses(),
-  connected(false),
   connecting(0),
   last_connection(rrlib::time::cNO_TIME),
   never_forget(false),
-  remote_part(NULL)
+  remote_runtime(nullptr)
 {
 }
 

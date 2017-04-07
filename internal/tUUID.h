@@ -41,7 +41,6 @@
 // External includes (system with <>, local with "")
 //----------------------------------------------------------------------
 #include "rrlib/serialization/serialization.h"
-#include <boost/lexical_cast.hpp>
 
 //----------------------------------------------------------------------
 // Internal includes with ""
@@ -92,9 +91,9 @@ struct tUUID
   {
     if (port >= 0)
     {
-      return host_name + ":" + boost::lexical_cast<std::string>(port);
+      return host_name + ":" + std::to_string(port);
     }
-    return host_name + "<" + boost::lexical_cast<std::string>(-port) + ">";
+    return host_name + "<" + std::to_string(-port) + ">";
   }
 };
 

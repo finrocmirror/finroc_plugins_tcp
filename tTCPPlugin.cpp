@@ -19,27 +19,25 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 //----------------------------------------------------------------------
-/*!\file    plugins/tcp/internal/tPlugin.cpp
+/*!\file    plugins/tcp/tTCPPlugin.cpp
  *
  * \author  Max Reichardt
  *
- * \date    2013-11-29
+ * \date    2017-03-19
  *
- * TCP transport plugin implementation
  */
 //----------------------------------------------------------------------
+#include "plugins/tcp/tTCPPlugin.h"
 
 //----------------------------------------------------------------------
 // External includes (system with <>, local with "")
 //----------------------------------------------------------------------
 #include "rrlib/getopt/parser.h"
-#include "core/tRuntimeEnvironment.h"
-#include "plugins/network_transport/tNetworkTransportPlugin.h"
 
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
-#include "plugins/tcp/tPeer.h"
+#include "plugins/tcp/internal/tPeerImplementation.h"
 
 //----------------------------------------------------------------------
 // Debugging
@@ -57,8 +55,6 @@ namespace finroc
 {
 namespace tcp
 {
-namespace internal
-{
 
 //----------------------------------------------------------------------
 // Forward declarations / typedefs / enums
@@ -72,65 +68,70 @@ namespace internal
 // Implementation
 //----------------------------------------------------------------------
 
+namespace internal
+{
+class tTCPPluginInstance : public internal::tPeerImplementation
+{};
+}
+
+namespace
+{
+internal::tTCPPluginInstance plugin_instance;
+
 bool OptionsHandler(const rrlib::getopt::tNameToOptionMap &name_to_option_map)
 {
   // auto-connect mode
   rrlib::getopt::tOption auto_connect(name_to_option_map.at("tcp-auto-connect"));
   if (auto_connect->IsActive())
   {
-    tOptions::GetDefaultOptions().auto_connect_to_all_peers = (rrlib::getopt::EvaluateValue(auto_connect) == "yes");
+    plugin_instance.par_auto_connect_to_all_peers.Set(rrlib::getopt::EvaluateValue(auto_connect) == "yes");
   }
 
   return true;
 }
+}
 
 //----------------------------------------------------------------------
-// Class declaration
+// tTCPPlugin constructors
 //----------------------------------------------------------------------
-//! TCP transport plugin implementation
-/*!
- * TCP transport plugin implementation
- */
-class tPlugin : public network_transport::tNetworkTransportPlugin
+tTCPPlugin::tTCPPlugin() :
+  tNetworkTransportPlugin("tcp", "tcp"),
+  par_connect_to(this, "Connect To"),
+  par_preferred_server_port(this, "Preferred Server Port", 4444),
+  par_try_next_ports_if_occupied(this, "Try Next Server Port If Occupied", true),
+  par_auto_connect_to_all_peers(this, "Auto-connect To All Peers", true),
+  par_server_listen_address(this, "Server Listen Address", "0.0.0.0"), // = "0.0.0.0";
+  par_peer_type(this, "Peer Type", tPeerType::FULL),
+  par_debug_tcp(this, "Debug TCP", true),
+  par_max_ports_to_try_creating_server_port(this, "Max Ports To Try Creating Server Port", 100),
+  par_min_update_interval_express(this, "Min Update Interval High Priority Data", std::chrono::milliseconds(0)),
+  par_min_update_interval_bulk(this, "Min Update Interval Low Priority Data", std::chrono::milliseconds(40)),
+  par_process_events_call_interval(this, "Process Events Call Interval", std::chrono::milliseconds(5)),
+  par_process_low_priority_tasks_call_interval(this, "Process Low Priority Tasks Call Interval", std::chrono::milliseconds(500))
 {
-public:
-  tPlugin() : tNetworkTransportPlugin("tcp")
-  {
-    rrlib::getopt::AddValue("tcp-auto-connect", 0, "Auto-connect to all peers that become known? (yes/no) - default is 'yes' (Note: this might change in future releases)", &OptionsHandler);
-  }
+  rrlib::getopt::AddValue("tcp-auto-connect", 0, "Auto-connect to all peers that become known? (yes/no) - default is 'yes' (Note: this might change in future releases)", &OptionsHandler);
+}
 
-  virtual std::string Connect(core::tAbstractPort& local_port, const std::string& remote_runtime_uuid,
-                              int remote_port_handle, const std::string remote_port_link) override
-  {
-    core::tFrameworkElement* peer_element = core::tRuntimeEnvironment::GetInstance().GetChild("TCP");
-    if (!peer_element)
-    {
-      return "No peer element instantiated";
-    }
-    return static_cast<tPeer*>(peer_element)->implementation->Connect(local_port, remote_runtime_uuid, remote_port_handle, remote_port_link, false);
-  }
+//----------------------------------------------------------------------
+// tTCPPlugin destructor
+//----------------------------------------------------------------------
+tTCPPlugin::~tTCPPlugin()
+{}
 
-  virtual std::string Disconnect(core::tAbstractPort& local_port, const std::string& remote_runtime_uuid,
-                                 int remote_port_handle, const std::string remote_port_link) override
-  {
-    core::tFrameworkElement* peer_element = core::tRuntimeEnvironment::GetInstance().GetChild("TCP");
-    if (!peer_element)
-    {
-      return "No peer element instantiated";
-    }
-    return static_cast<tPeer*>(peer_element)->implementation->Connect(local_port, remote_runtime_uuid, remote_port_handle, remote_port_link, true);
-  }
+void tTCPPlugin::AddRuntimeToConnectTo(const std::string& address)
+{
+  auto list = *par_connect_to.GetPointer();
+  list.push_back(address);
+  par_connect_to.Set(list);
+}
 
-  virtual void Init(rrlib::xml::tNode* config_node) override
-  {
-  }
-};
-
-static tPlugin cPLUGIN_INSTANCE;
+tTCPPlugin& tTCPPlugin::GetInstance()
+{
+  return plugin_instance;
+}
 
 //----------------------------------------------------------------------
 // End of namespace declaration
 //----------------------------------------------------------------------
-}
 }
 }

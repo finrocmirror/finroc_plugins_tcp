@@ -60,7 +60,6 @@ namespace internal
 //----------------------------------------------------------------------
 // Forward declarations / typedefs / enums
 //----------------------------------------------------------------------
-class tRemotePart;
 
 //----------------------------------------------------------------------
 // Class declaration
@@ -95,9 +94,6 @@ struct tPeerInfo : private rrlib::util::tNoncopyable
    */
   std::vector<boost::asio::ip::address> addresses;
 
-  /*! Are we currently connected with this peer? */
-  bool connected;
-
   /*!
    * The number of active connections and active connecting attempts to the peer initiated by this peer
    * Typically, no new connection attempts should be made when this is not zero.
@@ -111,10 +107,11 @@ struct tPeerInfo : private rrlib::util::tNoncopyable
   bool never_forget;
 
   /*!
-   * Pointer to tRemotePart object that represents remote part in this runtime.
-   * Set when connection is established
+   * Pointer to tRemoteRuntime object that represents remote runtime in this runtime.
+   * Set when connection is established.
+   * Non-null as long as there is a connection to this peer.
    */
-  tRemotePart* remote_part;
+  network_transport::generic_protocol::tRemoteRuntime* remote_runtime;
 
   /*!
    * Name of peer. Will be displayed in tooling and status messages.

@@ -19,7 +19,7 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 //----------------------------------------------------------------------
-/*!\file    plugins/tcp/test/pTestCollection.cpp
+/*!\file    plugins/tcp/tests/pTestCollection.cpp
  *
  * \author  Max Reichardt
  *
@@ -41,11 +41,12 @@
 //----------------------------------------------------------------------
 #include "core/tRuntimeEnvironment.h"
 #include <chrono>
+//#include "plugins/development_utils/mQuickHacks.h"
 
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
-#include "plugins/tcp/test/mTestCollection.h"
+#include "plugins/tcp/tests/mTestCollection.h"
 
 //----------------------------------------------------------------------
 // Debugging
@@ -73,49 +74,6 @@ bool make_all_port_links_unique = false;
 // Implementation
 //----------------------------------------------------------------------
 
-finroc::tcp::test::mTestCollection* test_collection_module = NULL;
-
-class tConnector : public tRuntimeListener
-{
-public:
-  tConnector() : connected(false) {}
-
-private:
-  bool connected;
-
-  virtual void OnFrameworkElementChange(tRuntimeListener::tEvent change_type, tFrameworkElement& element) override
-  {
-    if ((!connected) && element.IsPort() && element.GetFlag(tFrameworkElement::tFlag::NETWORK_ELEMENT))
-    {
-      std::string peer_name = element.GetParent()->GetName();
-      FINROC_LOG_PRINT(USER, "Found partner peer: ", peer_name, ". Connecting ports.");
-      connected = true;
-
-      // Connect all input ports to output ports with the same name
-      for (auto it = test_collection_module->GetInputs().ChildPortsBegin(); it != test_collection_module->GetInputs().ChildPortsEnd(); ++it)
-      {
-        if (finroc::data_ports::IsDataFlowType(it->GetDataType()) || it->GetDataType() == finroc::tcp::test::cTYPE)
-        {
-          std::string source = "/TCP/" + peer_name + "/Main Thread/TestCollection/Output/" + it->GetName();
-          it->ConnectTo(source);
-          FINROC_LOG_PRINT(DEBUG, "Connecting to ", source);
-        }
-      }
-
-      tAbstractPort* bb_port = static_cast<tAbstractPort*>(test_collection_module->GetOutputs().GetChild("float blackboard"));
-      std::string source = "/TCP/" + peer_name + "/Main Thread/TestCollection/Input/" + bb_port->GetName();
-      bb_port->ConnectTo(source);
-      FINROC_LOG_PRINT(DEBUG, "Connecting to ", source);
-    }
-  }
-
-  virtual void OnEdgeChange(tRuntimeListener::tEvent change_type, tAbstractPort& source, tAbstractPort& target) override
-  {
-  }
-};
-
-tConnector connector;
-
 //----------------------------------------------------------------------
 // StartUp
 //----------------------------------------------------------------------
@@ -129,8 +87,27 @@ void CreateMainGroup(const std::vector<std::string> &remaining_arguments)
 {
   finroc::structure::tTopLevelThreadContainer<> *main_thread = new finroc::structure::tTopLevelThreadContainer<>("Main Thread", __FILE__".xml", true, make_all_port_links_unique);
 
-  test_collection_module = new finroc::tcp::test::mTestCollection(main_thread);
-  tRuntimeEnvironment::GetInstance().AddListener(connector);
+  auto test_collection_module = new finroc::tcp::tests::mTestCollection(main_thread);
+
+  // Connect all input ports to output ports with the same name
+  for (auto it = test_collection_module->GetInputs().ChildPortsBegin(); it != test_collection_module->GetInputs().ChildPortsEnd(); ++it)
+  {
+    if (finroc::data_ports::IsDataFlowType(it->GetDataType()) || it->GetDataType() == finroc::tcp::tests::cTYPE)
+    {
+      rrlib::uri::tURI uri("tcp:/Main Thread/TestCollection/Output/" + it->GetName());
+      it->ConnectTo(uri);
+      FINROC_LOG_PRINT(DEBUG, "Connecting to ", uri.ToString());
+    }
+  }
+
+  auto client_port = test_collection_module->float_blackboard_client.GetWritePort();
+  auto server_port = test_collection_module->float_blackboard.GetWritePort();
+  rrlib::uri::tURI uri("tcp:" + rrlib::uri::tURI(server_port.GetWrapped()->GetPath()).ToString());
+  FINROC_LOG_PRINT(DEBUG, "Connecting to ", uri.ToString());
+  client_port.ConnectTo(uri);
+
+
+  //finroc::development_utils::mQuickHacks::PrintChildTree(finroc::core::tRuntimeEnvironment::GetInstance());
 
   main_thread->SetCycleTime(std::chrono::milliseconds(100));
 }

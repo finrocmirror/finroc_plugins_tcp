@@ -38,7 +38,6 @@
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
-#include "plugins/tcp/tSettings.h"
 #include "plugins/tcp/internal/tConnection.h"
 #include "plugins/tcp/internal/tPeerImplementation.h"
 #include "plugins/tcp/internal/util.h"
@@ -91,7 +90,7 @@ public:
   {
     if (!error)
     {
-      tConnection::InitConnection(implementation->peer, socket, 0, NULL);
+      tConnection::TryToEstablishConnection(implementation->peer, socket, 0, nullptr);
     }
     else
     {
@@ -112,11 +111,8 @@ public:
 };
 
 tServer::tServer(tPeerImplementation& peer) :
-  tFrameworkElement(&peer.framework_element, "TCP Server", tFlag::NETWORK_ELEMENT),
-  peer(peer),
-  desired_port(peer.create_options.preferred_server_port),
-  try_next_ports_if_occupied(peer.create_options.try_next_ports_if_occupied),
-  server_listen_address(peer.create_options.server_listen_address)
+  tFrameworkElement(peer.GetPluginRootFrameworkElement(), "TCP Server", tFlag::NETWORK_ELEMENT),
+  peer(peer)
 {
 }
 
@@ -130,10 +126,12 @@ void tServer::Run()
   std::shared_ptr<boost::asio::ip::tcp::acceptor> acceptor;
   boost::system::error_code ec;
 
-  boost::asio::ip::address listen_address = boost::asio::ip::address::from_string(server_listen_address);
+  boost::asio::ip::address listen_address = boost::asio::ip::address::from_string(peer.par_server_listen_address.Get());
 
+  auto desired_port = peer.par_preferred_server_port.Get();
+  bool try_next_ports_if_occupied = peer.par_try_next_ports_if_occupied.Get();
   for (int port_to_try = desired_port;
-       port_to_try < (try_next_ports_if_occupied ? (desired_port + tSettings::cMAX_PORTS_TO_TRY_FOR_CREATING_SERVER_PORT) : (desired_port + 1));
+       port_to_try < (try_next_ports_if_occupied ? (desired_port + peer.par_max_ports_to_try_creating_server_port.Get()) : (desired_port + 1));
        port_to_try++)
   {
     try
@@ -165,15 +163,15 @@ void tServer::Run()
   }
   if (!acceptor)
   {
-    FINROC_LOG_PRINT(ERROR, "TCP server could not listen on any of the ", tSettings::cMAX_PORTS_TO_TRY_FOR_CREATING_SERVER_PORT, " ports. TCP interface is not available.");
+    FINROC_LOG_PRINT(ERROR, "TCP server could not listen on any of the ", peer.par_max_ports_to_try_creating_server_port.Get(), " ports tried. TCP interface is not available.");
     return;
   }
   FINROC_LOG_PRINT(USER, "TCP server is listening on port ", peer.this_peer.uuid.port);
 
   // If no connect-address was specified and desired port was occupied - connect to part that is running there
-  if (peer.create_options.auto_connect_to_all_peers && DesiredPort() != peer.this_peer.uuid.port)
+  if (peer.par_auto_connect_to_all_peers.Get() && desired_port != peer.this_peer.uuid.port)
   {
-    peer.connect_to.push_back(std::string("localhost:") + std::to_string(DesiredPort()));
+    peer.AddRuntimeToConnectTo(std::string("localhost:") + std::to_string(desired_port));
   }
 
   // Accept connections on socket

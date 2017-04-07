@@ -33,13 +33,11 @@
 // External includes (system with <>, local with "")
 //----------------------------------------------------------------------
 #include "core/tRuntimeEnvironment.h"
-#include "plugins/network_transport/tNetworkConnections.h"
 
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
-#include "plugins/tcp/internal/tNetworkPortInfo.h"
-#include "plugins/tcp/internal/tRemotePart.h"
+#include "plugins/tcp/internal/tConnection.h"
 #include "plugins/tcp/internal/tServer.h"
 #include "plugins/tcp/internal/util.h"
 
@@ -65,6 +63,8 @@ namespace internal
 //----------------------------------------------------------------------
 // Forward declarations / typedefs / enums
 //----------------------------------------------------------------------
+typedef network_transport::runtime_info::tStructureExchange tStructureExchange;
+typedef network_transport::generic_protocol::tRemoteRuntime tRemoteRuntime;
 
 //----------------------------------------------------------------------
 // Const values
@@ -74,8 +74,34 @@ namespace internal
 // Implementation
 //----------------------------------------------------------------------
 
-const int cLOW_PRIORITY_TASK_CALL_INTERVAL = 500; // milliseconds
-const int cPROCESS_EVENTS_CALL_INTERVAL = 5; // milliseconds
+namespace
+{
+
+class tRemoteRuntimeRemover : public core::tAnnotation
+{
+public:
+  tRemoteRuntimeRemover(std::shared_ptr<tPeerInfo>& peer_pointer) :
+    peer_pointer(peer_pointer)
+  {}
+
+  virtual void OnManagedDelete() override
+  {
+    if (peer_pointer->remote_runtime)
+    {
+      FINROC_LOG_PRINT(DEBUG, "Disconnected from ", peer_pointer->remote_runtime->GetName());
+      peer_pointer->remote_runtime = nullptr;
+    }
+  }
+
+  std::shared_ptr<tPeerInfo>& peer_pointer;
+};
+
+boost::posix_time::milliseconds ToBoostPosixTime(const rrlib::time::tDuration& d)
+{
+  return boost::posix_time::milliseconds(std::chrono::duration_cast<std::chrono::milliseconds>(d).count());
+}
+
+}
 
 template <bool REGULAR>
 struct tProcessLowPriorityTasksCaller
@@ -91,7 +117,7 @@ struct tProcessLowPriorityTasksCaller
       implementation->ProcessLowPriorityTasks();
       if (REGULAR)
       {
-        implementation->low_priority_tasks_timer.expires_from_now(boost::posix_time::milliseconds(cLOW_PRIORITY_TASK_CALL_INTERVAL));
+        implementation->low_priority_tasks_timer.expires_from_now(ToBoostPosixTime(implementation->par_process_low_priority_tasks_call_interval.Get()));
         implementation->low_priority_tasks_timer.async_wait(*this);
       }
     }
@@ -109,7 +135,7 @@ struct tProcessEventsCaller
     if (!error)
     {
       implementation->ProcessEvents();
-      implementation->event_processing_timer.expires_from_now(boost::posix_time::milliseconds(cPROCESS_EVENTS_CALL_INTERVAL));
+      implementation->event_processing_timer.expires_from_now(ToBoostPosixTime(implementation->par_process_events_call_interval.Get()));
       implementation->event_processing_timer.async_wait(*this);
     }
   }
@@ -166,8 +192,7 @@ struct tAddressConnectorTask
     }
     else
     {
-      FINROC_LOG_PRINT(DEBUG, "Connected to ", connect_to, " (", endpoints[current_endpoint_index].address().to_string(), ")");
-      tConnection::InitConnection(*implementation, socket, 0x7, NULL, true); // TODO: possibly use multiple connections
+      tConnection::TryToEstablishConnection(*implementation, socket, 0x7, NULL, true); // TODO: possibly use multiple connections
     }
   }
 };
@@ -219,7 +244,7 @@ struct tConnectorTask
     }
     else
     {
-      tConnection::InitConnection(*implementation, socket, 0x7, active_connect_indicator); // TODO: possibly use multiple connections
+      tConnection::TryToEstablishConnection(*implementation, socket, 0x7, active_connect_indicator); // TODO: possibly use multiple connections
     }
   }
 };
@@ -252,7 +277,7 @@ private:
     }
     catch (const std::exception& ex)
     {
-      FINROC_LOG_PRINT(WARNING, "Thread exited with exception ", ex);
+      FINROC_LOG_PRINT(WARNING, "TCP thread exited with exception ", ex);
     }
   }
 
@@ -264,65 +289,26 @@ private:
   tPeerImplementation& implementation;
 };
 
+//FIXME: remove in next Finroc version
+bool IsLoopbackAddress(const boost::asio::ip::address& address)
+{
+  return address.is_v4() ? (address.to_v4() == boost::asio::ip::address_v4::loopback()) : (address.to_v6() == boost::asio::ip::address_v6::loopback());
+}
 
-tPeerImplementation::tPeerImplementation(core::tFrameworkElement& framework_element, const tOptions& options) :
-  framework_element(framework_element),
-  create_options(options),
-  connect_to(),
-  this_peer(options.peer_type),
+
+tPeerImplementation::tPeerImplementation() :
+  this_peer(tPeerType::UNSPECIFIED),
   other_peers(),
   //peer_list_revision(0),
   peer_list_changed(false),
   thread(),
   io_service(new boost::asio::io_service()),
-  low_priority_tasks_timer(*io_service, boost::posix_time::milliseconds(cLOW_PRIORITY_TASK_CALL_INTERVAL)),
+  low_priority_tasks_timer(*io_service, boost::posix_time::milliseconds(500)),  // this is only the initial wait
   event_processing_timer(*io_service, boost::posix_time::milliseconds(5)),
-  server(NULL),
-  shared_ports(),
-  shared_ports_mutex(),
-  serve_structure(false),
-  incoming_structure_changes(),
+  server(nullptr),
   actively_connect(false),
-  pending_subscription_checks(),
-  pending_subscription_checks_mutex(),
-  pending_subscription_checks_copy(),
-  event_loop_running(false),
-  incoming_port_buffer_changes(),
-  port_buffer_change_event_buffers(),
-  deleted_rpc_ports(),
-  deleted_rpc_ports_mutex()
+  event_loop_running(false)
 {
-  // initialize and adjust TCP settings
-  tSettings::GetInstance().critical_ping_threshold.Set(options.critical_ping_threshold);
-  tSettings::GetInstance().max_not_acknowledged_packets_bulk.Set(options.max_not_acknowledged_packets_bulk);
-  tSettings::GetInstance().max_not_acknowledged_packets_express.Set(options.max_not_acknowledged_packets_express);
-  tSettings::GetInstance().min_update_interval_bulk.Set(options.min_update_interval_bulk);
-  tSettings::GetInstance().min_update_interval_express.Set(options.min_update_interval_express);
-
-  this_peer.name = options.peer_name;
-
-  // Retrieve host name
-  char buffer[258];
-  if (gethostname(buffer, 257))
-  {
-    this_peer.uuid.host_name = "No host name@" + std::to_string(rrlib::time::Now(true).time_since_epoch().count());
-    FINROC_LOG_PRINT(ERROR, "Error retrieving host name.");
-  }
-  else if (std::string(buffer) == "localhost")
-  {
-    this_peer.uuid.host_name = "localhost@" + std::to_string(rrlib::time::Now(true).time_since_epoch().count());
-    FINROC_LOG_PRINT(ERROR, "The hostname of this system is 'localhost' (according to the hostname() function). When using the finroc_tcp plugin, this is not allowed (a unique identifier for this Finroc runtime environment is derived from the hostname). Ideally, the hostname is the name under which the system can be found in the network using DNS lookup. Otherwise, please set it to a unique name in the network. For now, the current time is appended for the uuid: '", this_peer.uuid.host_name, "'.");
-  }
-  else
-  {
-    this_peer.uuid.host_name = buffer;
-  }
-
-  // Create server
-  if (options.peer_type != tPeerType::CLIENT_ONLY)
-  {
-    server = new tServer(*this);
-  }
 }
 
 tPeerImplementation::~tPeerImplementation()
@@ -333,8 +319,6 @@ tPeerImplementation::~tPeerImplementation()
     thread->StopThread();
     thread->Join();
   }
-
-  core::tRuntimeEnvironment::GetInstance().RemoveListener(*this);
 }
 
 void tPeerImplementation::AddAddress(const boost::asio::ip::address& address)
@@ -376,54 +360,8 @@ void tPeerImplementation::AddPeerAddresses(tPeerInfo& existing_peer, const std::
 void tPeerImplementation::Connect()
 {
   actively_connect = true;
-
-  for (const std::string & address : create_options.connect_to)
-  {
-    connect_to.push_back(address);
-  }
-
   low_priority_tasks_timer.async_wait(tProcessLowPriorityTasksCaller<false>(*this)); // immediately trigger connecting
 }
-
-std::string tPeerImplementation::Connect(core::tAbstractPort& local_port, const std::string& remote_runtime_uuid,
-    int remote_port_handle, const std::string remote_port_link, bool disconnect)
-{
-  for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
-  {
-    if ((*it)->remote_part && (*it)->uuid.ToString() == remote_runtime_uuid)
-    {
-      tRemotePart& part = *((*it)->remote_part);
-      auto remote_port = part.remote_port_map.find(remote_port_handle);
-      if (remote_port != part.remote_port_map.end())
-      {
-        if (!disconnect)
-        {
-          local_port.ConnectTo(remote_port->second->GetQualifiedLink(), core::tAbstractPort::tConnectDirection::AUTO, true);
-          if (!local_port.IsConnectedTo(*remote_port->second))
-          {
-            return "Could not connect ports (see console output for reasons)";
-          }
-          return "";
-        }
-        else
-        {
-          local_port.DisconnectFrom(remote_port->second->GetQualifiedLink());
-          if (local_port.IsConnectedTo(*remote_port->second))
-          {
-            return "Could not disconnect ports (see console output for reasons)";
-          }
-          return "";
-        }
-      }
-      else
-      {
-        return "No remote port with handle " + std::to_string(remote_port_handle) + "found";
-      }
-    }
-  }
-  return "No remote runtime with UUID " + remote_runtime_uuid + " found";
-}
-
 
 void tPeerImplementation::DeserializePeerInfo(rrlib::serialization::tInputStream& stream, tPeerInfo& peer)
 {
@@ -440,7 +378,7 @@ void tPeerImplementation::DeserializePeerInfo(rrlib::serialization::tInputStream
   }
 }
 
-tRemotePart* tPeerImplementation::GetRemotePart(const tUUID& uuid, tPeerType peer_type, const std::string& peer_name, const boost::asio::ip::address& address, bool never_forget)
+network_transport::generic_protocol::tRemoteRuntime* tPeerImplementation::GetRemoteRuntime(std::shared_ptr<tConnection>& connection, const tUUID& uuid, tPeerType peer_type, const std::string& peer_name, const boost::asio::ip::address& address, bool never_forget)
 {
   if (uuid == this->this_peer.uuid)
   {
@@ -452,10 +390,11 @@ tRemotePart* tPeerImplementation::GetRemotePart(const tUUID& uuid, tPeerType pee
   {
     if ((*it)->uuid == uuid)
     {
-      if (!(*it)->remote_part)
+      if (!(*it)->remote_runtime)
       {
-        (*it)->remote_part = new tRemotePart(**it, framework_element, *this);
-        (*it)->remote_part->Init();
+        (*it)->remote_runtime = new tRemoteRuntime(*this, connection, *GetPluginRootFrameworkElement(), uuid.ToString());
+        (*it)->remote_runtime->EmplaceAnnotation<tRemoteRuntimeRemover>(*it);
+        (*it)->remote_runtime->Init();
       }
       (*it)->AddAddress(address);
 #if 0
@@ -466,20 +405,21 @@ tRemotePart* tPeerImplementation::GetRemotePart(const tUUID& uuid, tPeerType pee
 #endif
       (*it)->name = peer_name;
       (*it)->never_forget |= never_forget;
-      return (*it)->remote_part;
+      return (*it)->remote_runtime;
     }
   }
 
   other_peers.emplace_back(new tPeerInfo(peer_type));
-  tPeerInfo& info = **(other_peers.end() - 1);
+  tPeerInfo& info = *other_peers.back();
   info.addresses.push_back(address);
   info.uuid = uuid;
   info.name = peer_name;
   info.never_forget = never_forget;
-  info.remote_part = new tRemotePart(info, framework_element, *this);
-  info.remote_part->Init();
+  info.remote_runtime = new tRemoteRuntime(*this, connection, *GetPluginRootFrameworkElement(), uuid.ToString());
+  info.remote_runtime->EmplaceAnnotation<tRemoteRuntimeRemover>(other_peers.back());
+  info.remote_runtime->Init();
   //peer_list_revision++;
-  return info.remote_part;
+  return info.remote_runtime;
 }
 
 void tPeerImplementation::InferMissingAddresses()
@@ -499,100 +439,45 @@ void tPeerImplementation::InferMissingAddresses()
   }
 }
 
-bool tPeerImplementation::IsSharedPort(core::tFrameworkElement& framework_element)
+void tPeerImplementation::Init(rrlib::xml::tNode* config_node)
 {
-  return framework_element.IsPort() && framework_element.GetFlag(core::tFrameworkElement::tFlag::SHARED) &&
-         (!framework_element.GetFlag(core::tFrameworkElement::tFlag::NETWORK_ELEMENT));
-}
+  tNetworkTransportPlugin::Init(config_node);
+  this_peer.peer_type = par_peer_type.Get();
+  this_peer.name = network_transport::generic_protocol::tLocalRuntimeInfo::GetName();
 
-void tPeerImplementation::OnEdgeChange(core::tRuntimeListener::tEvent change_type, core::tAbstractPort& source, core::tAbstractPort& target)
-{
-  // Maintain network connection info for finstruct
-  bool target_port_changed = false;
-  UpdateNetworkConnectionInfo(change_type, source, target, target_port_changed);
+  // Retrieve host name
+  char buffer[258];
+  if (gethostname(buffer, 257))
+  {
+    this_peer.uuid.host_name = "No host name@" + std::to_string(rrlib::time::Now(true).time_since_epoch().count());
+    FINROC_LOG_PRINT(ERROR, "Error retrieving host name.");
+  }
+  else if (std::string(buffer) == "localhost")
+  {
+    this_peer.uuid.host_name = "localhost@" + std::to_string(rrlib::time::Now(true).time_since_epoch().count());
+    FINROC_LOG_PRINT(ERROR, "The hostname of this system is 'localhost' (according to the hostname() function). When using the finroc_tcp plugin, this is not allowed (a unique identifier for this Finroc runtime environment is derived from the hostname). Ideally, the hostname is the name under which the system can be found in the network using DNS lookup. Otherwise, please set it to a unique name in the network. For now, the current time is appended for the uuid: '", this_peer.uuid.host_name, "'.");
+  }
+  else
+  {
+    this_peer.uuid.host_name = buffer;
+  }
 
-  // Forward change to clients
-  if (source.IsReady())
+  // Create server
+  if (this_peer.peer_type != tPeerType::CLIENT_ONLY)
   {
-    ProcessRuntimeChange(core::tRuntimeListener::tEvent::CHANGE, source, true);
-  }
-  if (target.IsReady() && target_port_changed)
-  {
-    ProcessRuntimeChange(core::tRuntimeListener::tEvent::CHANGE, target, true);
-  }
-
-  // Check subscriptions?
-  if (source.IsReady())
-  {
-    tNetworkPortInfo* network_port_info = source.GetAnnotation<tNetworkPortInfo>();
-    if (network_port_info)
-    {
-      network_port_info->CheckSubscription(pending_subscription_checks, pending_subscription_checks_mutex);
-    }
-  }
-  if (target.IsReady())
-  {
-    tNetworkPortInfo* network_port_info = target.GetAnnotation<tNetworkPortInfo>();
-    if (network_port_info)
-    {
-      network_port_info->CheckSubscription(pending_subscription_checks, pending_subscription_checks_mutex);
-    }
+    server = new tServer(*this);
   }
 }
 
-void tPeerImplementation::OnFrameworkElementChange(core::tRuntimeListener::tEvent change_type, core::tFrameworkElement& element)
+void tPeerImplementation::OnStartServingStructure()
 {
-  // Maintain network connection info for finstruct
-  if (change_type == core::tRuntimeListener::ADD && element.IsPort())
-  {
-    core::tAbstractPort& port = static_cast<core::tAbstractPort&>(element);
-    for (auto it = port.OutgoingConnectionsBegin(); it != port.OutgoingConnectionsEnd(); ++it)
-    {
-      bool target_port_changed = false;
-      UpdateNetworkConnectionInfo(change_type, port, *it, target_port_changed);
-    }
-  }
-
-  ProcessRuntimeChange(change_type, element, false);
-
-  // Check subscriptions?
-  if (change_type == core::tRuntimeListener::tEvent::CHANGE)
-  {
-    tNetworkPortInfo* network_port_info = element.GetAnnotation<tNetworkPortInfo>();
-    if (network_port_info)
-    {
-      network_port_info->CheckSubscription(pending_subscription_checks, pending_subscription_checks_mutex);
-    }
-  }
-  if (change_type == core::tRuntimeListener::tEvent::ADD && element.IsPort())
-  {
-    // Check for any connected remote destination ports:
-    // Network input port may already be initialized, while local connected output port is initialized now.
-    // => Trigger subscription check in this case
-    core::tAbstractPort& port = static_cast<core::tAbstractPort&>(element);
-    for (auto it = port.OutgoingConnectionsBegin(); it != port.OutgoingConnectionsEnd(); ++it)
-    {
-      tNetworkPortInfo* network_port_info = it->GetAnnotation<tNetworkPortInfo>();
-      if (network_port_info)
-      {
-        network_port_info->CheckSubscription(pending_subscription_checks, pending_subscription_checks_mutex);
-      }
-    }
-  }
-
-
-  // RPC port deletion?
-  if (change_type == core::tRuntimeListener::tEvent::REMOVE && element.IsPort() &&
-      rpc_ports::IsRPCType(static_cast<core::tAbstractPort&>(element).GetDataType()))
-  {
-    rrlib::thread::tLock lock(deleted_rpc_ports_mutex);
-    deleted_rpc_ports.push_back(element.GetHandle());
-  }
+  Connect();
+  StartServer();
 }
 
 void tPeerImplementation::ProcessIncomingPeerInfo(const tPeerInfo& peer_info)
 {
-  tPeerInfo* existing_peer = NULL;
+  tPeerInfo* existing_peer = nullptr;
   if (peer_info.uuid == this_peer.uuid)
   {
     existing_peer = &this_peer;
@@ -628,44 +513,16 @@ void tPeerImplementation::ProcessIncomingPeerInfo(const tPeerInfo& peer_info)
 void tPeerImplementation::ProcessEvents()
 {
   rrlib::time::tTimestamp time_now = rrlib::time::Now();
-  //FINROC_LOG_PRINT(DEBUG, "Called");
-
-  // Process incoming structure changes
-  ProcessRuntimeChangeEvents();
-
-  // Process pending subscription checks
-  {
-    rrlib::thread::tLock lock(pending_subscription_checks_mutex);
-    pending_subscription_checks_copy = pending_subscription_checks;
-    pending_subscription_checks.clear();
-  }
-  for (auto it = pending_subscription_checks_copy.begin(); it != pending_subscription_checks_copy.end(); ++it)
-  {
-    core::tAbstractPort* port = core::tRuntimeEnvironment::GetInstance().GetPort(*it);
-    if (port && port->IsReady())
-    {
-      tNetworkPortInfo* network_port_info = port->GetAnnotation<tNetworkPortInfo>();
-      if (network_port_info)
-      {
-        network_port_info->DoSubscriptionCheck();
-      }
-    }
-  }
-
-  // Process incoming port buffer changes
-  rrlib::concurrent_containers::tQueueFragment<tChangeEventPointer> port_changes = incoming_port_buffer_changes.DequeueAll();
-  while (!port_changes.Empty())
-  {
-    tChangeEventPointer change_event = port_changes.PopFront();
-    change_event->network_port_info->ProcessIncomingBuffer(change_event);
-  }
+  ProcessLocalRuntimeCallsToSend();
+  ProcessLocalRuntimePortDataChanges();
+  ProcessLocalRuntimeStructureChanges();
 
   // Process active connections
   for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
   {
-    if ((*it)->remote_part)
+    if ((*it)->remote_runtime)
     {
-      (*it)->remote_part->SendPendingMessages(time_now);
+      (*it)->remote_runtime->SendPendingMessages(time_now);
     }
   }
 }
@@ -674,30 +531,23 @@ void tPeerImplementation::ProcessLowPriorityTasks()
 {
   FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Alive ", rrlib::time::Now().time_since_epoch().count());
 
-  // delete buffer pools created for RPC ports
-  std::vector<core::tFrameworkElement::tHandle> deleted_ports;
-  {
-    rrlib::thread::tLock lock(deleted_rpc_ports_mutex);
-    if (!deleted_rpc_ports.empty())
-    {
-      std::swap(deleted_ports, deleted_rpc_ports); // Move deleted ports to local variable and unlock
-    }
-  }
-  if (!deleted_ports.empty())
-  {
-    for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
-    {
-      tPeerInfo& peer = **it;
-      if (peer.remote_part)
-      {
-        peer.remote_part->RpcPortsDeleted(deleted_ports);
-      }
-    }
-  }
-
   // connect to other peers
   if (actively_connect)
   {
+    if (par_connect_to.HasChanged())
+    {
+      auto current_connect_to = par_connect_to.GetPointer();
+      for (const std::string & address : (*current_connect_to))
+      {
+        if (connected_to.count(address) == 0)
+        {
+          connect_to.push_back(address);
+          connected_to.insert(address);
+        }
+      }
+      par_connect_to.ResetChanged();
+    }
+
     for (auto it = connect_to.begin(); it != connect_to.end(); ++it)
     {
       FINROC_LOG_PRINT(DEBUG, "Connecting to ", *it);
@@ -708,8 +558,8 @@ void tPeerImplementation::ProcessLowPriorityTasks()
     for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
     {
       tPeerInfo& peer = **it;
-      if ((!peer.connected) && (!peer.connecting) && (peer.peer_type != tPeerType::CLIENT_ONLY) &&
-          (create_options.auto_connect_to_all_peers || peer.never_forget))
+      if ((!peer.remote_runtime) && (!peer.connecting) && (peer.peer_type != tPeerType::CLIENT_ONLY) &&
+          (par_auto_connect_to_all_peers.Get() || peer.never_forget))
       {
         tConnectorTask connector_task(*this, peer);
       }
@@ -719,95 +569,24 @@ void tPeerImplementation::ProcessLowPriorityTasks()
   // send peer list if needed
   if (peer_list_changed)
   {
-    for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
+    for (auto & remote_runtime : ConnectedRuntimes())
     {
-      tPeerInfo& peer = **it;
-      tRemotePart *remote_part = peer.remote_part;
-      if (remote_part && peer.connected)
+      tConnection& connection = static_cast<tConnection&>(*remote_runtime->GetPrimaryConnection());
+      if (connection.IsReady())
       {
-        std::shared_ptr<tConnection> management_connection = remote_part->GetManagementConnection();
-        if (management_connection && management_connection->IsReady())
+        auto& stream = connection.CurrentWriteStream();
+        network_transport::generic_protocol::tPeerInfoMessage::Serialize(false, true, stream);
+        SerializePeerInfo(stream, this_peer);
+        for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
         {
-
-          tPeerInfoMessage::Serialize(false, management_connection->CurrentWriteStream());
-
-          SerializePeerInfo(management_connection->CurrentWriteStream(), this_peer);
-
-          for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
-          {
-            SerializePeerInfo(management_connection->CurrentWriteStream(), **it);
-          }
-
-          management_connection->CurrentWriteStream().WriteBoolean(false);
-          tPeerInfoMessage::FinishMessage(management_connection->CurrentWriteStream());
-
+          SerializePeerInfo(stream, **it);
         }
+        stream.WriteBoolean(false);
+        network_transport::generic_protocol::tPeerInfoMessage::FinishMessage(stream);
       }
     }
 
     peer_list_changed = false;
-  }
-}
-
-void tPeerImplementation::ProcessRuntimeChange(core::tRuntimeListener::tEvent change_type, core::tFrameworkElement& element, bool edge_change)
-{
-  bool shared_port = IsSharedPort(element);
-  bool serve_structure_copy = serve_structure.load();
-
-  bool relevant_for_shared_port_client = shared_port && (!edge_change);
-  bool relevant_for_structure_client = !element.GetFlag(core::tFrameworkElement::tFlag::NETWORK_ELEMENT) && (!edge_change);
-
-  if ((relevant_for_shared_port_client || serve_structure_copy) && (change_type != core::tRuntimeListener::tEvent::PRE_INIT))
-  {
-    std::unique_ptr<tSerializedStructureChange> change(new tSerializedStructureChange(change_type, element, serve_structure_copy,
-        relevant_for_shared_port_client ? network_transport::tStructureExchange::SHARED_PORTS :
-        (relevant_for_structure_client ? network_transport::tStructureExchange::COMPLETE_STRUCTURE : network_transport::tStructureExchange::FINSTRUCT)));
-
-    if (relevant_for_shared_port_client)
-    {
-      rrlib::thread::tLock lock(shared_ports_mutex, false);
-      if (change_type == core::tRuntimeListener::tEvent::ADD || change_type == core::tRuntimeListener::tEvent::CHANGE)
-      {
-        rrlib::serialization::tStackMemoryBuffer<2048> buffer;
-        rrlib::serialization::tOutputStream stream(buffer);
-        std::string string_buffer;
-        network_transport::tFrameworkElementInfo::Serialize(stream, element, network_transport::tStructureExchange::SHARED_PORTS, string_buffer);
-        stream.Flush();
-        lock.Lock();
-        shared_ports[element.GetHandle()] = CopyToNewFixedBuffer(buffer);
-      }
-      else if (change_type == core::tRuntimeListener::tEvent::REMOVE)
-      {
-        lock.Lock();
-        shared_ports.erase(element.GetHandle());
-      }
-      incoming_structure_changes.Enqueue(std::move(change)); // do this with lock - to avoid inconsistencies
-    }
-    else
-    {
-      //FINROC_LOG_PRINT(DEBUG, "Enqueuing ", change.get(), " ", element.GetQualifiedName());
-      incoming_structure_changes.Enqueue(std::move(change));
-    }
-  }
-}
-
-void tPeerImplementation::ProcessRuntimeChangeEvents()
-{
-  rrlib::concurrent_containers::tQueueFragment<std::unique_ptr<tSerializedStructureChange>> incoming_structure_changes_fragment = incoming_structure_changes.DequeueAll();
-  while (!incoming_structure_changes_fragment.Empty())
-  {
-    std::unique_ptr<tSerializedStructureChange> incoming_structure_change = incoming_structure_changes_fragment.PopFront();
-    //FINROC_LOG_PRINT(DEBUG, "Dequeuing ", incoming_structure_change.get());
-    for (auto it = other_peers.begin(); it != other_peers.end(); ++it)
-    {
-      if ((*it)->remote_part)
-      {
-        if (static_cast<size_t>((*it)->remote_part->GetDesiredStructureInfo()) >= static_cast<size_t>(incoming_structure_change->MinimumRelevantLevel()))
-        {
-          (*it)->remote_part->SendStructureChange(*incoming_structure_change);
-        }
-      }
-    }
   }
 }
 
@@ -816,20 +595,14 @@ void tPeerImplementation::RunEventLoop()
   if (!event_loop_running)
   {
     event_loop_running = true;
-    event_processing_timer.expires_from_now(boost::posix_time::milliseconds(cPROCESS_EVENTS_CALL_INTERVAL));
+    event_processing_timer.expires_from_now(ToBoostPosixTime(par_process_events_call_interval.Get()));
     event_processing_timer.async_wait(tProcessEventsCaller(*this));
   }
 }
 
-//FIXME: remove in next Finroc version
-bool IsLoopbackAddress(const boost::asio::ip::address& address)
-{
-  return address.is_v4() ? (address.to_v4() == boost::asio::ip::address_v4::loopback()) : (address.to_v6() == boost::asio::ip::address_v6::loopback());
-}
-
 void tPeerImplementation::SerializePeerInfo(rrlib::serialization::tOutputStream& stream, const tPeerInfo& peer)
 {
-  if ((&peer == &this_peer || peer.connected) && peer.peer_type != tPeerType::CLIENT_ONLY)
+  if ((&peer == &this_peer || peer.remote_runtime) && peer.peer_type != tPeerType::CLIENT_ONLY)
   {
     stream << true;
     stream << peer.uuid;
@@ -860,57 +633,8 @@ void tPeerImplementation::SerializePeerInfo(rrlib::serialization::tOutputStream&
   }
 }
 
-rrlib::serialization::tMemoryBuffer tPeerImplementation::SerializeSharedPorts(common::tRemoteTypes& connection_type_encoder)
-{
-  rrlib::thread::tLock lock(shared_ports_mutex);
-  ProcessRuntimeChangeEvents();  // to make sure we don't get any shared port events twice
-  rrlib::serialization::tMemoryBuffer buffer(shared_ports.size() * 200);
-  rrlib::serialization::tOutputStream stream(buffer, connection_type_encoder);
-  stream.WriteInt(0); // Placeholder for size
-  stream << rrlib::rtti::tDataType<std::string>(); // write a data type for initialization
-  for (auto it = shared_ports.begin(); it != shared_ports.end(); ++it)
-  {
-    stream << it->first;
-    stream.Write(it->second);
-  }
-  stream.WriteInt(0); // size of next packet
-  stream.Close();
-  buffer.GetBuffer().PutInt(0, buffer.GetSize() - 8);
-  return buffer;
-}
-
 void tPeerImplementation::StartServer()
 {
-  core::tRuntimeEnvironment::GetInstance().AddListener(*this);
-
-  // Collect existing shared ports and store serialized information about them
-  rrlib::serialization::tStackMemoryBuffer<2048> buffer;
-  rrlib::serialization::tOutputStream stream(buffer);
-  std::string string_buffer;
-  enum { cPORT_BUFFER_SIZE = 2048 };
-  core::tAbstractPort* port_buffer[cPORT_BUFFER_SIZE];
-  typename core::tFrameworkElement::tHandle start_handle = 0;
-  while (true)
-  {
-    size_t port_count = core::tRuntimeEnvironment::GetInstance().GetAllPorts(port_buffer, cPORT_BUFFER_SIZE, start_handle);
-    for (size_t i = 0; i < port_count; i++)
-    {
-      core::tAbstractPort& port = *port_buffer[i];
-      if (IsSharedPort(port))
-      {
-        stream.Reset();
-        network_transport::tFrameworkElementInfo::Serialize(stream, port, network_transport::tStructureExchange::SHARED_PORTS, string_buffer);
-        stream.Flush();
-        shared_ports.insert(std::pair<core::tFrameworkElement::tHandle, rrlib::serialization::tFixedBuffer>(port.GetHandle(), CopyToNewFixedBuffer(buffer)));
-      }
-    }
-    if (port_count < cPORT_BUFFER_SIZE)
-    {
-      break;
-    }
-    start_handle = port_buffer[cPORT_BUFFER_SIZE - 1]->GetHandle() + 1;
-  };
-
   // Start TCP Thread
   StartThread();
 }
@@ -923,36 +647,6 @@ void tPeerImplementation::StartThread()
   thread->Start();
 }
 
-void tPeerImplementation::UpdateNetworkConnectionInfo(core::tRuntimeListener::tEvent change_type, core::tAbstractPort& source, core::tAbstractPort& target, bool& target_port_changed)
-{
-  tNetworkPortInfo* target_port_info = target.GetAnnotation<tNetworkPortInfo>();
-  bool destination_is_source = false;
-  core::tAbstractPort* connection_annotated = &source;
-  if ((!target_port_info) || target_port_info->IsServerPort())
-  {
-    target_port_info = source.GetAnnotation<tNetworkPortInfo>();
-    destination_is_source = true;
-    connection_annotated = &target;
-  }
-
-  if (target_port_info && (!target_port_info->IsServerPort()))
-  {
-    target_port_changed = destination_is_source;
-    network_transport::tNetworkConnections* connections_annotation = connection_annotated->GetAnnotation<network_transport::tNetworkConnections>();
-    if (change_type == core::tRuntimeListener::tEvent::ADD)
-    {
-      if (!connections_annotation)
-      {
-        connections_annotation = &connection_annotated->EmplaceAnnotation<network_transport::tNetworkConnections>();
-      }
-      connections_annotation->Add(network_transport::tNetworkConnection(target_port_info->GetRemotePart().peer_info.uuid.ToString(), target_port_info->GetRemoteHandle(), destination_is_source));
-    }
-    else if (change_type == core::tRuntimeListener::tEvent::REMOVE && connections_annotation)
-    {
-      connections_annotation->Remove(network_transport::tNetworkConnection(target_port_info->GetRemotePart().peer_info.uuid.ToString(), target_port_info->GetRemoteHandle(), destination_is_source));
-    }
-  }
-}
 
 //----------------------------------------------------------------------
 // End of namespace declaration

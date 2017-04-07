@@ -19,7 +19,7 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 //----------------------------------------------------------------------
-/*!\file    plugins/tcp/test/mTestCollection.cpp
+/*!\file    plugins/tcp/tests/mTestCollection.cpp
  *
  * \author  Max Reichardt
  *
@@ -27,7 +27,7 @@
  *
  */
 //----------------------------------------------------------------------
-#include "plugins/tcp/test/mTestCollection.h"
+#include "plugins/tcp/tests/mTestCollection.h"
 
 //----------------------------------------------------------------------
 // External includes (system with <>, local with "")
@@ -55,7 +55,7 @@ namespace finroc
 {
 namespace tcp
 {
-namespace test
+namespace tests
 {
 
 //----------------------------------------------------------------------
@@ -86,7 +86,7 @@ mTestCollection::mTestCollection(core::tFrameworkElement *parent, const std::str
   test_interface_client("Test Interface", &GetInputs()),
   test_interface_server(test_interface, "Test Interface", &GetOutputs(), tFlag::SHARED),
   float_blackboard("float blackboard", this, false, 10, true, nullptr),
-  float_blackboard_client("float blackboard", this, false, nullptr),
+  float_blackboard_client("float blackboard client", this, false, nullptr),
   counter(0)
 {
   in_pull_testing.SetPushStrategy(false);
@@ -161,7 +161,7 @@ void mTestCollection::Update()
       }
       catch (const blackboard::tLockException& ex)
       {
-        FINROC_LOG_PRINT(WARNING, "Could not lock remote blackboard for writing");
+        FINROC_LOG_PRINT(WARNING, "Could not write to remote blackboard: ", ex);
       }
 
       try
@@ -171,7 +171,7 @@ void mTestCollection::Update()
       }
       catch (const blackboard::tLockException& ex)
       {
-        FINROC_LOG_PRINT(WARNING, "Could not lock remote blackboard for reading");
+        FINROC_LOG_PRINT(WARNING, "Could not read from local blackboard", ex);
       }
     }
     else if (counter < 200)

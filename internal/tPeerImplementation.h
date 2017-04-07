@@ -39,21 +39,16 @@
 //----------------------------------------------------------------------
 // External includes (system with <>, local with "")
 //----------------------------------------------------------------------
-#include <map>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/deadline_timer.hpp>
+#include <set>
+
 #include "rrlib/thread/tThread.h"
-#include "core/tFrameworkElement.h"
 
 //----------------------------------------------------------------------
 // Internal includes with ""
 //----------------------------------------------------------------------
-#include "plugins/network_transport/structure_info/tFrameworkElementInfo.h"
-#include "plugins/tcp/common/tRemoteTypes.h"
-//#include "plugins/tcp/internal/tNetworkPortInfo.h"
 #include "plugins/tcp/internal/tPeerInfo.h"
-#include "plugins/tcp/internal/tPortBufferChangeEvent.h"
-#include "plugins/tcp/internal/tSerializedStructureChange.h"
 
 //----------------------------------------------------------------------
 // Namespace declaration
@@ -68,9 +63,8 @@ namespace internal
 //----------------------------------------------------------------------
 // Forward declarations / typedefs / enums
 //----------------------------------------------------------------------
-
-class tPlugin;
 class tServer;
+class tConnection;
 
 //----------------------------------------------------------------------
 // Class declaration
@@ -79,25 +73,19 @@ class tServer;
 /*!
  * Implementation of different variants of TCP peer.
  */
-class tPeerImplementation : public core::tRuntimeListener
+class tPeerImplementation : public tTCPPlugin
 {
-
-  typedef rrlib::buffer_pools::tBufferPool < tPortBufferChangeEvent, rrlib::concurrent_containers::tConcurrency::MULTIPLE_READERS,
-          rrlib::buffer_pools::management::QueueBased, rrlib::buffer_pools::deleting::CollectGarbage,
-          rrlib::buffer_pools::recycling::UseOwnerStorageInBuffer > tPortBufferChangeEventPool;
 
 //----------------------------------------------------------------------
 // Public methods and typedefs
 //----------------------------------------------------------------------
 public:
 
-  typedef typename tPortBufferChangeEventPool::tPointer tChangeEventPointer;
-
   /*!
    * \param framework_element Framework element associated with peer
    * \param Options for peer creation
    */
-  tPeerImplementation(core::tFrameworkElement& framework_element, const tOptions& options);
+  tPeerImplementation();
 
   /*! Shuts peer down */
   ~tPeerImplementation();
@@ -109,18 +97,6 @@ public:
 
   /*! Starts actively connecting to the specified network */
   void Connect();
-
-  /*!
-   * Connect local port to port in remote runtime environment using TCP network transport plugin.
-   *
-   * \param local_port Local port to connect
-   * \param remote_runtime_uuid UUID of remote runtime
-   * \param remote_port_handle Handle of remote port
-   * \param remote_port_link Link of port in remote runtime environment
-   * \param disconnect If 'false' the ports are connected - if 'true' the ports are disconnected
-   * \return Returns error message if connecting failed. On success an empty string is returned.
-   */
-  std::string Connect(core::tAbstractPort& local_port, const std::string& remote_runtime_uuid, int remote_port_handle, const std::string remote_port_link, bool disconnect);
 
   /*!
    * Deserialize tPeerInfo from an input stream for peer exchange
@@ -138,17 +114,17 @@ public:
   }
 
   /*!
-   * Gets remote part with specified UUID.
-   * If no such part has been registered yet, creates a new one.
+   * Gets remote runtime with specified UUID.
+   * If no such runtime has been registered yet, creates a new one.
    *
-   * \param uuid UUID of remote part
+   * \param uuid UUID of remote runtime
    * \param peer_type Peer type
    * \param peer_name Name of peer. Will be displayed in tooling and status messages. Does not need to be unique. Typically the program/process name.
-   * \param address IP address of remote part
+   * \param address IP address of remote runtime
    * \param never_forget Is this a remote peer to never forget?
-   * \return Pointer to remote part
+   * \return Pointer to remote runtime
    */
-  tRemotePart* GetRemotePart(const tUUID& uuid, tPeerType peer_type, const std::string& peer_name, const boost::asio::ip::address& address, bool never_forget);
+  network_transport::generic_protocol::tRemoteRuntime* GetRemoteRuntime(std::shared_ptr<tConnection>& connection, const tUUID& uuid, tPeerType peer_type, const std::string& peer_name, const boost::asio::ip::address& address, bool never_forget);
 
   /*!
    * \return Thread id of TCP thread. Null, if TCP thread does not exist
@@ -158,25 +134,14 @@ public:
     return thread ? thread->GetId() : 0;
   }
 
+  virtual void Init(rrlib::xml::tNode* config_node) override;
+
   /*!
    * Reference to Boost asio IO service
    */
   boost::asio::io_service& IOService()
   {
     return *io_service;
-  }
-
-  void PortChanged(data_ports::tPortDataPointer<const rrlib::rtti::tGenericObject>& value, tNetworkPortInfo* info, data_ports::tChangeContext& change_context)
-  {
-    tChangeEventPointer event_buffer = port_buffer_change_event_buffers.GetUnusedBuffer();
-    if (!event_buffer)
-    {
-      event_buffer = port_buffer_change_event_buffers.AddBuffer(std::unique_ptr<tPortBufferChangeEvent>(new tPortBufferChangeEvent()));
-    }
-    event_buffer->new_value = std::move(value);
-    event_buffer->network_port_info = info;
-    event_buffer->change_type = change_context.ChangeType();
-    incoming_port_buffer_changes.Enqueue(event_buffer);
   }
 
   /*!
@@ -192,37 +157,23 @@ public:
   void ProcessIncomingPeerInfo(const tPeerInfo& peer_info);
 
   /*!
+   * Processes incoming structure changes from local runtime
+   */
+  void ProcessLocalRuntimeStructureChanges()
+  {
+    tTCPPlugin::ProcessLocalRuntimeStructureChanges();
+  }
+
+  /*!
    * Called in a regular interval to do things like establishing new connections
    */
   void ProcessLowPriorityTasks();
-
-  /*!
-   * Processes all enqueued runtime change events in TCP thread
-   * and distributes them to all connections that are interested.
-   */
-  void ProcessRuntimeChangeEvents();
 
   /*!
    * Starts running event loop (the one that call ProcessEvents() every 5ms),
    * unless it's already running
    */
   void RunEventLoop();
-
-  /*!
-   * Serializes shared ports and returns that in memory buffer
-   *
-   * \param connection_type_encoder Type encoder object of connection to serialize shared ports for
-   */
-  rrlib::serialization::tMemoryBuffer SerializeSharedPorts(common::tRemoteTypes& connection_type_encoder);
-
-
-  /*!
-   * \return True as soon as peer also serves clients interested in complete application structure
-   */
-  bool ServesStructure() const
-  {
-    return serve_structure.load();
-  }
 
   /*!
    * Mark the peer list as changed.
@@ -238,9 +189,12 @@ public:
    */
   void StartServer();
 
-  void StartServingStructure()
+  /*!
+   * \return Unused buffer for initialization of prototype streams
+   */
+  rrlib::serialization::tStackMemoryBuffer<16>& UnusedInitializationBuffer()
   {
-    serve_structure.store(true);
+    return unused_initialization_buffer;
   }
 
 //----------------------------------------------------------------------
@@ -248,6 +202,7 @@ public:
 //----------------------------------------------------------------------
 private:
 
+  friend class tTCPPluginInstance;
   friend class tServer;
   friend class tTCPThread;
   friend class tRemotePart;
@@ -259,14 +214,14 @@ private:
   friend struct tAddressConnectorTask;
   friend struct tConnectorTask;
 
-  /*! Framework element associated with server */
-  core::tFrameworkElement& framework_element;
+  /*! Unused buffer for initialization of prototype streams (must not be destroyed before connections are) */
+  rrlib::serialization::tStackMemoryBuffer<16> unused_initialization_buffer;
 
-  /*! Options that peer was created with */
-  tOptions create_options;
-
-  /*! Vector containing all network addresses this peer should try to connect to */
+  /*! Vector containing all network addresses this peer should currently try to connect to */
   std::vector<std::string> connect_to;
+
+  /*! Vector containing all network addresses this peer already connected to (should not be added to connect_to again) */
+  std::set<std::string> connected_to;
 
   /*! Info on this peer */
   tPeerInfo this_peer;
@@ -276,7 +231,7 @@ private:
    * Each entry contains reference to tRemotePart instance as soon as a
    * connection to remote part is established.
    */
-  std::vector<std::unique_ptr<tPeerInfo>> other_peers;
+  std::vector<std::shared_ptr<tPeerInfo>> other_peers;
 
   /*! Revision of peer information */
   //int32_t peer_list_revision;
@@ -296,57 +251,14 @@ private:
   /*! TCP server - NULL if this is a client-only peer */
   tServer* server;
 
-  /*! Cached info on ports shared by this peer */
-  std::map<core::tFrameworkElement::tHandle, rrlib::serialization::tFixedBuffer> shared_ports;
-
-  /*! Mutex for 'shared_ports' access */
-  rrlib::thread::tMutex shared_ports_mutex;
-
-  /*!
-   * True as soon as peer also serves clients interested in complete application structure.
-   * This may be enabled later, as this can cause quite a lot of overhead if done during
-   * construction and startup of large (MCA2) applications.
-   */
-  std::atomic<bool> serve_structure;
-
-  /*!
-   * Concurrent queue with incoming structure changes.
-   * Queue is filled when runtime changes occur (structure mutex is acquired by this thread).
-   * Queue is processed when TCP thread calls ProcessIncomingStructureChanges()
-   */
-  rrlib::concurrent_containers::tQueue < std::unique_ptr<tSerializedStructureChange>, rrlib::concurrent_containers::tConcurrency::SINGLE_READER_AND_WRITER,
-        rrlib::concurrent_containers::tDequeueMode::ALL > incoming_structure_changes;
-
   /*!
    * Actively connect to specified network?
    * False initially; true after Connect() has been called
    */
   bool actively_connect;
 
-  /*! Ports to check subscriptions for */
-  std::vector<tFrameworkElementHandle> pending_subscription_checks;
-
-  /*! Mutex for 'pending_subscription_checks' access */
-  rrlib::thread::tMutex pending_subscription_checks_mutex;
-
-  /*! Copy for TCP thread */
-  std::vector<tFrameworkElementHandle> pending_subscription_checks_copy;
-
   /*! True when event loop is running (ProcessEvents() is regularly called by TCP thread) */
   bool event_loop_running;
-
-  /*! Concurrent queue with incoming port value changes */
-  rrlib::concurrent_containers::tQueue < tChangeEventPointer, rrlib::concurrent_containers::tConcurrency::MULTIPLE_WRITERS,
-        rrlib::concurrent_containers::tDequeueMode::ALL > incoming_port_buffer_changes;
-
-  /*! Buffer pool with port value change event buffers */
-  tPortBufferChangeEventPool port_buffer_change_event_buffers;
-
-  /*! List with deleted RPC ports - so that buffer pools created in connection for these ports can be deleted */
-  std::vector<core::tFrameworkElement::tHandle> deleted_rpc_ports;
-
-  /*! Mutex for 'deleted_rpc_ports' access */
-  rrlib::thread::tMutex deleted_rpc_ports_mutex;
 
 
   /*!
@@ -364,14 +276,7 @@ private:
    */
   void InferMissingAddresses();
 
-  /*! Is provided element a shared port (to be announced to other peers)? */
-  static bool IsSharedPort(core::tFrameworkElement& framework_element);
-
-  virtual void OnEdgeChange(core::tRuntimeListener::tEvent change_type, core::tAbstractPort& source, core::tAbstractPort& target) override;
-  virtual void OnFrameworkElementChange(core::tRuntimeListener::tEvent change_type, core::tFrameworkElement& element) override;
-
-  /*! Handles runtime changes from callbacks - and forwards info to 'incoming_structure_changes' queue */
-  void ProcessRuntimeChange(core::tRuntimeListener::tEvent change_type, core::tFrameworkElement& element, bool edge_change);
+  virtual void OnStartServingStructure() override;
 
   /*!
    * Serialize tPeerInfo to an output stream for peer exchange
@@ -383,10 +288,6 @@ private:
   /*! Starts TCP Thread */
   void StartThread();
 
-  /*!
-   * Called whenever a new edge is added and updates network connection info if necessary
-   */
-  void UpdateNetworkConnectionInfo(core::tRuntimeListener::tEvent change_type, core::tAbstractPort& source, core::tAbstractPort& target, bool& target_port_changed);
 };
 
 //----------------------------------------------------------------------

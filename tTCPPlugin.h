@@ -2,7 +2,7 @@
 // You received this file as part of Finroc
 // A framework for intelligent robot control
 //
-// Copyright (C) AG Robotersysteme TU Kaiserslautern
+// Copyright (C) Finroc GbR (finroc.org)
 //
 // This program is free software; you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,28 +19,27 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 //
 //----------------------------------------------------------------------
-/*!\file    plugins/tcp/tOptions.h
+/*!\file    plugins/tcp/tTCPPlugin.h
  *
  * \author  Max Reichardt
  *
- * \date    2014-01-26
+ * \date    2017-03-19
  *
- * \brief   Contains tOptions
+ * \brief   Contains tTCPPlugin
  *
- * \b tOptions
+ * \b tTCPPlugin
  *
- * Options that can be set for TCP plugin.
- * To change default options from your program, get and change them
- * before the TCP plugin is created.
+ * Plugin providing full-featured network transport over TCP/IP - using the generic_protocol from finroc_plugins_network_transport.
+ *
  */
 //----------------------------------------------------------------------
-#ifndef __plugins__tcp__tOptions_h__
-#define __plugins__tcp__tOptions_h__
+#ifndef __plugins__tcp__tTCPPlugin_h__
+#define __plugins__tcp__tTCPPlugin_h__
 
 //----------------------------------------------------------------------
 // External includes (system with <>, local with "")
 //----------------------------------------------------------------------
-#include "rrlib/time/time.h"
+#include "plugins/network_transport/generic_protocol/tNetworkTransportPlugin.h"
 
 //----------------------------------------------------------------------
 // Internal includes with ""
@@ -58,6 +57,11 @@ namespace tcp
 // Forward declarations / typedefs / enums
 //----------------------------------------------------------------------
 
+namespace internal
+{
+class tPeerImplementation;
+}
+
 /*! Mode of peer */
 enum class tPeerType
 {
@@ -70,78 +74,77 @@ enum class tPeerType
 //----------------------------------------------------------------------
 // Class declaration
 //----------------------------------------------------------------------
-//! TCP plugin options.
+//! Custom TCP-based network transport
 /*!
- * Options that can be set for TCP plugin.
- * To change default options from your program, get and change them
- * before the TCP plugin is created.
+ * Plugin providing full-featured network transport over TCP/IP - using the generic_protocol from finroc_plugins_network_transport.
  */
-struct tOptions
+class tTCPPlugin : public network_transport::generic_protocol::tNetworkTransportPlugin
 {
-  /*! Name of peer. Will be displayed in tooling and status messages. Does not need to be unique. Typically the program/process name. */
-  std::string peer_name;
+
+//----------------------------------------------------------------------
+// Public methods and typedefs
+//----------------------------------------------------------------------
+public:
 
   /*! Network addresses of peers to connect to */
-  std::vector<std::string> connect_to;
+  tParameter<std::vector<std::string>> par_connect_to;
 
   /*! Port that we will try to open for server. Will try the next ones if not available (SERVER and FULL only) */
-  int preferred_server_port;
+  tStaticParameter<int> par_preferred_server_port;
 
   /*! Try the following ports, if specified port is already occupied? */
-  bool try_next_ports_if_occupied;
+  tStaticParameter<bool> par_try_next_ports_if_occupied;
 
   /*! Auto-connect to all peers that become known? */
-  bool auto_connect_to_all_peers;
+  tParameter<bool> par_auto_connect_to_all_peers;
 
   /*! The address that server is supposed to listen on ("::" will enable IPv6) */
-  std::string server_listen_address; // = "0.0.0.0";
+  tStaticParameter<std::string> par_server_listen_address; // = "0.0.0.0";
 
   /* Type of peer to be created */
-  tPeerType peer_type;
+  tStaticParameter<tPeerType> par_peer_type;
 
+  /*! Help for debugging: insert checks in data stream => more bandwidth */
+  tStaticParameter<bool> par_debug_tcp;
 
-  // Parameters from tSettings.h - On tPeer creation they will be set from these values
-
-  /*! Maximum packets to send without acknowledgement in express connections */
-  uint32_t max_not_acknowledged_packets_express;
-
-  /*! Maximum packets to send without acknowledgement in bulk connections */
-  uint32_t max_not_acknowledged_packets_bulk;
+  /*! Maximum number of port to try to create a server port on - if default port is occupied */
+  tStaticParameter<int> par_max_ports_to_try_creating_server_port;
 
   /*! Minimum interval between sending data of the same port twice (express connection) */
-  rrlib::time::tDuration min_update_interval_express;
+  tParameter<rrlib::time::tDuration> par_min_update_interval_express;
 
   /*! Minimum interval between sending data of the same port twice (bulk connection) */
-  rrlib::time::tDuration min_update_interval_bulk;
+  tParameter<rrlib::time::tDuration> par_min_update_interval_bulk;
 
-  /*! Critical ping threshold (if this is exceeded ports are notified of disconnect) */
-  rrlib::time::tDuration critical_ping_threshold;
+  /*! More or less the cycle time of TCP event processing loop (default 5ms) - lower results in less latency */
+  tParameter<rrlib::time::tDuration> par_process_events_call_interval;
 
+  /*! Frequency with which to call ProcessLowPriorityTasks (e.g. connecting and exchanging peer information) (default 500ms) */
+  tParameter<rrlib::time::tDuration> par_process_low_priority_tasks_call_interval;
 
-  tOptions() :
-    peer_name("Peer name not set"),
-    connect_to(),
-    preferred_server_port(4444),
-    try_next_ports_if_occupied(true),
-    auto_connect_to_all_peers(true),
-    server_listen_address("0.0.0.0"),
-    peer_type(tPeerType::FULL),
-    max_not_acknowledged_packets_express(10),
-    max_not_acknowledged_packets_bulk(2),
-    min_update_interval_express(std::chrono::milliseconds(1)),
-    min_update_interval_bulk(std::chrono::milliseconds(40)),
-    critical_ping_threshold(std::chrono::milliseconds(1500))
-  {
-  }
 
   /*!
-   * \return Returns default options. They will be used for peer creation in standard Finroc parts.
+   * Conveniently adds entry to 'par_connect_to'
+   *
+   * \param address Address of runtime to actively connect to
    */
-  static tOptions& GetDefaultOptions()
-  {
-    static tOptions options;
-    return options;
-  }
+  void AddRuntimeToConnectTo(const std::string& address);
+
+  /*!
+   * \return Singleton instance of TCP plugin
+   */
+  static tTCPPlugin& GetInstance();
+
+//----------------------------------------------------------------------
+// Private fields and methods
+//----------------------------------------------------------------------
+private:
+
+  friend class internal::tPeerImplementation;
+
+  tTCPPlugin();
+
+  ~tTCPPlugin();
 };
 
 //----------------------------------------------------------------------

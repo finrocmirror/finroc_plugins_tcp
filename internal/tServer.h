@@ -84,14 +84,6 @@ public:
    */
   tServer(tPeerImplementation& peer);
 
-  /*!
-   * \return TCP Port Server is supposed to listen on
-   */
-  int DesiredPort()
-  {
-    return desired_port;
-  }
-
   /*! Contains "main loop" of TCP Thread */
   void Run();
 
@@ -104,15 +96,6 @@ private:
 
   /*! Peer that this server belongs to */
   tPeerImplementation& peer;
-
-  /*! TCP Port Server is supposed to listen on */
-  const int desired_port;
-
-  /*! Try the following ports, if specified port is already occupied? */
-  const bool try_next_ports_if_occupied;
-
-  /* The address that server is supposed to listen on ("::" will enable IPv6) */
-  const std::string server_listen_address;
 
 
   ~tServer();
