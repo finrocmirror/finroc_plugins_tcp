@@ -120,7 +120,7 @@ public:
     rrlib::serialization::tOutputStream stream2((*initial_message_buffers)[1]);
     stream1 << cGREET_MESSAGE;
     stream1.WriteShort(network_transport::generic_protocol::cPROTOCOL_VERSION_MAJOR);
-    uint32_t flags = connection->flags | ((network_transport::generic_protocol::cPROTOCOL_VERSION_MINOR & 0xFFFFFF) << 8) | (connection->peer.par_debug_tcp.Get() ? 0 : (static_cast<uint>(tConnectionFlag::NO_DEBUG)));
+    uint32_t flags = connection->flags | (core::internal::tFrameworkElementRegister::cSTAMP_BIT_WIDTH << 8) | ((network_transport::generic_protocol::cPROTOCOL_VERSION_MINOR & 0xFFFF) << 16) | (connection->peer.par_debug_tcp.Get() ? 0 : (static_cast<uint>(tConnectionFlag::NO_DEBUG)));
     tConnectionInitMessage::Serialize(true, false, stream2, connection->peer.GetPeerInfo().uuid, connection->peer.GetPeerInfo().peer_type,
                                       connection->peer.GetPeerInfo().name, tStructureExchange::SHARED_PORTS, flags, connection->socket->remote_endpoint().address());
 
@@ -227,7 +227,7 @@ public:
         bool java_partner = connection->flags & static_cast<uint>(tConnectionFlag::JAVA_PEER);
         bool primary_connection = connection->flags & static_cast<uint>(tConnectionFlag::PRIMARY_CONNECTION);
         bool express_only_connection = (connection->flags & static_cast<uint>(tConnectionFlag::EXPRESS_DATA)) && (!primary_connection);
-        rrlib::serialization::tSerializationInfo input_info(std::min<uint>(network_transport::generic_protocol::cPROTOCOL_VERSION_MINOR, static_cast<uint>(message.Get<4>()) >> 8),
+        rrlib::serialization::tSerializationInfo input_info(std::min<uint>(network_transport::generic_protocol::cPROTOCOL_VERSION_MINOR, static_cast<uint>(message.Get<4>()) >> 16),
             rrlib::serialization::tRegisterEntryEncoding::UID,
             static_cast<int>(message.Get<3>()) | (java_partner ? network_transport::runtime_info::cJAVA_CLIENT : 0) | (connection->flags & static_cast<uint>(tConnectionFlag::NO_DEBUG) ? 0 : network_transport::runtime_info::cDEBUG_PROTOCOL));
         input_info.SetRegisterEntryEncoding(static_cast<uint>(network_transport::runtime_info::tRegisterUIDs::TYPE), rrlib::serialization::tRegisterEntryEncoding::PUBLISH_REGISTER_ON_CHANGE);
@@ -501,7 +501,7 @@ public:
         if (relevant)
         {
           stream.WriteInt(framework_element_buffer[i]->GetHandle());
-          network_transport::runtime_info::tLocalFrameworkElementInfo::Serialize(stream, *framework_element_buffer[i]);
+          network_transport::runtime_info::tLocalFrameworkElementInfo::Serialize(stream, *framework_element_buffer[i], connection->GetRemoteRuntime()->GetDesiredStructureInfo() == tStructureExchange::FINSTRUCT);
           FINROC_LOG_PRINT(DEBUG_VERBOSE_2, "Serializing ", *framework_element_buffer[i]);
         }
         connection->SharedConnectionInfo().framework_elements_in_full_structure_exchange_sent_until_handle = framework_element_buffer[i]->GetHandle() + 1;
