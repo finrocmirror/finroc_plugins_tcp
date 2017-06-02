@@ -245,10 +245,6 @@ public:
           serialization_info.SetRegisterEntryEncoding(static_cast<uint>(network_transport::runtime_info::tRegisterUIDs::STATIC_CAST), rrlib::serialization::tRegisterEntryEncoding::PUBLISH_REGISTER_ON_CHANGE);
           serialization_info.SetRegisterEntryEncoding(static_cast<uint>(network_transport::runtime_info::tRegisterUIDs::SCHEME_HANDLER), rrlib::serialization::tRegisterEntryEncoding::PUBLISH_REGISTER_ON_CHANGE);
         }
-        connection->SharedConnectionInfo().input_stream_prototype.Reset(unused_initialization_buffer, deserialization_info);
-        connection->SharedConnectionInfo().output_stream_prototype.Reset(unused_initialization_buffer, serialization_info);
-
-        connection->InitFrontBuffer();
 
         if (primary_connection && connection->SharedConnectionInfo().remote_runtime->GetPrimaryConnection() != connection)
         {
@@ -256,15 +252,22 @@ public:
           connection->Close(); // we already have a connection of this type
           return;
         }
+        else if (primary_connection)
+        {
+          connection->SharedConnectionInfo().input_stream_prototype.Reset(unused_initialization_buffer, deserialization_info);
+          connection->SharedConnectionInfo().output_stream_prototype.Reset(unused_initialization_buffer, serialization_info);
+        }
         else if (express_only_connection)
         {
-          if (!connection->SharedConnectionInfo().remote_runtime->AddConnection(connection, true))
+          if (!connection->SharedConnectionInfo().remote_runtime->AddConnection(connection, false))
           {
             connection->SharedConnectionInfo().remote_runtime = nullptr;
             connection->Close(); // we already have a connection of this type
             return;
           }
         }
+
+        connection->InitFrontBuffer();
         connection->peer.RunEventLoop();
 
         connection->SharedConnectionInfo().initial_reading_complete = true;
