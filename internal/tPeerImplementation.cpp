@@ -93,7 +93,7 @@ public:
     }
   }
 
-  std::shared_ptr<tPeerInfo>& peer_pointer;
+  std::shared_ptr<tPeerInfo> peer_pointer;
 };
 
 boost::posix_time::milliseconds ToBoostPosixTime(const rrlib::time::tDuration& d)
