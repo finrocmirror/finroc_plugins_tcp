@@ -104,9 +104,6 @@ public:
   tOutput<int> out_initial_pushing;
   tInput<int> in_initial_pushing;
 
-  tOutput<int> out_initial_pushing_reverse;
-  tInput<int> in_initial_pushing_reverse;
-
   tOutput<int> out_simple_publishing;
   tInput<int> in_simple_publishing;
 

@@ -80,8 +80,6 @@ rpc_ports::tRPCInterfaceType<tTestInterface> cTYPE("Test interface", &tTestInter
 mTestCollection::mTestCollection(core::tFrameworkElement *parent, const std::string &name) :
   tModule(parent, name, true),
   out_initial_pushing(cINITIAL_VALUE),
-  out_initial_pushing_reverse(tFlag::SHARED | tFlag::PUSH_STRATEGY_REVERSE),
-  in_initial_pushing_reverse(cINITIAL_VALUE),
   in_burst_publishing(0, data_ports::tQueueSettings(true, 5)),
   test_interface_client("Test Interface", &GetInputs()),
   test_interface_server(test_interface, "Test Interface", &GetOutputs(), tFlag::SHARED),
@@ -101,7 +99,7 @@ void mTestCollection::Update()
       if (counter == 0)
       {
         FINROC_LOG_PRINT(USER, "Received value from initial pushing. Testing simple publishing:");
-        FINROC_LOG_PRINT(USER, "  Initial pushing: ", in_initial_pushing.Get(), "  Initial pushing reverse: ", out_initial_pushing_reverse.Get());
+        FINROC_LOG_PRINT(USER, "  Initial pushing: ", in_initial_pushing.Get());
       }
       out_simple_publishing.Publish(counter);
       FINROC_LOG_PRINT(USER, "  Received ", in_simple_publishing.Get());
