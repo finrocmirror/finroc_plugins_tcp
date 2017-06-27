@@ -91,9 +91,12 @@ rrlib::serialization::tMemoryBuffer SerializeSharedPorts(const network_transport
   rrlib::serialization::tOutputStream stream(buffer, stream_prototype);
   stream.WriteInt(0); // Placeholder for size
   stream << rrlib::rtti::tDataType<std::string>(); // write a data type for initialization (only necessary in legacy mode - kept for backward-compatibility)
-  for (auto & entry : info)
+  if (stream.GetTargetInfo().revision != 0) // do not send shared ports to legacy runtime environments
   {
-    stream << entry.second;
+    for (auto & entry : info)
+    {
+      stream << entry.second;
+    }
   }
   stream.WriteInt(0); // size of next packet
   stream.Close();
