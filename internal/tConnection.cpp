@@ -242,6 +242,12 @@ public:
 
         auto& unused_initialization_buffer = connection->peer.UnusedInitializationBuffer();
 
+        if (serialization_revision == 0 && message.Get<3>() != tStructureExchange::SHARED_PORTS)
+        {
+          FINROC_LOG_PRINT_STATIC(WARNING, "Rejected TCP connection from outdated Java tool. Please use Finroc 17.03 tools or newer.");
+          connection->Close();
+          return;
+        }
         if (java_partner)
         {
           serialization_info.SetRegisterEntryEncoding(static_cast<uint>(network_transport::runtime_info::tRegisterUIDs::CONVERSION_OPERATION), rrlib::serialization::tRegisterEntryEncoding::PUBLISH_REGISTER_ON_CHANGE);
